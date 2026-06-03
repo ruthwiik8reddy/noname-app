@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — {{ studio }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: #0D0D0D;
+      color: #E8E6E0;
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      border-right: 1px solid rgba(255,255,255,0.07);
+      padding: 32px 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .logo-area {
+      padding: 0 24px 28px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      margin-bottom: 20px;
+    }
+
+    /* Logo image — shown after login */
+    .studio-logo {
+      width: 120px;
+      height: 48px;
+      object-fit: contain;
+      object-position: left center;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    /* Fallback text if no logo image */
+    .studio-name-text {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 20px;
+      letter-spacing: .1em;
+      color: #C8A96E;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .studio-city {
+      font-size: 11px;
+      color: rgba(255,255,255,0.3);
+      letter-spacing: .06em;
+    }
+
+    .nav { flex: 1; padding: 0 12px; }
+    .nav a {
+      display: block;
+      padding: 10px 12px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.4);
+      text-decoration: none;
+      border-radius: 4px;
+      margin-bottom: 2px;
+      transition: color .15s, background .15s;
+    }
+    .nav a:hover  { color: #E8E6E0; background: rgba(255,255,255,0.05); }
+    .nav a.active { color: #C8A96E; background: rgba(200,169,110,0.1); }
+
+    .logout-area { padding: 16px 24px; }
+    .logout-area a {
+      font-size: 12px;
+      color: rgba(255,255,255,0.25);
+      text-decoration: none;
+      transition: color .15s;
+    }
+    .logout-area a:hover { color: rgba(255,255,255,0.6); }
+
+    /* Main */
+    .main { flex: 1; padding: 44px 48px; }
+
+    .page-heading {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 32px;
+      letter-spacing: .1em;
+      color: #C8A96E;
+      margin-bottom: 4px;
+    }
+
+    .page-sub {
+      font-size: 13px;
+      color: rgba(255,255,255,0.35);
+      margin-bottom: 40px;
+    }
+
+    /* Stat cards */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 44px;
+    }
+
+    .stat {
+      padding: 22px 22px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 6px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+      margin-bottom: 10px;
+    }
+
+    .stat-value {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 36px;
+      color: #C8A96E;
+      letter-spacing: .04em;
+      line-height: 1;
+    }
+
+    .stat-hint {
+      font-size: 12px;
+      color: rgba(255,255,255,0.25);
+      margin-top: 4px;
+    }
+
+    /* Welcome banner */
+    .welcome {
+      padding: 24px 28px;
+      background: rgba(200,169,110,0.07);
+      border: 1px solid rgba(200,169,110,0.2);
+      border-radius: 6px;
+    }
+
+    .welcome h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      letter-spacing: .08em;
+      color: #C8A96E;
+      margin-bottom: 6px;
+    }
+
+    .welcome p {
+      font-size: 13px;
+      color: rgba(255,255,255,0.45);
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div class="logo-area">
+      <!-- Logo fetched from session after login -->
+      <img src="/static/logos/{{ logo }}"
+           alt="{{ studio }} logo"
+           class="studio-logo"
+           onerror="this.style.display='none'; document.getElementById('fallback-name').style.display='block'">
+      <span id="fallback-name" class="studio-name-text" style="display:none;">{{ studio }}</span>
+      <span class="studio-city">{{ city }}</span>
+    </div>
+
+    <nav class="nav">
+      <a href="#" class="active">Dashboard</a>
+      <a href="#">Jobs</a>
+      <a href="#">Bookings</a>
+      <a href="#">Customers</a>
+      <a href="#">Warranties</a>
+      <a href="#">Technicians</a>
+      <a href="#">Settings</a>
+    </nav>
+
+    <div class="logout-area">
+      <a href="/logout">← Sign out</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <h1 class="page-heading">Dashboard</h1>
+    <p class="page-sub">{{ studio }} &nbsp;·&nbsp; {{ city }}</p>
+
+    <div class="stats">
+      <div class="stat">
+        <p class="stat-label">Jobs today</p>
+        <p class="stat-value">8</p>
+        <p class="stat-hint">Active bookings</p>
+      </div>
+      <div class="stat">
+        <p class="stat-label">In progress</p>
+        <p class="stat-value">3</p>
+        <p class="stat-hint">On the floor</p>
+      </div>
+      <div class="stat">
+        <p class="stat-label">Completed</p>
+        <p class="stat-value">5</p>
+        <p class="stat-hint">Ready for pickup</p>
+      </div>
+      <div class="stat">
+        <p class="stat-label">Revenue</p>
+        <p class="stat-value">$2,840</p>
+        <p class="stat-hint">Today</p>
+      </div>
+    </div>
+
+    <div class="welcome">
+      <h2>Welcome back, Admin</h2>
+      <p>
+        You're logged in to <strong>{{ studio }}</strong>.<br>
+        The logo above is loaded automatically from your studio's credentials.
+        Next step — we'll wire this to a real database so any studio can log in and see their own data.
+      </p>
+    </div>
+  </main>
+
+</body>
+</html>
