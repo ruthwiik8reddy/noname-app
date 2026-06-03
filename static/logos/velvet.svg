@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="60" viewBox="0 0 200 60">
+  <rect width="200" height="60" fill="#0A0A0A"/>
+  <text x="10" y="34" font-family="Georgia, serif" font-size="22" font-weight="bold"
+        fill="#A78BFA" letter-spacing="3">VELVET</text>
+  <text x="11" y="50" font-family="Georgia, serif" font-size="10"
+        fill="#A78BFA" opacity="0.5" letter-spacing="2">AUTO SPA</text>
+</svg>
