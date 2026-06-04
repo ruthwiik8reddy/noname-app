@@ -7,7 +7,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
       font-family: 'DM Sans', sans-serif;
       background: #0D0D0D;
@@ -17,7 +16,6 @@
       align-items: center;
       justify-content: center;
     }
-
     .card {
       width: 400px;
       padding: 48px 40px 40px;
@@ -25,7 +23,6 @@
       border: 1px solid rgba(255,255,255,0.08);
       border-radius: 6px;
     }
-
     .brand {
       font-family: 'Bebas Neue', sans-serif;
       font-size: 28px;
@@ -33,13 +30,11 @@
       color: #C8A96E;
       margin-bottom: 6px;
     }
-
     .subtitle {
       font-size: 13px;
       color: rgba(255,255,255,0.35);
       margin-bottom: 36px;
     }
-
     label {
       display: block;
       font-size: 11px;
@@ -49,7 +44,6 @@
       color: rgba(255,255,255,0.4);
       margin-bottom: 7px;
     }
-
     input {
       width: 100%;
       padding: 11px 14px;
@@ -63,9 +57,7 @@
       margin-bottom: 18px;
       transition: border-color .2s;
     }
-
     input:focus { border-color: #C8A96E; }
-
     .error {
       background: rgba(220,50,50,0.1);
       border: 1px solid rgba(220,50,50,0.3);
@@ -75,7 +67,6 @@
       font-size: 13px;
       margin-bottom: 18px;
     }
-
     button {
       width: 100%;
       padding: 12px;
@@ -89,8 +80,15 @@
       cursor: pointer;
       transition: opacity .2s;
     }
-
     button:hover { opacity: .85; }
+    .hint {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      font-size: 12px;
+      color: rgba(255,255,255,0.25);
+      line-height: 1.8;
+    }
   </style>
 </head>
 <body>
@@ -104,13 +102,20 @@
 
     <form method="POST">
       <label>Username</label>
-      <input type="text" name="username" placeholder="Enter username" autofocus>
+      <input type="text" name="username" placeholder="Enter your username" autofocus>
 
       <label>Password</label>
       <input type="password" name="password" placeholder="••••••••">
 
       <button type="submit">Sign In</button>
     </form>
+
+    <div class="hint">
+      Test logins:<br>
+      <strong>shinepro</strong> / shine123 &nbsp;·&nbsp;
+      <strong>apexdetail</strong> / apex123 &nbsp;·&nbsp;
+      <strong>velvetauto</strong> / velvet123
+    </div>
   </div>
 </body>
 </html>
