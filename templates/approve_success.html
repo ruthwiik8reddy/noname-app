@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% if revision %}Changes Requested{% else %}Approved{% endif %} — {{ est.studio_name }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    body { font-family:'DM Sans',sans-serif; background:#0D0D0D; color:#E8E6E0; min-height:100vh; display:flex; align-items:center; justify-content:center; }
+    .card { text-align:center; max-width:440px; padding:48px 40px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:8px; }
+    .icon { font-size:48px; margin-bottom:20px; }
+    h1 { font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:.1em; margin-bottom:10px; }
+    p { font-size:13px; color:rgba(255,255,255,0.4); line-height:1.7; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    {% if revision %}
+    <div class="icon">✏️</div>
+    <h1 style="color:#FBBF24;">Changes Requested</h1>
+    <p>Your request for changes has been sent to {{ est.studio_name }}. They'll be in touch shortly.</p>
+    {% else %}
+    <div class="icon">✅</div>
+    <h1 style="color:#4ADE80;">Estimate Approved</h1>
+    <p>Thank you, {{ est.customer_name }}. Your estimate has been approved and {{ est.studio_name }} will be in touch to confirm your appointment.</p>
+    {% endif %}
+  </div>
+</body>
+</html>

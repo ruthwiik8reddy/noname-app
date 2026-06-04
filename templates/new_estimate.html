@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Estimate — {{ studio }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'DM Sans',sans-serif; background:#0D0D0D; color:#E8E6E0; min-height:100vh; display:flex; }
+    .sidebar { width:220px; flex-shrink:0; border-right:1px solid rgba(255,255,255,0.07); display:flex; flex-direction:column; }
+    .logo-area { padding:28px 24px; border-bottom:1px solid rgba(255,255,255,0.07); }
+    .studio-logo { width:140px; height:52px; object-fit:contain; object-position:left; display:block; margin-bottom:8px; }
+    .studio-name-fallback { font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:.1em; color:#C8A96E; display:none; margin-bottom:6px; }
+    .studio-city  { font-size:11px; color:rgba(255,255,255,0.3); }
+    .studio-owner { font-size:11px; color:rgba(255,255,255,0.2); margin-top:3px; }
+    nav { flex:1; padding:20px 12px; }
+    nav a { display:block; padding:10px 12px; font-size:13px; color:rgba(255,255,255,0.4); text-decoration:none; border-radius:4px; margin-bottom:2px; transition:color .15s,background .15s; }
+    nav a:hover  { color:#E8E6E0; background:rgba(255,255,255,0.05); }
+    nav a.active { color:#C8A96E; background:rgba(200,169,110,0.1); }
+    .logout-area { padding:16px 24px; border-top:1px solid rgba(255,255,255,0.07); }
+    .logout-area a { font-size:12px; color:rgba(255,255,255,0.25); text-decoration:none; }
+    .main { flex:1; padding:44px 48px; overflow-y:auto; }
+    .page-heading { font-family:'Bebas Neue',sans-serif; font-size:30px; letter-spacing:.1em; color:#C8A96E; margin-bottom:4px; }
+    .page-sub { font-size:13px; color:rgba(255,255,255,0.3); margin-bottom:32px; }
+    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; max-width:860px; }
+    .form-group { display:flex; flex-direction:column; gap:7px; }
+    .form-group.full { grid-column:1/-1; }
+    label { font-size:11px; font-weight:500; letter-spacing:.07em; text-transform:uppercase; color:rgba(255,255,255,0.4); }
+    input, select, textarea { padding:11px 14px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#E8E6E0; font-family:'DM Sans',sans-serif; font-size:13px; outline:none; transition:border-color .2s; }
+    input:focus, select:focus, textarea:focus { border-color:#C8A96E; }
+    select option { background:#1A1A1A; }
+    textarea { resize:vertical; min-height:80px; }
+
+    /* Line items */
+    .items-section { grid-column:1/-1; }
+    .items-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+    .items-table { width:100%; border-collapse:collapse; }
+    .items-table th { font-size:11px; font-weight:500; letter-spacing:.07em; text-transform:uppercase; color:rgba(255,255,255,0.3); padding:8px 10px; text-align:left; border-bottom:1px solid rgba(255,255,255,0.07); }
+    .items-table td { padding:6px 10px; vertical-align:top; }
+    .items-table input { padding:8px 10px; font-size:13px; }
+    .remove-row { background:none; border:none; color:rgba(248,113,113,0.5); cursor:pointer; font-size:16px; padding:8px; }
+    .remove-row:hover { color:#F87171; }
+    .add-row-btn { font-size:12px; color:#C8A96E; background:none; border:1px solid rgba(200,169,110,0.3); border-radius:4px; padding:6px 14px; cursor:pointer; margin-top:10px; }
+    .add-row-btn:hover { background:rgba(200,169,110,0.08); }
+
+    /* Quick add from services */
+    .quick-add { margin-bottom:12px; display:flex; gap:8px; flex-wrap:wrap; }
+    .quick-btn { font-size:11px; padding:5px 12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:20px; cursor:pointer; color:rgba(255,255,255,0.5); transition:all .15s; }
+    .quick-btn:hover { border-color:#C8A96E; color:#C8A96E; }
+
+    /* Totals */
+    .totals { grid-column:1/-1; display:flex; justify-content:flex-end; }
+    .totals-box { width:320px; }
+    .totals-row { display:flex; justify-content:space-between; padding:8px 0; font-size:13px; border-bottom:1px solid rgba(255,255,255,0.05); }
+    .totals-row:last-child { border-bottom:none; font-weight:500; font-size:15px; color:#C8A96E; }
+    .totals-label { color:rgba(255,255,255,0.4); }
+
+    .actions { display:flex; gap:14px; align-items:center; margin-top:32px; }
+    .btn-submit { padding:12px 32px; background:#C8A96E; color:#0D0D0D; border:none; border-radius:4px; font-family:'Bebas Neue',sans-serif; font-size:17px; letter-spacing:.08em; cursor:pointer; transition:opacity .2s; }
+    .btn-submit:hover { opacity:.85; }
+    .btn-cancel { font-size:13px; color:rgba(255,255,255,0.3); text-decoration:none; }
+  </style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="logo-area">
+    <img src="/static/logos/{{ logo }}" alt="{{ studio }}" class="studio-logo"
+         onerror="this.style.display='none';document.getElementById('nf').style.display='block'">
+    <span id="nf" class="studio-name-fallback">{{ studio }}</span>
+    <span class="studio-city">{{ city }}</span>
+    <span class="studio-owner">{{ owner }}</span>
+  </div>
+  <nav>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/bookings">Bookings</a>
+    <a href="/estimates" class="active">Estimates</a>
+    <a href="#">Jobs</a>
+    <a href="#">Customers</a>
+    <a href="#">Settings</a>
+  </nav>
+  <div class="logout-area"><a href="/logout">← Sign out</a></div>
+</aside>
+
+<main class="main">
+  <h1 class="page-heading">New Estimate</h1>
+  <p class="page-sub">Build a quote for a customer — they'll get a link to approve and sign</p>
+
+  <form method="POST" id="estimateForm">
+    <div class="form-grid">
+
+      <div class="form-group">
+        <label>Customer Name *</label>
+        <input type="text" name="customer_name" placeholder="John Smith" required>
+      </div>
+      <div class="form-group">
+        <label>Email *</label>
+        <input type="email" name="customer_email" placeholder="john@email.com" required>
+      </div>
+      <div class="form-group">
+        <label>Phone</label>
+        <input type="text" name="customer_phone" placeholder="+1 (555) 000-0000">
+      </div>
+      <div class="form-group">
+        <label>Vehicle *</label>
+        <input type="text" name="vehicle" placeholder="2023 BMW M4 Competition" required>
+      </div>
+
+      <!-- Line items -->
+      <div class="items-section">
+        <div class="items-header">
+          <label>Services & Line Items *</label>
+        </div>
+        <!-- Quick add from studio services -->
+        <div class="quick-add">
+          <span style="font-size:11px;color:rgba(255,255,255,0.2);padding:5px 0;align-self:center;">Quick add:</span>
+          {% for svc in services %}
+          <button type="button" class="quick-btn"
+                  onclick="addRow('{{ svc.name }}', '{{ svc.name }} service', 1, {{ svc.price }})">
+            {{ svc.name }} — ${{ svc.price }}
+          </button>
+          {% endfor %}
+        </div>
+
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th style="width:35%">Service / Item</th>
+              <th style="width:30%">Description</th>
+              <th style="width:8%">Qty</th>
+              <th style="width:15%">Unit Price ($)</th>
+              <th style="width:10%">Total</th>
+              <th style="width:5%"></th>
+            </tr>
+          </thead>
+          <tbody id="itemsBody">
+            <!-- rows injected by JS -->
+          </tbody>
+        </table>
+        <button type="button" class="add-row-btn" onclick="addRow()">+ Add line item</button>
+      </div>
+
+      <!-- Tax -->
+      <div class="form-group">
+        <label>Tax Rate (%)</label>
+        <input type="number" name="tax_percent" id="taxInput" value="8.5" step="0.1" min="0" max="30" oninput="recalc()">
+      </div>
+
+      <!-- Totals display -->
+      <div class="totals">
+        <div class="totals-box">
+          <div class="totals-row"><span class="totals-label">Subtotal</span><span id="subtotalDisplay">$0.00</span></div>
+          <div class="totals-row"><span class="totals-label">Tax (<span id="taxPctDisplay">8.5</span>%)</span><span id="taxDisplay">$0.00</span></div>
+          <div class="totals-row"><span class="totals-label">Total</span><span id="totalDisplay">$0.00</span></div>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="form-group full">
+        <label>Notes for Customer</label>
+        <textarea name="notes" placeholder="Visible to the customer on the estimate..."></textarea>
+      </div>
+      <div class="form-group full">
+        <label>Internal Notes</label>
+        <textarea name="internal_notes" placeholder="Only visible to your team..."></textarea>
+      </div>
+
+    </div>
+
+    <div class="actions">
+      <button type="submit" class="btn-submit">Save Estimate</button>
+      <a href="/estimates" class="btn-cancel">Cancel</a>
+    </div>
+  </form>
+</main>
+
+<script>
+let rowCount = 0;
+
+function addRow(name='', desc='', qty=1, price='') {
+  const tbody = document.getElementById('itemsBody');
+  const tr = document.createElement('tr');
+  tr.dataset.row = rowCount;
+  tr.innerHTML = `
+    <td><input type="text"   name="item_name"  value="${name}"  placeholder="e.g. Ceramic Coating" oninput="recalc()"></td>
+    <td><input type="text"   name="item_desc"  value="${desc}"  placeholder="Optional description"></td>
+    <td><input type="number" name="item_qty"   value="${qty}"   min="1" style="width:60px" oninput="recalc()"></td>
+    <td><input type="number" name="item_price" value="${price}" min="0" step="0.01" placeholder="0.00" oninput="recalc()"></td>
+    <td id="row_total_${rowCount}" style="color:#C8A96E;font-size:13px;padding-top:16px;">$0.00</td>
+    <td><button type="button" class="remove-row" onclick="removeRow(this)">×</button></td>
+  `;
+  tbody.appendChild(tr);
+  rowCount++;
+  recalc();
+}
+
+function removeRow(btn) {
+  btn.closest('tr').remove();
+  recalc();
+}
+
+function recalc() {
+  const rows = document.querySelectorAll('#itemsBody tr');
+  let subtotal = 0;
+  rows.forEach((row, i) => {
+    const qty   = parseFloat(row.querySelector('[name=item_qty]').value)   || 0;
+    const price = parseFloat(row.querySelector('[name=item_price]').value) || 0;
+    const total = qty * price;
+    subtotal += total;
+    const cell = row.querySelector('[id^=row_total_]');
+    if (cell) cell.textContent = '$' + total.toFixed(2);
+  });
+  const taxPct = parseFloat(document.getElementById('taxInput').value) || 0;
+  const tax    = subtotal * taxPct / 100;
+  const total  = subtotal + tax;
+  document.getElementById('subtotalDisplay').textContent = '$' + subtotal.toFixed(2);
+  document.getElementById('taxDisplay').textContent      = '$' + tax.toFixed(2);
+  document.getElementById('totalDisplay').textContent    = '$' + total.toFixed(2);
+  document.getElementById('taxPctDisplay').textContent   = taxPct;
+}
+
+// Start with one empty row
+addRow();
+</script>
+</body>
+</html>

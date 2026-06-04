@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EST-{{ est.id }} — {{ studio }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'DM Sans',sans-serif; background:#0D0D0D; color:#E8E6E0; min-height:100vh; display:flex; }
+    .sidebar { width:220px; flex-shrink:0; border-right:1px solid rgba(255,255,255,0.07); display:flex; flex-direction:column; }
+    .logo-area { padding:28px 24px; border-bottom:1px solid rgba(255,255,255,0.07); }
+    .studio-logo { width:140px; height:52px; object-fit:contain; object-position:left; display:block; margin-bottom:8px; }
+    .studio-name-fallback { font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:.1em; color:#C8A96E; display:none; margin-bottom:6px; }
+    .studio-city  { font-size:11px; color:rgba(255,255,255,0.3); }
+    .studio-owner { font-size:11px; color:rgba(255,255,255,0.2); margin-top:3px; }
+    nav { flex:1; padding:20px 12px; }
+    nav a { display:block; padding:10px 12px; font-size:13px; color:rgba(255,255,255,0.4); text-decoration:none; border-radius:4px; margin-bottom:2px; transition:color .15s,background .15s; }
+    nav a:hover  { color:#E8E6E0; background:rgba(255,255,255,0.05); }
+    nav a.active { color:#C8A96E; background:rgba(200,169,110,0.1); }
+    .logout-area { padding:16px 24px; border-top:1px solid rgba(255,255,255,0.07); }
+    .logout-area a { font-size:12px; color:rgba(255,255,255,0.25); text-decoration:none; }
+    .main { flex:1; padding:44px 48px; overflow-y:auto; }
+
+    .top-bar { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:32px; }
+    .est-id { font-family:'Bebas Neue',sans-serif; font-size:30px; letter-spacing:.1em; color:#C8A96E; }
+    .badge { display:inline-flex; align-items:center; gap:4px; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:500; margin-top:6px; }
+    .badge-draft    { background:rgba(255,255,255,0.07); color:rgba(255,255,255,0.4); }
+    .badge-sent     { background:rgba(96,165,250,0.15);  color:#60A5FA; }
+    .badge-approved { background:rgba(74,222,128,0.12);  color:#4ADE80; }
+    .badge-revision { background:rgba(251,191,36,0.12);  color:#FBBF24; }
+    .dot { width:5px; height:5px; border-radius:50%; background:currentColor; }
+
+    .actions { display:flex; gap:10px; flex-wrap:wrap; }
+    .btn { padding:9px 18px; border-radius:4px; font-family:'Bebas Neue',sans-serif; font-size:14px; letter-spacing:.08em; cursor:pointer; border:none; text-decoration:none; display:inline-block; }
+    .btn-gold   { background:#C8A96E; color:#0D0D0D; }
+    .btn-ghost  { background:transparent; border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.6); }
+    .btn-ghost:hover { border-color:rgba(255,255,255,0.3); color:#E8E6E0; }
+    .btn-gold:hover  { opacity:.85; }
+
+    .two-col { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:28px; }
+    .info-card { padding:20px 22px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:6px; }
+    .info-title { font-size:11px; font-weight:500; letter-spacing:.07em; text-transform:uppercase; color:rgba(255,255,255,0.3); margin-bottom:14px; }
+    .info-row { display:flex; justify-content:space-between; padding:5px 0; font-size:13px; border-bottom:1px solid rgba(255,255,255,0.04); }
+    .info-row:last-child { border-bottom:none; }
+    .info-label { color:rgba(255,255,255,0.4); }
+
+    .items-wrap { background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.07); border-radius:6px; overflow:hidden; margin-bottom:28px; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    thead th { padding:11px 16px; text-align:left; font-size:11px; font-weight:500; letter-spacing:.07em; text-transform:uppercase; color:rgba(255,255,255,0.3); border-bottom:1px solid rgba(255,255,255,0.07); }
+    tbody tr { border-bottom:1px solid rgba(255,255,255,0.04); }
+    tbody tr:last-child { border-bottom:none; }
+    td { padding:13px 16px; }
+    .totals-section { display:flex; justify-content:flex-end; margin-bottom:28px; }
+    .totals-box { width:280px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:6px; padding:16px 20px; }
+    .t-row { display:flex; justify-content:space-between; padding:6px 0; font-size:13px; border-bottom:1px solid rgba(255,255,255,0.05); }
+    .t-row:last-child { border-bottom:none; font-weight:500; font-size:15px; color:#C8A96E; }
+    .t-label { color:rgba(255,255,255,0.4); }
+
+    .notes-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:28px; }
+    .note-box { padding:18px 20px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.07); border-radius:6px; }
+    .note-title { font-size:11px; font-weight:500; letter-spacing:.07em; text-transform:uppercase; color:rgba(255,255,255,0.3); margin-bottom:10px; }
+    .note-text { font-size:13px; color:rgba(255,255,255,0.5); line-height:1.7; }
+
+    .approve-link-box { padding:16px 20px; background:rgba(200,169,110,0.06); border:1px solid rgba(200,169,110,0.2); border-radius:6px; margin-bottom:28px; }
+    .approve-link-box p { font-size:12px; color:rgba(255,255,255,0.4); margin-bottom:8px; }
+    .approve-link { font-size:13px; color:#C8A96E; word-break:break-all; }
+    .copy-btn { margin-left:12px; font-size:11px; padding:3px 10px; border:1px solid rgba(200,169,110,0.3); border-radius:4px; background:none; color:#C8A96E; cursor:pointer; }
+
+    .sig-box { padding:18px 20px; background:rgba(74,222,128,0.04); border:1px solid rgba(74,222,128,0.2); border-radius:6px; margin-bottom:28px; }
+    .sig-title { font-size:11px; font-weight:500; letter-spacing:.07em; text-transform:uppercase; color:#4ADE80; margin-bottom:8px; }
+    .sig-text { font-size:13px; color:rgba(255,255,255,0.5); }
+  </style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="logo-area">
+    <img src="/static/logos/{{ logo }}" alt="{{ studio }}" class="studio-logo"
+         onerror="this.style.display='none';document.getElementById('nf').style.display='block'">
+    <span id="nf" class="studio-name-fallback">{{ studio }}</span>
+    <span class="studio-city">{{ city }}</span>
+    <span class="studio-owner">{{ owner }}</span>
+  </div>
+  <nav>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/bookings">Bookings</a>
+    <a href="/estimates" class="active">Estimates</a>
+    <a href="#">Jobs</a>
+    <a href="#">Customers</a>
+    <a href="#">Settings</a>
+  </nav>
+  <div class="logout-area"><a href="/logout">← Sign out</a></div>
+</aside>
+
+<main class="main">
+  <div class="top-bar">
+    <div>
+      <p class="est-id">EST-{{ est.id }}</p>
+      {% if est.status == 'Approved' %}
+        <span class="badge badge-approved"><span class="dot"></span>Approved</span>
+      {% elif est.status == 'Sent' %}
+        <span class="badge badge-sent"><span class="dot"></span>Sent to customer</span>
+      {% elif est.status == 'Revision Requested' %}
+        <span class="badge badge-revision"><span class="dot"></span>Revision Requested</span>
+      {% else %}
+        <span class="badge badge-draft"><span class="dot"></span>Draft</span>
+      {% endif %}
+    </div>
+    <div class="actions">
+      {% if est.status == 'Draft' %}
+      <form method="POST" action="/estimates/{{ est.id }}/send" style="display:inline;">
+        <button type="submit" class="btn btn-gold">Send to Customer</button>
+      </form>
+      {% endif %}
+      <a href="/estimates" class="btn btn-ghost">← Back</a>
+    </div>
+  </div>
+
+  <!-- Customer + Vehicle info -->
+  <div class="two-col">
+    <div class="info-card">
+      <p class="info-title">Customer</p>
+      <div class="info-row"><span class="info-label">Name</span><span>{{ est.customer_name }}</span></div>
+      <div class="info-row"><span class="info-label">Email</span><span>{{ est.customer_email }}</span></div>
+      <div class="info-row"><span class="info-label">Phone</span><span>{{ est.customer_phone or '—' }}</span></div>
+    </div>
+    <div class="info-card">
+      <p class="info-title">Vehicle & Date</p>
+      <div class="info-row"><span class="info-label">Vehicle</span><span>{{ est.vehicle }}</span></div>
+      <div class="info-row"><span class="info-label">Created</span><span>{{ est.created_at[:10] }}</span></div>
+      {% if est.approved_at %}
+      <div class="info-row"><span class="info-label">Approved</span><span style="color:#4ADE80;">{{ est.approved_at[:10] }}</span></div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Line items -->
+  <div class="items-wrap">
+    <table>
+      <thead><tr><th>Service / Item</th><th>Description</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td style="font-weight:500;">{{ item.name }}</td>
+          <td style="color:rgba(255,255,255,0.4);">{{ item.description or '—' }}</td>
+          <td>{{ item.quantity }}</td>
+          <td>${{ "%.2f"|format(item.unit_price/100) }}</td>
+          <td style="color:#C8A96E;">${{ "%.2f"|format(item.total/100) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Totals -->
+  <div class="totals-section">
+    <div class="totals-box">
+      <div class="t-row"><span class="t-label">Subtotal</span><span>${{ "%.2f"|format(est.subtotal/100) }}</span></div>
+      <div class="t-row"><span class="t-label">Tax ({{ est.tax_percent }}%)</span><span>${{ "%.2f"|format(est.tax_amount/100) }}</span></div>
+      <div class="t-row"><span class="t-label">Total</span><span>${{ "%.2f"|format(est.total/100) }}</span></div>
+    </div>
+  </div>
+
+  <!-- Customer approval link -->
+  {% if est.status in ['Sent', 'Approved', 'Revision Requested'] %}
+  <div class="approve-link-box">
+    <p>Customer approval link — share this with the customer:</p>
+    <span class="approve-link" id="approveLink">{{ request.host_url }}estimates/{{ est.id }}/approve</span>
+    <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('approveLink').textContent); this.textContent='Copied!'">Copy</button>
+  </div>
+  {% endif %}
+
+  <!-- Signature -->
+  {% if est.signature %}
+  <div class="sig-box">
+    <p class="sig-title">✓ Digitally signed by customer</p>
+    <p class="sig-text">Signed as: <strong>{{ est.signature }}</strong> &nbsp;·&nbsp; {{ est.approved_at[:10] }}</p>
+  </div>
+  {% endif %}
+
+  <!-- Notes -->
+  <div class="notes-grid">
+    <div class="note-box">
+      <p class="note-title">Customer Notes</p>
+      <p class="note-text">{{ est.notes or 'No notes added.' }}</p>
+    </div>
+    <div class="note-box">
+      <p class="note-title">Internal Notes</p>
+      <p class="note-text">{{ est.internal_notes or 'No internal notes.' }}</p>
+    </div>
+  </div>
+</main>
+</body>
+</html>

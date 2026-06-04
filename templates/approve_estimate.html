@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Review Estimate — {{ est.studio_name }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'DM Sans',sans-serif; background:#0D0D0D; color:#E8E6E0; min-height:100vh; display:flex; align-items:flex-start; justify-content:center; padding:40px 20px; }
+    .card { width:100%; max-width:640px; }
+    .header { margin-bottom:28px; }
+    .studio { font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.1em; color:#C8A96E; }
+    .est-ref { font-size:13px; color:rgba(255,255,255,0.3); margin-top:4px; }
+    .section { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:6px; padding:20px 22px; margin-bottom:20px; }
+    .section-title { font-size:11px; font-weight:500; letter-spacing:.07em; text-transform:uppercase; color:rgba(255,255,255,0.3); margin-bottom:14px; }
+    .info-row { display:flex; justify-content:space-between; font-size:13px; padding:5px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+    .info-row:last-child { border-bottom:none; }
+    .info-label { color:rgba(255,255,255,0.4); }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    thead th { padding:10px 0; text-align:left; font-size:11px; font-weight:500; letter-spacing:.07em; text-transform:uppercase; color:rgba(255,255,255,0.3); border-bottom:1px solid rgba(255,255,255,0.07); }
+    tbody tr { border-bottom:1px solid rgba(255,255,255,0.04); }
+    tbody tr:last-child { border-bottom:none; }
+    td { padding:12px 0; }
+    .totals { margin-top:16px; border-top:1px solid rgba(255,255,255,0.07); padding-top:12px; }
+    .t-row { display:flex; justify-content:space-between; font-size:13px; padding:5px 0; }
+    .t-row.total { font-weight:500; font-size:15px; color:#C8A96E; border-top:1px solid rgba(255,255,255,0.07); margin-top:4px; padding-top:10px; }
+    .t-label { color:rgba(255,255,255,0.4); }
+    .notes-box { font-size:13px; color:rgba(255,255,255,0.5); line-height:1.7; }
+    .sig-section { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.1); border-radius:6px; padding:24px; margin-bottom:20px; }
+    .sig-title { font-size:15px; font-weight:500; margin-bottom:6px; }
+    .sig-sub { font-size:12px; color:rgba(255,255,255,0.35); margin-bottom:18px; line-height:1.6; }
+    label { font-size:11px; font-weight:500; letter-spacing:.07em; text-transform:uppercase; color:rgba(255,255,255,0.4); display:block; margin-bottom:7px; }
+    input { width:100%; padding:11px 14px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#E8E6E0; font-family:'DM Sans',sans-serif; font-size:14px; outline:none; margin-bottom:16px; transition:border-color .2s; }
+    input:focus { border-color:#C8A96E; }
+    .btn-row { display:flex; gap:12px; }
+    .btn-approve  { flex:1; padding:13px; background:#4ADE80; color:#0D0D0D; border:none; border-radius:4px; font-family:'Bebas Neue',sans-serif; font-size:17px; letter-spacing:.08em; cursor:pointer; transition:opacity .2s; }
+    .btn-approve:hover { opacity:.85; }
+    .btn-revision { flex:1; padding:13px; background:transparent; border:1px solid rgba(251,191,36,0.4); color:#FBBF24; border-radius:4px; font-family:'Bebas Neue',sans-serif; font-size:17px; letter-spacing:.08em; cursor:pointer; }
+    .btn-revision:hover { background:rgba(251,191,36,0.08); }
+    .already-done { padding:24px; background:rgba(74,222,128,0.06); border:1px solid rgba(74,222,128,0.2); border-radius:6px; text-align:center; font-size:14px; color:#4ADE80; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <p class="studio">{{ est.studio_name }}</p>
+    <p class="est-ref">Estimate EST-{{ est.id }} &nbsp;·&nbsp; {{ est.vehicle }}</p>
+  </div>
+
+  <div class="section">
+    <p class="section-title">Prepared for</p>
+    <div class="info-row"><span class="info-label">Name</span><span>{{ est.customer_name }}</span></div>
+    <div class="info-row"><span class="info-label">Vehicle</span><span>{{ est.vehicle }}</span></div>
+    <div class="info-row"><span class="info-label">Date</span><span>{{ est.created_at[:10] }}</span></div>
+  </div>
+
+  <div class="section">
+    <p class="section-title">Services</p>
+    <table>
+      <thead><tr><th>Item</th><th>Qty</th><th style="text-align:right">Total</th></tr></thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td>
+            <div style="font-weight:500;">{{ item.name }}</div>
+            {% if item.description %}<div style="font-size:11px;color:rgba(255,255,255,0.3);">{{ item.description }}</div>{% endif %}
+          </td>
+          <td style="color:rgba(255,255,255,0.4);">{{ item.quantity }}</td>
+          <td style="text-align:right;color:#C8A96E;">${{ "%.2f"|format(item.total/100) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="totals">
+      <div class="t-row"><span class="t-label">Subtotal</span><span>${{ "%.2f"|format(est.subtotal/100) }}</span></div>
+      <div class="t-row"><span class="t-label">Tax ({{ est.tax_percent }}%)</span><span>${{ "%.2f"|format(est.tax_amount/100) }}</span></div>
+      <div class="t-row total"><span class="t-label">Total</span><span>${{ "%.2f"|format(est.total/100) }}</span></div>
+    </div>
+  </div>
+
+  {% if est.notes %}
+  <div class="section">
+    <p class="section-title">Notes</p>
+    <p class="notes-box">{{ est.notes }}</p>
+  </div>
+  {% endif %}
+
+  {% if est.status == 'Approved' %}
+  <div class="already-done">✓ This estimate has already been approved. Thank you!</div>
+  {% else %}
+  <div class="sig-section">
+    <p class="sig-title">Review & Sign</p>
+    <p class="sig-sub">By typing your name below and clicking Approve, you agree to the services and pricing listed above.</p>
+    <form method="POST">
+      <label>Full Name (acts as digital signature)</label>
+      <input type="text" name="signature" placeholder="Type your full name" required>
+      <div class="btn-row">
+        <button type="submit" name="action" value="approve" class="btn-approve">✓ Approve Estimate</button>
+        <button type="submit" name="action" value="revision" class="btn-revision">Request Changes</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+</div>
+</body>
+</html>
