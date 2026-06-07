@@ -1,6 +1,7 @@
 import sqlite3
+from .config import Config
 
-DB_PATH = "studios.db"
+DB_PATH = Config.DB_PATH
 conn = sqlite3.connect(DB_PATH)
 
 conn.execute("""
@@ -40,5 +41,4 @@ conn.execute("""
 
 conn.commit()
 conn.close()
-print("✓ Estimates tables added to studios.db")
-print("  Run this once — it won't affect existing data")
+print("✓ Estimates tables added to", DB_PATH)
