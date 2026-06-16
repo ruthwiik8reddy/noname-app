@@ -8,3 +8,10 @@ class Config:
     DEBUG = os.getenv("FLASK_DEBUG", "1") == "1"
     TEMPLATE_FOLDER = os.path.join(BASE_DIR, "templates")
     STATIC_FOLDER = os.path.join(BASE_DIR, "static")
+
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+    OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.0")
+    OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434")
+    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama2")

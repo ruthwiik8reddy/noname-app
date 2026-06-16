@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from functools import wraps
 from datetime import datetime, timedelta
 from .db_manager import get_db
+from .ai_service import AIService
 
 bp = Blueprint("main", __name__)
 
@@ -265,6 +266,31 @@ def send_estimate(estimate_id):
     )
     conn.commit()
     return redirect(url_for("main.estimate_detail", estimate_id=estimate_id))
+
+
+@bp.route("/assistant")
+@login_required
+def assistant():
+    return render_template("assistant.html", **sidebar_context())
+
+
+@bp.route("/assistant/query", methods=["POST"])
+@login_required
+def assistant_query():
+    data = request.get_json(silent=True) or request.form
+    question = (data.get("question") if isinstance(data, dict) else None) or request.form.get("question", "")
+    attachments = []
+    if isinstance(data, dict):
+        attachments = data.get("attachments") or []
+    if isinstance(attachments, str):
+        attachments = [item.strip() for item in attachments.split(",") if item.strip()]
+    question = question.strip()
+    if not question:
+        return jsonify({"error": "Question is required."}), 400
+
+    service = AIService()
+    answer = service.answer(session["studio_id"], question, attachments)
+    return jsonify(answer.as_dict())
 
 
 @bp.route("/estimates/<int:estimate_id>/approve", methods=["GET","POST"])
