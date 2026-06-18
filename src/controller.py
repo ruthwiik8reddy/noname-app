@@ -1,7 +1,12 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify
-from functools import wraps
 from datetime import datetime, timedelta
 from .db_manager import get_db
+from .ai_service import AIService
+from .auth import (
+    attempt_login, set_session, clear_session,
+    login_required, admin_required, staff_or_admin_required,
+    auth_context,
+)
 
 bp = Blueprint("main", __name__)
 
@@ -10,15 +15,6 @@ TIME_SLOTS = [
     "11:00 AM","11:30 AM","12:00 PM","12:30 PM","1:00 PM","1:30 PM",
     "2:00 PM","2:30 PM","3:00 PM","3:30 PM","4:00 PM","4:30 PM",
 ]
-
-
-def login_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if "logged_in" not in session:
-            return redirect(url_for("main.login"))
-        return f(*args, **kwargs)
-    return decorated
 
 
 def sidebar_context():
@@ -30,41 +26,46 @@ def sidebar_context():
     }
 
 
+# ── Auth ──────────────────────────────────────────────────────────────────────
+
 @bp.route("/")
 def index():
-    return redirect(url_for("main.dashboard") if "logged_in" in session else url_for("main.login"))
+    return redirect(url_for("main.dashboard") if session.get("logged_in") else url_for("main.login"))
 
 
-@bp.route("/login", methods=["GET","POST"])
+@bp.route("/login", methods=["GET", "POST"])
 def login():
+    # Already logged in — go straight to dashboard
+    if session.get("logged_in"):
+        return redirect(url_for("main.dashboard"))
+
     error = None
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
-        conn = get_db()
-        studio = conn.execute(
-            "SELECT * FROM studios WHERE username=? AND password=?",
-            (username, password)
-        ).fetchone()
-        if studio:
-            session.update({
-                "logged_in": True,
-                "studio_id": studio["id"],
-                "studio":    studio["name"],
-                "city":      studio["city"],
-                "logo":      studio["logo"],
-                "owner":     studio["owner"],
-            })
-            return redirect(url_for("main.dashboard"))
-        error = "Wrong username or password."
+
+        if not username or not password:
+            error = "Please enter both username and password."
+        else:
+            conn = get_db()
+            payload = attempt_login(username, password, conn)
+            if payload:
+                set_session(payload)
+                # Respect ?next= redirect param
+                next_url = request.args.get("next") or url_for("main.dashboard")
+                return redirect(next_url)
+            error = "Invalid username or password."
+
     return render_template("login.html", error=error)
 
 
 @bp.route("/logout")
 def logout():
-    session.clear()
+    clear_session()
     return redirect(url_for("main.login"))
 
+
+# ── Dashboard ─────────────────────────────────────────────────────────────────
 
 @bp.route("/dashboard")
 @login_required
@@ -87,17 +88,20 @@ def dashboard():
         "completed": sum(1 for j in jobs if j["status"] == "Completed"),
         "revenue":   sum(j["price"] for j in jobs if j["status"] == "Completed"),
         "bookings_today": conn.execute(
-            "SELECT COUNT(*) FROM bookings WHERE studio_id=? AND date= ?",
+            "SELECT COUNT(*) FROM bookings WHERE studio_id=? AND date=?",
             (sid, datetime.now().strftime("%Y-%m-%d"))
         ).fetchone()[0],
     }
     return render_template("dashboard.html",
-        **sidebar_context(), jobs=jobs, bookings=bookings, stats=stats
+        **sidebar_context(), **auth_context(),
+        jobs=jobs, bookings=bookings, stats=stats
     )
 
 
+# ── Bookings ──────────────────────────────────────────────────────────────────
+
 @bp.route("/bookings")
-@login_required
+@staff_or_admin_required
 def bookings():
     sid = session["studio_id"]
     conn = get_db()
@@ -109,11 +113,13 @@ def bookings():
         LEFT JOIN bays bay ON b.bay_id = bay.id
         WHERE b.studio_id=? ORDER BY b.date DESC, b.time_slot
     """, (sid,)).fetchall()
-    return render_template("bookings.html", **sidebar_context(), bookings=all_bookings)
+    return render_template("bookings.html",
+        **sidebar_context(), **auth_context(), bookings=all_bookings
+    )
 
 
-@bp.route("/bookings/new", methods=["GET","POST"])
-@login_required
+@bp.route("/bookings/new", methods=["GET", "POST"])
+@staff_or_admin_required
 def new_booking():
     sid = session["studio_id"]
     conn = get_db()
@@ -128,11 +134,12 @@ def new_booking():
         if not f.get("time_slot", "").strip(): errors.append("Please select a time slot.")
         if errors:
             services = conn.execute("SELECT * FROM services WHERE studio_id=?", (sid,)).fetchall()
-            bays = conn.execute("SELECT * FROM bays WHERE studio_id=?", (sid,)).fetchall()
-            dates = [(datetime.now().date() + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(14)]
-            return render_template("new_booking.html", **sidebar_context(),
-                services=services, bays=bays, dates=dates, time_slots=TIME_SLOTS,
-                errors=errors, form=f)
+            bays     = conn.execute("SELECT * FROM bays WHERE studio_id=?", (sid,)).fetchall()
+            dates    = [(datetime.now().date() + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(14)]
+            return render_template("new_booking.html",
+                **sidebar_context(), **auth_context(),
+                services=services, bays=bays, dates=dates,
+                time_slots=TIME_SLOTS, errors=errors, form=f)
         conn.execute("""
             INSERT INTO bookings
             (studio_id, customer_name, customer_phone, vehicle,
@@ -145,29 +152,31 @@ def new_booking():
         conn.commit()
         return redirect(url_for("main.bookings"))
     services = conn.execute("SELECT * FROM services WHERE studio_id=?", (sid,)).fetchall()
-    bays = conn.execute("SELECT * FROM bays WHERE studio_id=?", (sid,)).fetchall()
-    dates = [(datetime.now().date() + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(14)]
-    return render_template("new_booking.html", **sidebar_context(),
-        services=services, bays=bays, dates=dates, time_slots=TIME_SLOTS,
-        errors=[], form={})
+    bays     = conn.execute("SELECT * FROM bays WHERE studio_id=?", (sid,)).fetchall()
+    dates    = [(datetime.now().date() + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(14)]
+    return render_template("new_booking.html",
+        **sidebar_context(), **auth_context(),
+        services=services, bays=bays, dates=dates,
+        time_slots=TIME_SLOTS, errors=[], form={})
 
 
 @bp.route("/bookings/slots")
 @login_required
 def available_slots():
-    sid = session["studio_id"]
-    date = request.args.get("date")
+    sid    = session["studio_id"]
+    date   = request.args.get("date")
     bay_id = request.args.get("bay_id")
-    conn = get_db()
+    conn   = get_db()
     booked = conn.execute(
-        "SELECT time_slot FROM bookings WHERE studio_id=? AND date=? AND bay_id=? AND status != 'Cancelled'",
+        "SELECT time_slot FROM bookings "
+        "WHERE studio_id=? AND date=? AND bay_id=? AND status != 'Cancelled'",
         (sid, date, bay_id)
     ).fetchall()
     return jsonify({"booked": [r["time_slot"] for r in booked]})
 
 
 @bp.route("/bookings/<int:booking_id>/status", methods=["POST"])
-@login_required
+@staff_or_admin_required
 def update_booking_status(booking_id):
     conn = get_db()
     conn.execute(
@@ -178,54 +187,62 @@ def update_booking_status(booking_id):
     return redirect(url_for("main.bookings"))
 
 
+# ── Estimates ─────────────────────────────────────────────────────────────────
+
 @bp.route("/estimates")
-@login_required
+@staff_or_admin_required
 def estimates():
     sid = session["studio_id"]
     conn = get_db()
     all_estimates = conn.execute(
         "SELECT * FROM estimates WHERE studio_id=? ORDER BY created_at DESC", (sid,)
     ).fetchall()
-    return render_template("estimates.html", **sidebar_context(), estimates=all_estimates)
+    return render_template("estimates.html",
+        **sidebar_context(), **auth_context(), estimates=all_estimates
+    )
 
 
-@bp.route("/estimates/new", methods=["GET","POST"])
-@login_required
+@bp.route("/estimates/new", methods=["GET", "POST"])
+@staff_or_admin_required
 def new_estimate():
     sid = session["studio_id"]
     conn = get_db()
     if request.method == "POST":
-        f = request.form
-        names = f.getlist("item_name")
-        descs = f.getlist("item_desc")
-        quantities = f.getlist("item_qty")
+        f           = request.form
+        names       = f.getlist("item_name")
+        descs       = f.getlist("item_desc")
+        quantities  = f.getlist("item_qty")
         unit_prices = f.getlist("item_price")
         items = []
         for i in range(len(names)):
             if names[i].strip() and unit_prices[i].strip():
-                qty = int(quantities[i] or 1)
+                qty   = int(quantities[i] or 1)
                 price = int(float(unit_prices[i] or 0) * 100)
                 items.append({
-                    "name": names[i].strip(),
-                    "desc": descs[i].strip() if i < len(descs) else "",
-                    "qty": qty,
+                    "name":  names[i].strip(),
+                    "desc":  descs[i].strip() if i < len(descs) else "",
+                    "qty":   qty,
                     "price": price,
                     "total": qty * price,
                 })
-        subtotal = sum(it["total"] for it in items)
-        tax_pct = float(f.get("tax_percent", 8.5))
+        subtotal   = sum(it["total"] for it in items)
+        tax_pct    = float(f.get("tax_percent", 8.5))
         tax_amount = int(subtotal * tax_pct / 100)
-        total = subtotal + tax_amount
+        total      = subtotal + tax_amount
         cur = conn.execute("""
             INSERT INTO estimates
             (studio_id, customer_name, customer_email, customer_phone,
              vehicle, status, subtotal, tax_percent, tax_amount, total,
              notes, internal_notes)
             VALUES (?,?,?,?,?,'Draft',?,?,?,?,?,?)
-        """, (sid, f.get("customer_name", "").strip(), f.get("customer_email", "").strip(),
-              f.get("customer_phone", "").strip(), f.get("vehicle", "").strip(),
+        """, (sid,
+              f.get("customer_name", "").strip(),
+              f.get("customer_email", "").strip(),
+              f.get("customer_phone", "").strip(),
+              f.get("vehicle", "").strip(),
               subtotal, tax_pct, tax_amount, total,
-              f.get("notes", "").strip(), f.get("internal_notes", "").strip()))
+              f.get("notes", "").strip(),
+              f.get("internal_notes", "").strip()))
         estimate_id = cur.lastrowid
         for it in items:
             conn.execute("""
@@ -236,11 +253,13 @@ def new_estimate():
         conn.commit()
         return redirect(url_for("main.estimate_detail", estimate_id=estimate_id))
     services = conn.execute("SELECT * FROM services WHERE studio_id=?", (sid,)).fetchall()
-    return render_template("new_estimate.html", **sidebar_context(), services=services)
+    return render_template("new_estimate.html",
+        **sidebar_context(), **auth_context(), services=services
+    )
 
 
 @bp.route("/estimates/<int:estimate_id>")
-@login_required
+@staff_or_admin_required
 def estimate_detail(estimate_id):
     sid = session["studio_id"]
     conn = get_db()
@@ -252,11 +271,13 @@ def estimate_detail(estimate_id):
     items = conn.execute(
         "SELECT * FROM estimate_items WHERE estimate_id=?", (estimate_id,)
     ).fetchall()
-    return render_template("estimate_detail.html", **sidebar_context(), est=est, items=items)
+    return render_template("estimate_detail.html",
+        **sidebar_context(), **auth_context(), est=est, items=items
+    )
 
 
 @bp.route("/estimates/<int:estimate_id>/send", methods=["POST"])
-@login_required
+@staff_or_admin_required
 def send_estimate(estimate_id):
     conn = get_db()
     conn.execute(
@@ -267,21 +288,24 @@ def send_estimate(estimate_id):
     return redirect(url_for("main.estimate_detail", estimate_id=estimate_id))
 
 
-@bp.route("/estimates/<int:estimate_id>/approve", methods=["GET","POST"])
+@bp.route("/estimates/<int:estimate_id>/approve", methods=["GET", "POST"])
 def approve_estimate(estimate_id):
+    """Public route — no login required. Customer opens this link."""
     conn = get_db()
     est = conn.execute(
-        "SELECT e.*, s.name as studio_name FROM estimates e JOIN studios s ON e.studio_id=s.id WHERE e.id=?",
+        "SELECT e.*, s.name as studio_name FROM estimates e "
+        "JOIN studios s ON e.studio_id=s.id WHERE e.id=?",
         (estimate_id,)
     ).fetchone()
     if not est:
         return "Estimate not found", 404
     if request.method == "POST":
-        action = request.form.get("action")
+        action    = request.form.get("action")
         signature = request.form.get("signature", "").strip()
         if action == "approve" and signature:
             conn.execute(
-                "UPDATE estimates SET status='Approved', signature=?, approved_at=datetime('now') WHERE id=?",
+                "UPDATE estimates SET status='Approved', signature=?, "
+                "approved_at=datetime('now') WHERE id=?",
                 (signature, estimate_id)
             )
         elif action == "revision":
@@ -290,8 +314,120 @@ def approve_estimate(estimate_id):
                 (estimate_id,)
             )
         conn.commit()
-        return render_template("approve_success.html", est=est, revision=(action == "revision"))
+        return render_template("approve_success.html",
+            est=est, revision=(action == "revision"))
     items = conn.execute(
         "SELECT * FROM estimate_items WHERE estimate_id=?", (estimate_id,)
     ).fetchall()
     return render_template("approve_estimate.html", est=est, items=items)
+
+
+# ── AI Assistant ──────────────────────────────────────────────────────────────
+
+@bp.route("/assistant")
+@login_required
+def assistant():
+    return render_template("assistant.html",
+        **sidebar_context(), **auth_context()
+    )
+
+
+@bp.route("/assistant/query", methods=["POST"])
+@login_required
+def assistant_query():
+    data        = request.get_json(silent=True) or {}
+    question    = (data.get("question") or request.form.get("question", "")).strip()
+    attachments = data.get("attachments") or []
+
+    if isinstance(attachments, str):
+        attachments = [a.strip() for a in attachments.split(",") if a.strip()]
+
+    if not question:
+        return jsonify({"error": "Question is required."}), 400
+
+    service = AIService()
+    answer  = service.answer(session["studio_id"], question, attachments)
+    return jsonify(answer.as_dict())
+
+
+# ── Staff Management ─────────────────────────────────────────────────────────
+
+from .auth import hash_password, validate_password_strength, admin_required
+
+STAFF_ROLES = ["general_manager", "service_advisor", "technician", "photographer"]
+ROLE_LABELS_DISPLAY = {
+    "general_manager": "General Manager",
+    "service_advisor": "Service Advisor",
+    "technician":      "Technician",
+    "photographer":    "Photographer / Content Staff",
+}
+
+
+@bp.route("/staff")
+@admin_required
+def staff_list():
+    sid = session["studio_id"]
+    conn = get_db()
+    all_staff = conn.execute(
+        "SELECT * FROM staff WHERE studio_id=? ORDER BY name", (sid,)
+    ).fetchall()
+    return render_template("staff.html",
+        **sidebar_context(), **auth_context(),
+        staff=all_staff, role_labels=ROLE_LABELS_DISPLAY
+    )
+
+
+@bp.route("/staff/new", methods=["GET", "POST"])
+@admin_required
+def new_staff():
+    sid = session["studio_id"]
+    conn = get_db()
+    errors = []
+
+    if request.method == "POST":
+        f = request.form
+        name     = f.get("name", "").strip()
+        role     = f.get("role", "").strip()
+        username = f.get("username", "").strip().lower()
+        password = f.get("password", "").strip()
+
+        if not name: errors.append("Name is required.")
+        if role not in STAFF_ROLES: errors.append("Please select a valid role.")
+        if not username: errors.append("Username is required.")
+
+        pw_errors = validate_password_strength(password) if password else ["Password is required."]
+        errors.extend(pw_errors)
+
+        # Check username uniqueness across staff table
+        if username:
+            existing = conn.execute(
+                "SELECT id FROM staff WHERE LOWER(username)=?", (username,)
+            ).fetchone()
+            if existing:
+                errors.append("That username is already taken.")
+
+        if not errors:
+            conn.execute(
+                "INSERT INTO staff (studio_id, name, role, username, password) "
+                "VALUES (?,?,?,?,?)",
+                (sid, name, role, username, hash_password(password))
+            )
+            conn.commit()
+            return redirect(url_for("main.staff_list"))
+
+    return render_template("new_staff.html",
+        **sidebar_context(), **auth_context(),
+        roles=STAFF_ROLES, role_labels=ROLE_LABELS_DISPLAY, errors=errors
+    )
+
+
+@bp.route("/staff/<int:staff_id>/deactivate", methods=["POST"])
+@admin_required
+def deactivate_staff(staff_id):
+    conn = get_db()
+    conn.execute(
+        "DELETE FROM staff WHERE id=? AND studio_id=?",
+        (staff_id, session["studio_id"])
+    )
+    conn.commit()
+    return redirect(url_for("main.staff_list"))
