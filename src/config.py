@@ -9,16 +9,12 @@ class Config:
     TEMPLATE_FOLDER = os.path.join(BASE_DIR, "templates")
     STATIC_FOLDER   = os.path.join(BASE_DIR, "static")
 
-    # ── AI config ──────────────────────────────────────────────────────────
-    # PRIMARY — Ollama (local, free, no internet needed)
-    OLLAMA_URL   = os.getenv("OLLAMA_URL",   "http://127.0.0.1:11434")
-    #OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3")   # or mistral, phi3 etc.
-    OLLAMA_MODEL = "llama3.2:3b"
-    # FALLBACK — Gemini (internet, complex/visual questions)
-    #GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-    GEMINI_API_KEY = "AIzaSyCxrDnmMcwE90vG9QHdaqeGnahy36wH1eI"
-    GEMINI_MODEL   = os.getenv("GEMINI_MODEL",   "gemini-1.5-flash")
+    # AI config
+    OLLAMA_URL   = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434")
+    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
 
-    # OPTIONAL — OpenAI (disabled by default)
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+    GEMINI_MODEL   = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-    OPENAI_MODEL   = os.getenv("OPENAI_MODEL",   "gpt-4o-mini")
+    OPENAI_MODEL   = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
