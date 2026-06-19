@@ -294,6 +294,7 @@ def new_estimate():
 @staff_or_admin_required
 def estimate_detail(estimate_id):
     sid = session["studio_id"]
+    role = current_role()
     conn = get_db()
     est = conn.execute(
         "SELECT * FROM estimates WHERE id=? AND studio_id=?", (estimate_id, sid)
@@ -303,8 +304,9 @@ def estimate_detail(estimate_id):
     items = conn.execute(
         "SELECT * FROM estimate_items WHERE estimate_id=?", (estimate_id,)
     ).fetchall()
+    notes = get_notes_for(conn, sid, role, estimate_id=estimate_id)
     return render_template("estimate_detail.html",
-        **sidebar_context(), **auth_context(), est=est, items=items
+        **sidebar_context(), **auth_context(), est=est, items=items, notes=notes
     )
 
 
@@ -753,3 +755,82 @@ def add_vehicle(customer_id):
         conn.commit()
 
     return redirect(url_for("main.customer_detail", customer_id=customer_id))
+
+
+# ── Notes (Internal vs Client) ──────────────────────────────────────────────
+
+@bp.route("/notes/add", methods=["POST"])
+@staff_or_admin_required
+def add_note():
+    sid  = session["studio_id"]
+    role = current_role()
+    f    = request.form
+
+    note_type   = f.get("note_type", "internal")
+    content     = f.get("content", "").strip()
+    job_id      = f.get("job_id") or None
+    estimate_id = f.get("estimate_id") or None
+    booking_id  = f.get("booking_id") or None
+    redirect_to = f.get("redirect_to") or url_for("main.dashboard")
+
+    # Only roles that can view internal notes may CREATE internal notes
+    if note_type == "internal" and not can(role, "view_internal_notes"):
+        note_type = "client"  # silently downgrade rather than reject
+
+    if content:
+        conn = get_db()
+        conn.execute("""
+            INSERT INTO notes
+            (studio_id, job_id, estimate_id, booking_id, note_type,
+             content, author_name, author_role)
+            VALUES (?,?,?,?,?,?,?,?)
+        """, (sid, job_id, estimate_id, booking_id, note_type,
+              content, session.get("name", ""), role))
+        conn.commit()
+
+    return redirect(redirect_to)
+
+
+@bp.route("/notes/<int:note_id>/delete", methods=["POST"])
+@staff_or_admin_required
+def delete_note(note_id):
+    sid  = session["studio_id"]
+    role = current_role()
+    conn = get_db()
+
+    note = conn.execute(
+        "SELECT * FROM notes WHERE id=? AND studio_id=?", (note_id, sid)
+    ).fetchone()
+    if not note:
+        return "Not found", 404
+
+    if not can(role, "delete_anything") and note["author_name"] != session.get("name", ""):
+        abort(403)
+
+    conn.execute("DELETE FROM notes WHERE id=?", (note_id,))
+    conn.commit()
+    redirect_to = request.form.get("redirect_to") or url_for("main.dashboard")
+    return redirect(redirect_to)
+
+
+def get_notes_for(conn, studio_id, role, job_id=None, estimate_id=None, booking_id=None):
+    """Helper: fetch notes for a job/estimate/booking, filtered by role visibility."""
+    query  = "SELECT * FROM notes WHERE studio_id=?"
+    params = [studio_id]
+
+    if job_id:
+        query += " AND job_id=?"
+        params.append(job_id)
+    if estimate_id:
+        query += " AND estimate_id=?"
+        params.append(estimate_id)
+    if booking_id:
+        query += " AND booking_id=?"
+        params.append(booking_id)
+
+    # Customers and roles without internal-note access only see client notes
+    if not can(role, "view_internal_notes"):
+        query += " AND note_type='client'"
+
+    query += " ORDER BY created_at DESC"
+    return conn.execute(query, params).fetchall()
