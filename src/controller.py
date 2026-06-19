@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, abort
 from datetime import datetime, timedelta
 from .db_manager import get_db
 from .ai_service import AIService
@@ -140,15 +140,47 @@ def new_booking():
                 **sidebar_context(), **auth_context(),
                 services=services, bays=bays, dates=dates,
                 time_slots=TIME_SLOTS, errors=errors, form=f)
+        # Auto-create or find customer record (CRM)
+        customer_name  = f["customer_name"].strip()
+        customer_phone = f["customer_phone"].strip()
+        vehicle_name   = f["vehicle"].strip()
+
+        existing_customer = conn.execute(
+            "SELECT id FROM customers WHERE studio_id=? AND phone=?",
+            (sid, customer_phone)
+        ).fetchone()
+
+        if existing_customer:
+            customer_id = existing_customer["id"]
+        else:
+            username = f"cust_{sid}_{customer_phone}".replace(" ", "")
+            cur = conn.execute(
+                "INSERT INTO customers (studio_id, name, phone, email, username, password) "
+                "VALUES (?,?,?,?,?,?)",
+                (sid, customer_name, customer_phone, "", username, "")
+            )
+            customer_id = cur.lastrowid
+
+        # Auto-add vehicle if this customer doesn't already have it on file
+        existing_vehicle = conn.execute(
+            "SELECT id FROM vehicles WHERE customer_id=? AND make_model=?",
+            (customer_id, vehicle_name)
+        ).fetchone()
+        if not existing_vehicle:
+            conn.execute(
+                "INSERT INTO vehicles (studio_id, customer_id, make_model) VALUES (?,?,?)",
+                (sid, customer_id, vehicle_name)
+            )
+
         conn.execute("""
             INSERT INTO bookings
             (studio_id, customer_name, customer_phone, vehicle,
-             service_id, bay_id, date, time_slot, notes, status)
-            VALUES (?,?,?,?,?,?,?,?,?,'Pending')
-        """, (sid, f["customer_name"].strip(), f["customer_phone"].strip(),
-              f["vehicle"].strip(), f["service_id"],
+             service_id, bay_id, date, time_slot, notes, status, customer_id)
+            VALUES (?,?,?,?,?,?,?,?,?,'Pending',?)
+        """, (sid, customer_name, customer_phone,
+              vehicle_name, f["service_id"],
               f.get("bay_id") or None, f["date"], f["time_slot"],
-              f.get("notes", "").strip()))
+              f.get("notes", "").strip(), customer_id))
         conn.commit()
         return redirect(url_for("main.bookings"))
     services = conn.execute("SELECT * FROM services WHERE studio_id=?", (sid,)).fetchall()
@@ -431,3 +463,293 @@ def deactivate_staff(staff_id):
     )
     conn.commit()
     return redirect(url_for("main.staff_list"))
+
+
+# ── Media Gallery ─────────────────────────────────────────────────────────────
+
+import os
+import uuid
+from werkzeug.utils import secure_filename
+from .auth import can, current_role
+
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp", "mp4", "mov", "avi"}
+VIDEO_EXTENSIONS    = {"mp4", "mov", "avi"}
+UPLOAD_BASE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "uploads")
+
+
+def _allowed_file(filename: str) -> bool:
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def _media_type(filename: str) -> str:
+    ext = filename.rsplit(".", 1)[1].lower() if "." in filename else ""
+    return "video" if ext in VIDEO_EXTENSIONS else "image"
+
+
+def _studio_upload_dir(studio_id: int) -> str:
+    path = os.path.join(UPLOAD_BASE, f"studio_{studio_id}")
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+@bp.route("/media")
+@login_required
+def media_gallery():
+    sid  = session["studio_id"]
+    role = current_role()
+    conn = get_db()
+
+    job_filter = request.args.get("job_id")
+
+    query = """
+        SELECT m.*, j.car, j.service
+        FROM media m
+        LEFT JOIN jobs j ON m.job_id = j.id
+        WHERE m.studio_id=?
+    """
+    params = [sid]
+
+    # Technicians/Photographers only see jobs they're assigned to
+    if not can(role, "view_all_jobs") and role in ("technician", "photographer"):
+        query += " AND j.technician = ?"
+        params.append(session.get("name", ""))
+
+    if job_filter:
+        query += " AND m.job_id = ?"
+        params.append(job_filter)
+
+    query += " ORDER BY m.uploaded_at DESC"
+
+    items = conn.execute(query, params).fetchall()
+
+    jobs = conn.execute(
+        "SELECT id, car, service FROM jobs WHERE studio_id=? ORDER BY id DESC", (sid,)
+    ).fetchall()
+
+    return render_template("media.html",
+        **sidebar_context(), **auth_context(),
+        items=items, jobs=jobs, selected_job=job_filter
+    )
+
+
+@bp.route("/media/upload", methods=["GET", "POST"])
+@login_required
+def upload_media():
+    sid  = session["studio_id"]
+    role = current_role()
+
+    if not can(role, "upload_media") and role not in ("admin", "general_manager"):
+        abort(403)
+
+    conn = get_db()
+    errors = []
+
+    if request.method == "POST":
+        job_id  = request.form.get("job_id") or None
+        stage   = request.form.get("stage", "before")
+        caption = request.form.get("caption", "").strip()
+        files   = request.files.getlist("files")
+
+        if stage not in ("before", "during", "after"):
+            errors.append("Invalid stage selected.")
+        if not files or all(f.filename == "" for f in files):
+            errors.append("Please select at least one file.")
+
+        if not errors:
+            upload_dir = _studio_upload_dir(sid)
+            saved = 0
+            for f in files:
+                if f and f.filename and _allowed_file(f.filename):
+                    ext = f.filename.rsplit(".", 1)[1].lower()
+                    unique_name = f"{uuid.uuid4().hex}.{ext}"
+                    f.save(os.path.join(upload_dir, unique_name))
+                    conn.execute("""
+                        INSERT INTO media
+                        (studio_id, job_id, stage, filename, original_name,
+                         media_type, caption, uploaded_by)
+                        VALUES (?,?,?,?,?,?,?,?)
+                    """, (sid, job_id, stage, unique_name,
+                          secure_filename(f.filename),
+                          _media_type(f.filename), caption,
+                          session.get("name", "")))
+                    saved += 1
+            conn.commit()
+            if saved:
+                return redirect(url_for("main.media_gallery"))
+            errors.append("No valid files were uploaded (allowed: images and videos).")
+
+    jobs = conn.execute(
+        "SELECT id, car, service FROM jobs WHERE studio_id=? ORDER BY id DESC", (sid,)
+    ).fetchall()
+
+    return render_template("upload_media.html",
+        **sidebar_context(), **auth_context(),
+        jobs=jobs, errors=errors
+    )
+
+
+@bp.route("/media/<int:media_id>/delete", methods=["POST"])
+@login_required
+def delete_media(media_id):
+    sid  = session["studio_id"]
+    role = current_role()
+    conn = get_db()
+
+    item = conn.execute(
+        "SELECT * FROM media WHERE id=? AND studio_id=?", (media_id, sid)
+    ).fetchone()
+    if not item:
+        return "Not found", 404
+
+    # Only admin/GM or the uploader themselves can delete
+    if not can(role, "delete_anything") and item["uploaded_by"] != session.get("name", ""):
+        abort(403)
+
+    filepath = os.path.join(_studio_upload_dir(sid), item["filename"])
+    if os.path.exists(filepath):
+        os.remove(filepath)
+
+    conn.execute("DELETE FROM media WHERE id=?", (media_id,))
+    conn.commit()
+    return redirect(url_for("main.media_gallery"))
+
+
+@bp.route("/uploads/studio_<int:studio_id>/<filename>")
+def serve_upload(studio_id, filename):
+    """Serve uploaded media — checks the requester belongs to that studio."""
+    if session.get("studio_id") != studio_id and not session.get("logged_in"):
+        abort(403)
+    from flask import send_from_directory
+    return send_from_directory(_studio_upload_dir(studio_id), filename)
+
+
+# ── Customer CRM ──────────────────────────────────────────────────────────────
+
+@bp.route("/customers")
+@staff_or_admin_required
+def customers_list():
+    sid = session["studio_id"]
+    conn = get_db()
+    search = request.args.get("q", "").strip()
+
+    query = """
+        SELECT c.*,
+               (SELECT COUNT(*) FROM vehicles v WHERE v.customer_id = c.id) as vehicle_count,
+               (SELECT COUNT(*) FROM bookings b WHERE b.customer_id = c.id) as booking_count
+        FROM customers c
+        WHERE c.studio_id = ?
+    """
+    params = [sid]
+
+    if search:
+        query += " AND (c.name LIKE ? OR c.phone LIKE ? OR c.email LIKE ?)"
+        like = f"%{search}%"
+        params.extend([like, like, like])
+
+    query += " ORDER BY c.created_at DESC"
+
+    all_customers = conn.execute(query, params).fetchall()
+    return render_template("customers.html",
+        **sidebar_context(), **auth_context(),
+        customers=all_customers, search=search
+    )
+
+
+@bp.route("/customers/new", methods=["GET", "POST"])
+@staff_or_admin_required
+def new_customer():
+    sid = session["studio_id"]
+    conn = get_db()
+    errors = []
+
+    if request.method == "POST":
+        f = request.form
+        name  = f.get("name", "").strip()
+        phone = f.get("phone", "").strip()
+        email = f.get("email", "").strip()
+        notes = f.get("notes", "").strip()
+        vehicle_make_model = f.get("vehicle_make_model", "").strip()
+
+        if not name:  errors.append("Customer name is required.")
+        if not phone: errors.append("Phone number is required.")
+
+        if not errors:
+            existing = conn.execute(
+                "SELECT id FROM customers WHERE studio_id=? AND phone=?", (sid, phone)
+            ).fetchone()
+            if existing:
+                customer_id = existing["id"]
+            else:
+                username = f"cust_{sid}_{phone}".replace(" ", "")
+                cur = conn.execute(
+                    "INSERT INTO customers (studio_id, name, phone, email, notes, username, password) "
+                    "VALUES (?,?,?,?,?,?,?)",
+                    (sid, name, phone, email, notes, username, "")
+                )
+                customer_id = cur.lastrowid
+
+            if vehicle_make_model:
+                conn.execute(
+                    "INSERT INTO vehicles (studio_id, customer_id, make_model) VALUES (?,?,?)",
+                    (sid, customer_id, vehicle_make_model)
+                )
+
+            conn.commit()
+            return redirect(url_for("main.customer_detail", customer_id=customer_id))
+
+    return render_template("new_customer.html",
+        **sidebar_context(), **auth_context(), errors=errors
+    )
+
+
+@bp.route("/customers/<int:customer_id>")
+@staff_or_admin_required
+def customer_detail(customer_id):
+    sid = session["studio_id"]
+    conn = get_db()
+
+    customer = conn.execute(
+        "SELECT * FROM customers WHERE id=? AND studio_id=?", (customer_id, sid)
+    ).fetchone()
+    if not customer:
+        return "Customer not found", 404
+
+    vehicles = conn.execute(
+        "SELECT * FROM vehicles WHERE customer_id=? ORDER BY created_at DESC", (customer_id,)
+    ).fetchall()
+
+    bookings = conn.execute("""
+        SELECT b.*, s.name as service_name FROM bookings b
+        JOIN services s ON b.service_id = s.id
+        WHERE b.customer_id=? ORDER BY b.date DESC
+    """, (customer_id,)).fetchall()
+
+    estimates = conn.execute(
+        "SELECT * FROM estimates WHERE customer_id=? ORDER BY created_at DESC", (customer_id,)
+    ).fetchall()
+
+    return render_template("customer_detail.html",
+        **sidebar_context(), **auth_context(),
+        customer=customer, vehicles=vehicles,
+        bookings=bookings, estimates=estimates
+    )
+
+
+@bp.route("/customers/<int:customer_id>/vehicles/new", methods=["POST"])
+@staff_or_admin_required
+def add_vehicle(customer_id):
+    sid = session["studio_id"]
+    conn = get_db()
+    f = request.form
+
+    make_model = f.get("make_model", "").strip()
+    if make_model:
+        conn.execute("""
+            INSERT INTO vehicles (studio_id, customer_id, make_model, year, color, license_plate, vin)
+            VALUES (?,?,?,?,?,?,?)
+        """, (sid, customer_id, make_model,
+              f.get("year", "").strip(), f.get("color", "").strip(),
+              f.get("license_plate", "").strip(), f.get("vin", "").strip()))
+        conn.commit()
+
+    return redirect(url_for("main.customer_detail", customer_id=customer_id))

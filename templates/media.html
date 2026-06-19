@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Media Gallery — {{ studio }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'DM Sans',sans-serif; background:#0D0D0D; color:#E8E6E0; min-height:100vh; display:flex; }
+    .sidebar { width:220px; flex-shrink:0; border-right:1px solid rgba(255,255,255,0.07); display:flex; flex-direction:column; }
+    .logo-area { padding:28px 24px; border-bottom:1px solid rgba(255,255,255,0.07); }
+    .studio-logo { width:140px; height:52px; object-fit:contain; object-position:left; display:block; margin-bottom:8px; }
+    .studio-name-fallback { font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:.1em; color:#C8A96E; display:none; margin-bottom:6px; }
+    .studio-city { font-size:11px; color:rgba(255,255,255,0.3); }
+    .studio-owner { font-size:11px; color:rgba(255,255,255,0.2); margin-top:3px; }
+    .role-tag { display:inline-block; margin-top:8px; font-size:10px; padding:2px 8px; background:rgba(200,169,110,0.15); color:#C8A96E; border-radius:10px; }
+    nav { flex:1; padding:20px 12px; }
+    nav a { display:block; padding:10px 12px; font-size:13px; color:rgba(255,255,255,0.4); text-decoration:none; border-radius:4px; margin-bottom:2px; }
+    nav a:hover  { color:#E8E6E0; background:rgba(255,255,255,0.05); }
+    nav a.active { color:#C8A96E; background:rgba(200,169,110,0.1); }
+    .logout-area { padding:16px 24px; border-top:1px solid rgba(255,255,255,0.07); }
+    .logout-area a { font-size:12px; color:rgba(255,255,255,0.25); text-decoration:none; }
+    .main { flex:1; padding:44px 48px; overflow-y:auto; }
+    .top-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
+    .page-heading { font-family:'Bebas Neue',sans-serif; font-size:30px; letter-spacing:.1em; color:#C8A96E; }
+    .btn { padding:10px 20px; background:#C8A96E; color:#0D0D0D; border:none; border-radius:4px; font-family:'Bebas Neue',sans-serif; font-size:15px; letter-spacing:.08em; cursor:pointer; text-decoration:none; display:inline-block; }
+
+    .filter-bar { margin-bottom:24px; }
+    .filter-bar select { padding:9px 14px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#E8E6E0; font-size:13px; }
+    .filter-bar select option { background:#1A1A1A; }
+
+    .gallery-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+    .media-card { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:6px; overflow:hidden; }
+    .media-thumb { width:100%; height:160px; object-fit:cover; display:block; background:#000; }
+    .media-thumb-video { width:100%; height:160px; background:#000; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.3); font-size:24px; }
+    .media-info { padding:12px 14px; }
+    .stage-badge { display:inline-flex; font-size:10px; padding:2px 8px; border-radius:10px; font-weight:500; margin-bottom:6px; }
+    .stage-before  { background:rgba(96,165,250,0.15); color:#60A5FA; }
+    .stage-during  { background:rgba(251,191,36,0.15); color:#FBBF24; }
+    .stage-after   { background:rgba(74,222,128,0.15); color:#4ADE80; }
+    .media-car { font-size:12px; color:rgba(255,255,255,0.5); }
+    .media-meta { font-size:10px; color:rgba(255,255,255,0.25); margin-top:4px; }
+    .delete-btn { background:none; border:none; color:rgba(248,113,113,0.5); font-size:11px; cursor:pointer; margin-top:8px; }
+    .delete-btn:hover { color:#F87171; }
+    .empty { padding:80px; text-align:center; color:rgba(255,255,255,0.2); font-size:13px; grid-column:1/-1; }
+    .empty a { color:#C8A96E; text-decoration:none; }
+  </style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="logo-area">
+    <img src="/static/logos/{{ logo }}" alt="{{ studio }}" class="studio-logo"
+         onerror="this.style.display='none';document.getElementById('nf').style.display='block'">
+    <span id="nf" class="studio-name-fallback">{{ studio }}</span>
+    <span class="studio-city">{{ city }}</span>
+    <span class="studio-owner">{{ owner }}</span>
+    <span class="role-tag">{{ current_role_label }}</span>
+  </div>
+  <nav>
+    {% if "dashboard" in nav_items %}<a href="/dashboard">Dashboard</a>{% endif %}
+    {% if "bookings" in nav_items %}<a href="/bookings">Bookings</a>{% endif %}
+    {% if "estimates" in nav_items %}<a href="/estimates">Estimates</a>{% endif %}
+    {% if "jobs" in nav_items %}<a href="/jobs">Jobs</a>{% endif %}
+    {% if "media" in nav_items %}<a href="/media" class="active">Media</a>{% endif %}
+    {% if "staff" in nav_items %}<a href="/staff">Staff</a>{% endif %}
+    <a href="/assistant">AI Assistant</a>
+  </nav>
+  <div class="logout-area"><a href="/logout">← Sign out</a></div>
+</aside>
+<main class="main">
+  <div class="top-bar">
+    <h1 class="page-heading">Media Gallery</h1>
+    {% if can_upload_media or is_admin %}
+    <a href="/media/upload" class="btn">+ Upload Photos</a>
+    {% endif %}
+  </div>
+
+  <div class="filter-bar">
+    <form method="GET">
+      <select name="job_id" onchange="this.form.submit()">
+        <option value="">All jobs</option>
+        {% for j in jobs %}
+        <option value="{{ j.id }}" {% if selected_job == j.id|string %}selected{% endif %}>
+          #{{ j.id }} — {{ j.car }} ({{ j.service }})
+        </option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
+
+  <div class="gallery-grid">
+    {% if items %}
+      {% for item in items %}
+      <div class="media-card">
+        {% if item.media_type == 'video' %}
+        <div class="media-thumb-video">▶</div>
+        {% else %}
+        <img class="media-thumb" src="/uploads/studio_{{ item.studio_id }}/{{ item.filename }}" alt="{{ item.caption }}">
+        {% endif %}
+        <div class="media-info">
+          <span class="stage-badge stage-{{ item.stage }}">{{ item.stage|capitalize }}</span>
+          {% if item.car %}<div class="media-car">{{ item.car }} — {{ item.service }}</div>{% endif %}
+          {% if item.caption %}<div class="media-car" style="color:rgba(255,255,255,0.3);">{{ item.caption }}</div>{% endif %}
+          <div class="media-meta">{{ item.uploaded_by }} · {{ item.uploaded_at[:10] }}</div>
+          {% if is_admin or item.uploaded_by == current_name %}
+          <form method="POST" action="/media/{{ item.id }}/delete" onsubmit="return confirm('Delete this photo?')">
+            <button type="submit" class="delete-btn">Delete</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+    <div class="empty">No media yet — <a href="/media/upload">upload the first photo</a></div>
+    {% endif %}
+  </div>
+</main>
+</body>
+</html>
