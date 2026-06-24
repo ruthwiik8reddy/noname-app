@@ -47,26 +47,7 @@
   </style>
 </head>
 <body>
-<aside class="sidebar">
-  <div class="logo-area">
-    <img src="/static/logos/{{ logo }}" alt="{{ studio }}" class="studio-logo"
-         onerror="this.style.display='none';document.getElementById('nf').style.display='block'">
-    <span id="nf" class="studio-name-fallback">{{ studio }}</span>
-    <span class="studio-city">{{ city }}</span>
-    <span class="studio-owner">{{ owner }}</span>
-    <span class="role-tag">{{ current_role_label }}</span>
-  </div>
-  <nav>
-    {% if "dashboard" in nav_items %}<a href="/dashboard">Dashboard</a>{% endif %}
-    {% if "bookings" in nav_items %}<a href="/bookings">Bookings</a>{% endif %}
-    {% if "estimates" in nav_items %}<a href="/estimates">Estimates</a>{% endif %}
-    {% if "jobs" in nav_items %}<a href="/jobs">Jobs</a>{% endif %}
-    {% if "media" in nav_items %}<a href="/media" class="active">Media</a>{% endif %}
-    {% if "staff" in nav_items %}<a href="/staff">Staff</a>{% endif %}
-    <a href="/assistant">AI Assistant</a>
-  </nav>
-  <div class="logout-area"><a href="/logout">← Sign out</a></div>
-</aside>
+{% include "_sidebar.html" %}
 <main class="main">
   <div class="top-bar">
     <h1 class="page-heading">Media Gallery</h1>

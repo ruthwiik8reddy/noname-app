@@ -62,24 +62,7 @@
   </style>
 </head>
 <body>
-<aside class="sidebar">
-  <div class="logo-area">
-    <img src="/static/logos/{{ logo }}" alt="{{ studio }}" class="studio-logo"
-         onerror="this.style.display='none';document.getElementById('nf').style.display='block'">
-    <span id="nf" class="studio-name-fallback">{{ studio }}</span>
-    <span class="studio-city">{{ city }}</span>
-    <span class="studio-owner">{{ owner }}</span>
-  </div>
-  <nav>
-    <a href="/dashboard">Dashboard</a>
-    <a href="/bookings">Bookings</a>
-    <a href="/estimates" class="active">Estimates</a>
-    <a href="#">Jobs</a>
-    <a href="#">Customers</a>
-    <a href="#">Settings</a>
-  </nav>
-  <div class="logout-area"><a href="/logout">← Sign out</a></div>
-</aside>
+{% include "_sidebar.html" %}
 
 <main class="main">
   <h1 class="page-heading">New Estimate</h1>

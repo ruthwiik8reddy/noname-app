@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Add Staff — {{ studio }}</title>
+  <title>New Reminder — {{ studio }}</title>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
@@ -12,7 +12,6 @@
     .studio-logo { width:140px; height:52px; object-fit:contain; object-position:left; display:block; margin-bottom:8px; }
     .studio-name-fallback { font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:.1em; color:#C8A96E; display:none; margin-bottom:6px; }
     .studio-city { font-size:11px; color:rgba(255,255,255,0.3); }
-    .studio-owner { font-size:11px; color:rgba(255,255,255,0.2); margin-top:3px; }
     nav { flex:1; padding:20px 12px; }
     nav a { display:block; padding:10px 12px; font-size:13px; color:rgba(255,255,255,0.4); text-decoration:none; border-radius:4px; margin-bottom:2px; }
     nav a:hover  { color:#E8E6E0; background:rgba(255,255,255,0.05); }
@@ -26,16 +25,9 @@
     .errors p { font-size:13px; color:#F87171; margin-bottom:4px; }
     .form-grid { display:flex; flex-direction:column; gap:18px; max-width:420px; }
     label { font-size:11px; font-weight:500; letter-spacing:.07em; text-transform:uppercase; color:rgba(255,255,255,0.4); display:block; margin-bottom:7px; }
-    input, select { width:100%; padding:11px 14px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#E8E6E0; font-family:'DM Sans',sans-serif; font-size:13px; outline:none; }
-    input:focus, select:focus { border-color:#C8A96E; }
+    input, select, textarea { width:100%; padding:11px 14px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#E8E6E0; font-family:'DM Sans',sans-serif; font-size:13px; outline:none; }
     select option { background:#1A1A1A; }
-    .role-cards { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-    .role-card { padding:12px 14px; border:1px solid rgba(255,255,255,0.1); border-radius:4px; cursor:pointer; position:relative; }
-    .role-card input { position:absolute; opacity:0; }
-    .role-card:hover { border-color:rgba(200,169,110,0.5); }
-    .role-card.selected { background:rgba(200,169,110,0.1); border-color:#C8A96E; }
-    .role-name { font-size:13px; font-weight:500; }
-    .role-desc { font-size:11px; color:rgba(255,255,255,0.3); margin-top:3px; }
+    textarea { resize:vertical; min-height:70px; }
     .actions { display:flex; gap:14px; margin-top:8px; }
     .btn-submit { padding:12px 32px; background:#C8A96E; color:#0D0D0D; border:none; border-radius:4px; font-family:'Bebas Neue',sans-serif; font-size:17px; letter-spacing:.08em; cursor:pointer; }
     .btn-cancel { font-size:13px; color:rgba(255,255,255,0.3); text-decoration:none; align-self:center; }
@@ -44,8 +36,8 @@
 <body>
 {% include "_sidebar.html" %}
 <main class="main">
-  <h1 class="page-heading">Add Staff Member</h1>
-  <p class="page-sub">Create a login for a new team member</p>
+  <h1 class="page-heading">New Reminder</h1>
+  <p class="page-sub">Create a custom follow-up for a customer</p>
 
   {% if errors %}
   <div class="errors">{% for e in errors %}<p>{{ e }}</p>{% endfor %}</div>
@@ -54,43 +46,26 @@
   <form method="POST">
     <div class="form-grid">
       <div>
-        <label>Full Name</label>
-        <input type="text" name="name" placeholder="Maria Lopez" required>
-      </div>
-
-      <div>
-        <label>Role</label>
-        <div class="role-cards">
-          {% for r in roles %}
-          <label class="role-card" onclick="document.querySelectorAll('.role-card').forEach(c=>c.classList.remove('selected')); this.classList.add('selected')">
-            <input type="radio" name="role" value="{{ r }}" required>
-            <div class="role-name">{{ role_labels[r] }}</div>
-            <div class="role-desc">
-              {% if r == 'general_manager' %}Full access, can't manage staff
-              {% elif r == 'service_advisor' %}Bookings, estimates, payments
-              {% elif r == 'technician' %}Assigned jobs, media upload
-              {% elif r == 'photographer' %}Media gallery only
-              {% endif %}
-            </div>
-          </label>
+        <label>Customer</label>
+        <select name="customer_id" required>
+          <option value="">— Select customer —</option>
+          {% for c in customers %}
+          <option value="{{ c.id }}">{{ c.name }} ({{ c.phone }})</option>
           {% endfor %}
-        </div>
+        </select>
       </div>
-
       <div>
-        <label>Username</label>
-        <input type="text" name="username" placeholder="maria" required>
+        <label>Message</label>
+        <textarea name="message" placeholder="e.g. Check in about their PPF — coming up on 1 year" required></textarea>
       </div>
-
       <div>
-        <label>Password</label>
-        <input type="password" name="password" placeholder="Min 8 chars, upper, lower, number, symbol" required>
+        <label>Due Date</label>
+        <input type="date" name="due_date" required>
       </div>
     </div>
-
     <div class="actions">
-      <button type="submit" class="btn-submit">Create Staff Login</button>
-      <a href="/staff" class="btn-cancel">Cancel</a>
+      <button type="submit" class="btn-submit">Create Reminder</button>
+      <a href="/reminders" class="btn-cancel">Cancel</a>
     </div>
   </form>
 </main>

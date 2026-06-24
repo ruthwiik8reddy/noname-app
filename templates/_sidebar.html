@@ -1,0 +1,62 @@
+<style>
+  /* ── Shared sidebar styling — single source of truth ── */
+  .sidebar { width:220px; flex-shrink:0; border-right:1px solid rgba(255,255,255,0.07); display:flex; flex-direction:column; }
+  .logo-area { padding:28px 24px; border-bottom:1px solid rgba(255,255,255,0.07); }
+  .studio-logo { width:140px; height:52px; object-fit:contain; object-position:left; display:block; margin-bottom:8px; }
+  .studio-name-fallback { font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:.1em; color:#C8A96E; display:none; margin-bottom:6px; }
+  .studio-city  { font-size:11px; color:rgba(255,255,255,0.3); letter-spacing:.05em; display:block; }
+  .studio-owner { font-size:11px; color:rgba(255,255,255,0.2); margin-top:3px; display:block; }
+  .role-tag {
+    display: inline-block;
+    margin-top: 8px;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 3px 10px;
+    background: rgba(200,169,110,0.15);
+    color: #C8A96E;
+    border-radius: 10px;
+    white-space: nowrap;
+    line-height: 1.4;
+  }
+
+  .sidebar nav { flex:1; padding:20px 12px; }
+  .sidebar nav a {
+    display: block;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: rgba(255,255,255,0.4);
+    text-decoration: none;
+    border-radius: 4px;
+    margin-bottom: 2px;
+    transition: color .15s, background .15s;
+  }
+  .sidebar nav a:hover  { color:#E8E6E0; background:rgba(255,255,255,0.05); }
+  .sidebar nav a.active { color:#C8A96E; background:rgba(200,169,110,0.1); }
+
+  .logout-area { padding:16px 24px; border-top:1px solid rgba(255,255,255,0.07); }
+  .logout-area a { font-size:12px; color:rgba(255,255,255,0.25); text-decoration:none; }
+  .logout-area a:hover { color:rgba(255,255,255,0.6); }
+</style>
+
+<aside class="sidebar">
+  <div class="logo-area">
+    <img src="/static/logos/{{ logo }}" alt="{{ studio }}" class="studio-logo"
+         onerror="this.style.display='none';document.getElementById('nf').style.display='block'">
+    <span id="nf" class="studio-name-fallback">{{ studio }}</span>
+    <span class="studio-city">{{ city }}</span>
+    <span class="studio-owner">{{ owner }}</span>
+    {% if current_role_label %}<span class="role-tag">{{ current_role_label }}</span>{% endif %}
+  </div>
+  <nav>
+    {% if "dashboard" in nav_items %}<a href="/dashboard" {% if active_page == "dashboard" %}class="active"{% endif %}>Dashboard</a>{% endif %}
+    {% if "bookings" in nav_items %}<a href="/bookings" {% if active_page == "bookings" %}class="active"{% endif %}>Bookings</a>{% endif %}
+    {% if "estimates" in nav_items %}<a href="/estimates" {% if active_page == "estimates" %}class="active"{% endif %}>Estimates</a>{% endif %}
+    {% if "jobs" in nav_items %}<a href="/jobs" {% if active_page == "jobs" %}class="active"{% endif %}>Jobs</a>{% endif %}
+    {% if "customers" in nav_items %}<a href="/customers" {% if active_page == "customers" %}class="active"{% endif %}>Customers</a>{% endif %}
+    {% if "media" in nav_items %}<a href="/media" {% if active_page == "media" %}class="active"{% endif %}>Media</a>{% endif %}
+    {% if "staff" in nav_items %}<a href="/staff" {% if active_page == "staff" %}class="active"{% endif %}>Staff</a>{% endif %}
+    <a href="/reminders" {% if active_page == "reminders" %}class="active"{% endif %}>Reminders</a>
+    <a href="/assistant" {% if active_page == "assistant" %}class="active"{% endif %}>AI Assistant</a>
+  </nav>
+  <div class="logout-area"><a href="/logout">← Sign out</a></div>
+</aside>

@@ -13,10 +13,13 @@
     .studio-name-fallback { font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:.1em; color:#C8A96E; display:none; margin-bottom:6px; }
     .studio-city  { font-size:11px; color:rgba(255,255,255,0.3); letter-spacing:.05em; }
     .studio-owner { font-size:11px; color:rgba(255,255,255,0.2); margin-top:3px; }
+    .role-tag { display:inline-block; margin-top:8px; font-size:10px; padding:2px 8px; background:rgba(200,169,110,0.15); color:#C8A96E; border-radius:10px; }
+
     nav { flex:1; padding:20px 12px; }
-    nav a { display:block; padding:10px 12px; font-size:13px; color:rgba(255,255,255,0.4); text-decoration:none; border-radius:4px; margin-bottom:2px; transition:color .15s,background .15s; }
+    nav a { display:block; padding:10px 12px; font-size:13px; color:rgba(255,255,255,0.4); text-decoration:none; border-radius:4px; margin-bottom:2px; transition:color .15s, background .15s; }
     nav a:hover  { color:#E8E6E0; background:rgba(255,255,255,0.05); }
     nav a.active { color:#C8A96E; background:rgba(200,169,110,0.1); }
+
     .logout-area { padding:16px 24px; border-top:1px solid rgba(255,255,255,0.07); }
     .logout-area a { font-size:12px; color:rgba(255,255,255,0.25); text-decoration:none; }
     .logout-area a:hover { color:rgba(255,255,255,0.6); }
@@ -51,36 +54,19 @@
     .dot { width:5px; height:5px; border-radius:50%; background:currentColor; }
     .empty { padding:40px; text-align:center; color:rgba(255,255,255,0.2); font-size:13px; }
     .empty a { color:#C8A96E; text-decoration:none; }
+
+    .status-form select { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:#E8E6E0; border-radius:4px; padding:5px 9px; font-size:11px; cursor:pointer; }
+    .status-form select option { background:#1A1A1A; }
   </style>
 </head>
 <body>
 
-<aside class="sidebar">
-  <div class="logo-area">
-    <img src="/static/logos/{{ logo }}" alt="{{ studio }}" class="studio-logo"
-         onerror="this.style.display='none';document.getElementById('nf').style.display='block'">
-    <span id="nf" class="studio-name-fallback">{{ studio }}</span>
-    <span class="studio-city">{{ city }}</span>
-    <span class="studio-owner">{{ owner }}</span>
-  </div>
-  <nav>
-    <a href="/dashboard" class="active">Dashboard</a>
-    <a href="/bookings">Bookings</a>
-    <a href="/estimates">Estimates</a>
-    <a href="#">Jobs</a>
-    <a href="#">Customers</a>
-    <a href="#">Warranties</a>
-    <a href="#">Technicians</a>
-    <a href="#">Settings</a>
-  </nav>
-  <div class="logout-area"><a href="/logout">← Sign out</a></div>
-</aside>
+{% include "_sidebar.html" %}
 
 <main class="main">
   <h1 class="page-heading">Dashboard</h1>
   <p class="page-sub">{{ studio }} &nbsp;·&nbsp; {{ city }}</p>
 
-  <!-- Stats row -->
   <div class="stats">
     <div class="stat">
       <p class="stat-label">Total Jobs</p>
@@ -109,7 +95,7 @@
     </div>
   </div>
 
-  <!-- Recent bookings -->
+  {% if "bookings" in nav_items %}
   <div class="section-bar">
     <span class="section-title">Recent Bookings</span>
     <a href="/bookings/new" class="section-link">+ New Booking</a>
@@ -147,12 +133,15 @@
     <div class="empty">No bookings yet — <a href="/bookings/new">create the first one</a></div>
     {% endif %}
   </div>
+  {% endif %}
 
-  <!-- Jobs -->
+  {% if "jobs" in nav_items %}
   <div class="section-bar">
-    <span class="section-title">All Jobs</span>
+    <span class="section-title">Jobs — update status here</span>
+    <a href="/jobs" class="section-link">View all jobs</a>
   </div>
   <div class="table-wrap">
+    {% if jobs %}
     <table>
       <thead>
         <tr><th>#</th><th>Vehicle</th><th>Service</th><th>Technician</th><th>Price</th><th>Status</th></tr>
@@ -166,19 +155,24 @@
           <td style="color:rgba(255,255,255,0.5);">{{ job.technician }}</td>
           <td style="color:#C8A96E;">${{ job.price }}</td>
           <td>
-            {% if job.status == "Completed" %}
-              <span class="badge badge-completed"><span class="dot"></span>Completed</span>
-            {% elif job.status == "In Progress" %}
-              <span class="badge badge-progress"><span class="dot"></span>In Progress</span>
-            {% else %}
-              <span class="badge badge-pending"><span class="dot"></span>Pending</span>
-            {% endif %}
+            <form method="POST" action="/jobs/{{ job.id }}/status" class="status-form">
+              <input type="hidden" name="redirect_to" value="/dashboard">
+              <select name="status" onchange="this.form.submit()">
+                {% for st in job_statuses %}
+                <option {% if job.status == st %}selected{% endif %}>{{ st }}</option>
+                {% endfor %}
+              </select>
+            </form>
           </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
+    {% else %}
+    <div class="empty">No jobs yet</div>
+    {% endif %}
   </div>
+  {% endif %}
 </main>
 
 </body>

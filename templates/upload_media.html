@@ -43,21 +43,7 @@
   </style>
 </head>
 <body>
-<aside class="sidebar">
-  <div class="logo-area">
-    <img src="/static/logos/{{ logo }}" alt="{{ studio }}" class="studio-logo"
-         onerror="this.style.display='none';document.getElementById('nf').style.display='block'">
-    <span id="nf" class="studio-name-fallback">{{ studio }}</span>
-    <span class="studio-city">{{ city }}</span>
-    <span class="studio-owner">{{ owner }}</span>
-  </div>
-  <nav>
-    <a href="/dashboard">Dashboard</a>
-    <a href="/media" class="active">Media</a>
-    <a href="/assistant">AI Assistant</a>
-  </nav>
-  <div class="logout-area"><a href="/logout">← Sign out</a></div>
-</aside>
+{% include "_sidebar.html" %}
 <main class="main">
   <h1 class="page-heading">Upload Media</h1>
   <p class="page-sub">Add before / during / after photos for a job</p>
