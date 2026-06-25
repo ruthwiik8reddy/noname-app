@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DVI — {{ job.car }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'DM Sans',sans-serif; background:#0D0D0D; color:#E8E6E0; min-height:100vh; display:flex; }
+    .main { flex:1; padding:44px 48px; overflow-y:auto; }
+    .page-heading { font-family:'Bebas Neue',sans-serif; font-size:30px; letter-spacing:.1em; color:#C8A96E; margin-bottom:6px; }
+    .page-sub { font-size:13px; color:rgba(255,255,255,0.3); margin-bottom:28px; }
+    .card { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:24px; max-width:760px; }
+    .section { margin-bottom:22px; }
+    .section-title { font-size:12px; letter-spacing:.12em; font-weight:700; text-transform:uppercase; color:rgba(255,255,255,0.4); margin-bottom:12px; }
+    .field-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .field { background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:16px; }
+    .field-label { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:rgba(255,255,255,0.35); margin-bottom:8px; }
+    .field-value { font-size:15px; color:#E8E6E0; line-height:1.5; }
+    .badge { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; font-size:11px; font-weight:700; }
+    .badge-pending   { background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.8); }
+    .badge-progress  { background:rgba(200,169,110,0.18); color:#C8A96E; }
+    .badge-completed { background:rgba(74,222,128,0.16);  color:#4ADE80; }
+    .back-link { display:inline-block; margin-top:8px; color:#C8A96E; text-decoration:none; font-size:12px; }
+    .back-link:hover { text-decoration:underline; }
+  </style>
+</head>
+<body>
+{% include "_sidebar.html" %}
+<main class="main">
+  <div class="card">
+    <h1 class="page-heading">Digital Vehicle Inspection</h1>
+    <p class="page-sub">Live job details for <strong>{{ job.car }}</strong>. Share this page with the customer if needed.</p>
+
+    <div class="section">
+      <div class="section-title">Job summary</div>
+      <div class="field-grid">
+        <div class="field">
+          <div class="field-label">Vehicle</div>
+          <div class="field-value">{{ job.car }}</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Service</div>
+          <div class="field-value">{{ job.service }}</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Technician</div>
+          <div class="field-value">{{ job.technician }}</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Price</div>
+          <div class="field-value">${{ job.price }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Current status</div>
+      <span class="badge badge-{{ job.status | lower | replace(' ', '-') }}">{{ job.status }}</span>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Progress details</div>
+      <div class="field">
+        <div class="field-value">
+          This vehicle is currently marked as <strong>{{ job.status }}</strong> in the workflow.
+          {% if job.status == 'Pending' %}
+            Our team will begin work soon.
+          {% elif job.status == 'In Progress' %}
+            The car is on the lift and work is underway.
+          {% elif job.status == 'Completed' %}
+            Work is complete and the vehicle is ready for handoff.
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <a href="/tracking" class="back-link">← Back to Live Tracking</a>
+  </div>
+</main>
+</body>
+</html>

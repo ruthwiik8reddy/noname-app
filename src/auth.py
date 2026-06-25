@@ -229,21 +229,21 @@ def permission_required(permission: str):
 NAV_PERMISSIONS = {
     "admin": [
         "dashboard", "bookings", "estimates", "jobs",
-        "customers", "staff", "media", "payments",
+        "tracking", "customers", "staff", "media", "payments",
         "warranties", "settings",
     ],
     "general_manager": [
         "dashboard", "bookings", "estimates", "jobs",
-        "customers", "media", "payments", "warranties",
+        "tracking", "customers", "media", "payments", "warranties",
     ],
     "service_advisor": [
-        "dashboard", "bookings", "estimates", "customers", "payments",
+        "dashboard", "bookings", "estimates", "tracking", "customers", "payments",
     ],
     "technician": [
-        "dashboard", "jobs", "media",
+        "dashboard", "jobs", "tracking", "media",
     ],
     "photographer": [
-        "dashboard", "jobs", "media",
+        "dashboard", "jobs", "tracking", "media",
     ],
     "customer": [
         "my_estimates", "my_bookings",

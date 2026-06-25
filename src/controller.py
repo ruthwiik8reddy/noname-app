@@ -271,6 +271,54 @@ def jobs_list():
     )
 
 
+@bp.route("/tracking")
+@staff_or_admin_required
+def tracking():
+    sid  = session["studio_id"]
+    role = current_role()
+    conn = get_db()
+
+    query  = "SELECT * FROM jobs WHERE studio_id=?"
+    params = [sid]
+    if not can(role, "view_all_jobs") and role in ("technician", "photographer"):
+        query += " AND technician = ?"
+        params.append(session.get("name", ""))
+    query += " ORDER BY id DESC"
+
+    rows = conn.execute(query, params).fetchall()
+    jobs = []
+    for row in rows:
+        status = row["status"]
+        progress_index = JOB_STATUSES.index(status) if status in JOB_STATUSES else 0
+        job = dict(row)
+        job["progress_index"] = progress_index
+        job["dvi_url"] = url_for("main.tracking_dvi", job_id=row["id"])
+        jobs.append(job)
+
+    return render_template("tracking.html",
+        **sidebar_context(), **auth_context(), active_page="tracking",
+        jobs=jobs, job_statuses=JOB_STATUSES
+    )
+
+
+@bp.route("/tracking/job/<int:job_id>/dvi")
+@staff_or_admin_required
+def tracking_dvi(job_id):
+    sid = session["studio_id"]
+    conn = get_db()
+    job = conn.execute(
+        "SELECT * FROM jobs WHERE id=? AND studio_id=?",
+        (job_id, sid)
+    ).fetchone()
+    if not job:
+        return "Job not found", 404
+
+    return render_template("tracking_dvi.html",
+        **sidebar_context(), **auth_context(), active_page="tracking",
+        job=job, job_statuses=JOB_STATUSES
+    )
+
+
 @bp.route("/jobs/<int:job_id>/status", methods=["POST"])
 @staff_or_admin_required
 def update_job_status(job_id):
