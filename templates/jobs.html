@@ -55,7 +55,7 @@
     {% if jobs %}
     <table>
       <thead>
-        <tr><th>#</th><th>Vehicle</th><th>Service</th><th>Technician</th><th>Price</th><th>Status</th></tr>
+        <tr><th>#</th><th>Vehicle</th><th>Service</th><th>Technician</th><th>Price</th><th>Status</th><th>Tracking SMS</th></tr>
       </thead>
       <tbody>
         {% for job in jobs %}
@@ -73,6 +73,20 @@
                 <option {% if job.status == st %}selected{% endif %}>{{ st }}</option>
                 {% endfor %}
               </select>
+            </form>
+          </td>
+          <td>
+            <form method="POST" action="/jobs/{{ job.id }}/send-tracking-sms">
+              <input type="hidden" name="redirect_to" value="/jobs">
+              <button type="submit" style="
+                background:transparent;
+                border:1px solid rgba(200,169,110,0.3);
+                color:#C8A96E;
+                padding:5px 12px;
+                border-radius:5px;
+                font-size:11px;
+                cursor:pointer;
+              ">Send Link</button>
             </form>
           </td>
         </tr>

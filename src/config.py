@@ -18,3 +18,10 @@ class Config:
 
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
     OPENAI_MODEL   = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+    # SMS / Twilio config
+    # Set these in your .env file — never commit real credentials
+    TWILIO_ACCOUNT_SID  = os.getenv("TWILIO_ACCOUNT_SID", "")
+    TWILIO_AUTH_TOKEN   = os.getenv("TWILIO_AUTH_TOKEN", "")
+    TWILIO_FROM_NUMBER  = os.getenv("TWILIO_FROM_NUMBER", "")
+    APP_BASE_URL        = os.getenv("APP_BASE_URL", "http://localhost:5000")

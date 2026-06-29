@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inspection Details — {{ job.car }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: #0D0D0D;
+      color: #E8E6E0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px 60px;
+    }
+
+    /* Studio header */
+    .studio-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .studio-logo {
+      height: 44px;
+      max-width: 180px;
+      object-fit: contain;
+      margin-bottom: 8px;
+    }
+    .studio-name {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 20px;
+      letter-spacing: .12em;
+      color: #C8A96E;
+    }
+    .studio-city {
+      font-size: 12px;
+      color: rgba(255,255,255,0.35);
+      margin-top: 2px;
+    }
+
+    /* Card */
+    .card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 28px 24px;
+      width: 100%;
+      max-width: 560px;
+      margin-bottom: 16px;
+    }
+    .card-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 26px;
+      letter-spacing: .1em;
+      color: #C8A96E;
+      margin-bottom: 4px;
+    }
+    .card-sub {
+      font-size: 13px;
+      color: rgba(255,255,255,0.4);
+      margin-bottom: 22px;
+    }
+
+    /* Section */
+    .section { margin-bottom: 24px; }
+    .section-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: rgba(255,255,255,0.3);
+      margin-bottom: 12px;
+    }
+
+    /* Field grid */
+    .field-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .field {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px;
+      padding: 14px;
+    }
+    .field-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: rgba(255,255,255,0.3);
+      margin-bottom: 6px;
+    }
+    .field-value {
+      font-size: 14px;
+      color: #E8E6E0;
+      line-height: 1.5;
+    }
+
+    /* Badge */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .badge-pending     { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.75); }
+    .badge-in-progress { background: rgba(200,169,110,0.18); color: #C8A96E; }
+    .badge-completed   { background: rgba(74,222,128,0.16); color: #4ADE80; }
+
+    /* Progress bar */
+    .progress-track {
+      height: 6px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #C8A96E, #F5E2A8);
+      border-radius: 999px;
+    }
+    .stepper {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+    }
+    .step {
+      text-align: center;
+      font-size: 11px;
+      color: rgba(255,255,255,0.3);
+      padding-top: 6px;
+    }
+    .step::before {
+      content: '';
+      display: block;
+      width: 10px;
+      height: 10px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 50%;
+      margin: 0 auto 5px;
+    }
+    .step.done { color: #C8A96E; }
+    .step.done::before { background: #C8A96E; }
+    .step.active { color: #E8E6E0; font-weight: 700; }
+    .step.active::before { background: #C8A96E; box-shadow: 0 0 0 3px rgba(200,169,110,0.2); }
+
+    /* Notes */
+    .note {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 10px;
+    }
+    .note-author {
+      font-size: 11px;
+      color: rgba(255,255,255,0.35);
+      margin-bottom: 6px;
+    }
+    .note-content {
+      font-size: 13px;
+      color: rgba(255,255,255,0.75);
+      line-height: 1.6;
+    }
+    .empty-notes {
+      font-size: 13px;
+      color: rgba(255,255,255,0.25);
+      padding: 16px 0;
+    }
+
+    /* Media gallery */
+    .media-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 10px;
+    }
+    .media-item {
+      border-radius: 10px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+    }
+    .media-item img {
+      width: 100%;
+      height: 110px;
+      object-fit: cover;
+      display: block;
+    }
+    .media-item video {
+      width: 100%;
+      height: 110px;
+      object-fit: cover;
+      display: block;
+    }
+    .media-caption {
+      font-size: 11px;
+      color: rgba(255,255,255,0.3);
+      padding: 6px 8px;
+      text-transform: capitalize;
+    }
+    .stage-tag {
+      display: inline-block;
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 6px;
+      background: rgba(200,169,110,0.12);
+      color: #C8A96E;
+      margin-right: 4px;
+    }
+
+    /* Back link */
+    .back-link {
+      display: block;
+      width: 100%;
+      max-width: 560px;
+      padding: 14px;
+      text-align: center;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      color: rgba(255,255,255,0.45);
+      text-decoration: none;
+      font-size: 13px;
+      margin-bottom: 14px;
+      transition: border-color .15s, color .15s;
+    }
+    .back-link:hover { border-color: rgba(200,169,110,0.4); color: #C8A96E; }
+
+    /* Footer */
+    .footer {
+      margin-top: 28px;
+      text-align: center;
+      font-size: 11px;
+      color: rgba(255,255,255,0.18);
+    }
+
+    @media (max-width: 480px) {
+      .field-grid { grid-template-columns: 1fr; }
+      body { padding: 24px 14px 40px; }
+      .card { padding: 20px 16px; }
+      .media-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Studio branding -->
+  <div class="studio-header">
+    {% if job.studio_logo %}
+    <img
+      src="/static/logos/{{ job.studio_logo }}"
+      alt="{{ job.studio_name }}"
+      class="studio-logo"
+      onerror="this.style.display='none'"
+    >
+    {% endif %}
+    <div class="studio-name">{{ job.studio_name }}</div>
+    <div class="studio-city">{{ job.studio_city }}</div>
+  </div>
+
+  <!-- DVI summary card -->
+  <div class="card">
+    <div class="card-title">Digital Vehicle Inspection</div>
+    <p class="card-sub">Full details for your <strong>{{ job.car }}</strong> service.</p>
+
+    <!-- Job summary -->
+    <div class="section">
+      <div class="section-label">Job Summary</div>
+      <div class="field-grid">
+        <div class="field">
+          <div class="field-label">Vehicle</div>
+          <div class="field-value">{{ job.car }}</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Service</div>
+          <div class="field-value">{{ job.service }}</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Status</div>
+          <div class="field-value">
+            <span id="status-badge" class="badge badge-{{ job.status | lower | replace(' ', '-') }}">{{ job.status }}</span>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-label">Price</div>
+          <div class="field-value">${{ job.price }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="section">
+      <div class="section-label">Progress</div>
+      <div class="progress-track">
+        <div id="progress-fill" class="progress-fill" style="width: {{ ((progress_index + 1) / job_statuses|length) * 100 }}%;"></div>
+      </div>
+      <div id="stepper" class="stepper">
+        {% for status in job_statuses %}
+        <div class="step
+          {% if loop.index0 < progress_index %}done
+          {% elif loop.index0 == progress_index %}active
+          {% endif %}
+        ">{{ status }}</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- What this means -->
+    <div class="section">
+      <div class="section-label">Work Update</div>
+      <div class="field">
+        <div id="work-update" class="field-value">
+          {% if job.status == 'Pending' %}
+            Your vehicle is queued and our team will begin work shortly. We'll notify you when work starts.
+          {% elif job.status == 'In Progress' %}
+            Your vehicle is currently on the work floor. Our technician is actively working on your {{ job.service }}.
+          {% elif job.status == 'Completed' %}
+            ✓ Work is complete. Your vehicle is ready for handoff — please contact us to schedule pickup.
+          {% else %}
+            {{ job.status }}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notes from the studio (client-visible only) -->
+  {% if notes %}
+  <div class="card">
+    <div class="section-label" style="margin-bottom:14px;">Notes from the Studio</div>
+    {% for note in notes %}
+    <div class="note">
+      <div class="note-author">{{ note.author_name }} · {{ note.created_at[:10] if note.created_at else '' }}</div>
+      <div class="note-content">{{ note.content }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Media gallery (photos/video) -->
+  {% if media %}
+  <div class="card">
+    <div class="section-label" style="margin-bottom:14px;">Vehicle Photos</div>
+    <div class="media-grid">
+      {% for item in media %}
+      <div class="media-item">
+        {% if item.media_type == 'video' %}
+        <video controls preload="none">
+          <source src="/uploads/studio_{{ job.studio_id }}/{{ item.filename }}?token={{ token }}">
+        </video>
+        {% else %}
+        <img
+          src="/uploads/studio_{{ job.studio_id }}/{{ item.filename }}?token={{ token }}"
+          alt="{{ item.caption or item.original_name }}"
+          loading="lazy"
+        >
+        {% endif %}
+        <div class="media-caption">
+          <span class="stage-tag">{{ item.stage }}</span>
+          {{ item.caption if item.caption else '' }}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Back to tracking -->
+  <a href="{{ tracking_url }}" class="back-link">← Back to Live Tracking</a>
+
+  <div class="footer">
+    This is a secure, read-only view of your vehicle's service record.<br>
+    Powered by {{ job.studio_name }}.
+  </div>
+
+  <script>
+    // ── Live status polling ──────────────────────────────────────────────────
+    // Same endpoint as customer_tracking — keeps DVI status in sync with
+    // no page reload and no new SMS required.
+
+    const TOKEN    = "{{ token }}";
+    const POLL_MS  = 10000;
+
+    const BADGE_CLASS = {
+      "Pending":     "badge-pending",
+      "In Progress": "badge-in-progress",
+      "Completed":   "badge-completed",
+    };
+
+    const DVI_MESSAGES = {
+      "Pending":     "Your vehicle is queued and our team will begin work shortly. We'll notify you when work starts.",
+      "In Progress": "Your vehicle is currently on the work floor. Our technician is actively working.",
+      "Completed":   "✓ Work is complete. Your vehicle is ready for handoff — please contact us to schedule pickup.",
+    };
+
+    let lastStatus = "{{ job.status }}";
+
+    function updateDVI(data) {
+      if (data.status === lastStatus) return;
+      lastStatus = data.status;
+
+      // Badge
+      const badge = document.getElementById("status-badge");
+      badge.textContent = data.status;
+      badge.className = "badge " + (BADGE_CLASS[data.status] || "badge-pending");
+
+      // Progress fill
+      document.getElementById("progress-fill").style.width = data.progress_pct + "%";
+
+      // Stepper
+      const steps = document.querySelectorAll("#stepper .step");
+      steps.forEach((el, i) => {
+        el.className = "step";
+        if (i < data.progress_index)       el.classList.add("done");
+        else if (i === data.progress_index) el.classList.add("active");
+      });
+
+      // Work update text
+      document.getElementById("work-update").textContent =
+        DVI_MESSAGES[data.status] || "Status: " + data.status;
+
+      if (data.status === "Completed") clearInterval(poller);
+    }
+
+    function poll() {
+      fetch("/customer/tracking/" + TOKEN + "/status")
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data && !data.error) updateDVI(data); })
+        .catch(() => {});
+    }
+
+    {% if job.status != 'Completed' %}
+    const poller = setInterval(poll, POLL_MS);
+    {% endif %}
+  </script>
+
+</body>
+</html>

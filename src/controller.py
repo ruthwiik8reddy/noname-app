@@ -2,11 +2,13 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from datetime import datetime, timedelta
 import os
 import uuid
+import secrets
 from werkzeug.utils import secure_filename
 
 from .db_manager import get_db
 from .ai_service import AIService
 from .reminder_service import ReminderService
+from .sms_service import send_tracking_sms, send_status_update_sms
 from .config import Config
 from .auth import (
     attempt_login, set_session, clear_session,
@@ -334,6 +336,9 @@ def update_job_status(job_id):
     if new_status == "Completed":
         svc = ReminderService(_reminder_db_path())
         svc.schedule_for_completed_job(sid, job_id)
+
+    # ── SMS: notify customer of status change ─────────────────────────────
+    _send_job_status_sms(conn, sid, job_id, new_status)
 
     redirect_to = request.form.get("redirect_to") or url_for("main.jobs_list")
     return redirect(redirect_to)
@@ -772,8 +777,20 @@ def delete_media(media_id):
 
 @bp.route("/uploads/studio_<int:studio_id>/<filename>")
 def serve_upload(studio_id, filename):
-    if session.get("studio_id") != studio_id and not session.get("logged_in"):
-        abort(403)
+    # Allow logged-in staff, or requests that carry a valid tracking token
+    # (customer DVI pages load media this way — no staff session needed).
+    if not session.get("logged_in"):
+        token = request.args.get("token", "").strip()
+        if token:
+            conn = get_db()
+            job = conn.execute(
+                "SELECT id FROM jobs WHERE tracking_token=? AND studio_id=?",
+                (token, studio_id)
+            ).fetchone()
+            if not job:
+                abort(403)
+        else:
+            abort(403)
     return send_from_directory(_studio_upload_dir(studio_id), filename)
 
 
@@ -999,3 +1016,221 @@ def assistant_query():
     service = AIService()
     answer  = service.answer(session["studio_id"], question, attachments)
     return jsonify(answer.as_dict())
+
+
+# ── Tracking token helpers ─────────────────────────────────────────────────────
+
+def _generate_tracking_token() -> str:
+    """Generate a secure, URL-safe tracking token for a job."""
+    return secrets.token_urlsafe(20)
+
+
+def _get_job_customer(conn, job) -> dict | None:
+    """
+    Return customer info for a job.
+    Prefers jobs.customer_id (direct FK).
+    Falls back to vehicle name match for legacy jobs.
+    """
+    customer_id = job["customer_id"] if "customer_id" in job.keys() else None
+
+    if customer_id:
+        row = conn.execute(
+            "SELECT id, name, phone FROM customers WHERE id=?", (customer_id,)
+        ).fetchone()
+        return dict(row) if row else None
+
+    # Legacy fallback: match by vehicle name
+    row = conn.execute(
+        """
+        SELECT c.id, c.name, c.phone
+        FROM vehicles v
+        JOIN customers c ON v.customer_id = c.id
+        WHERE v.make_model = ?
+        LIMIT 1
+        """,
+        (job["car"],)
+    ).fetchone()
+    return dict(row) if row else None
+
+
+def _send_job_status_sms(conn, studio_id: int, job_id: int, new_status: str) -> None:
+    """Send an SMS status update if the job has a linked customer with a phone number."""
+    job = conn.execute(
+        "SELECT * FROM jobs WHERE id=? AND studio_id=?", (job_id, studio_id)
+    ).fetchone()
+    if not job:
+        return
+
+    token = job["tracking_token"] if "tracking_token" in job.keys() else None
+    if not token:
+        return
+
+    customer = _get_job_customer(conn, job)
+    if not customer or not customer.get("phone"):
+        return
+
+    send_status_update_sms(
+        phone=customer["phone"],
+        job_token=token,
+        new_status=new_status,
+        customer_name=customer.get("name", ""),
+    )
+
+
+# ── Staff: manually send tracking SMS for a job ───────────────────────────────
+
+@bp.route("/jobs/<int:job_id>/send-tracking-sms", methods=["POST"])
+@staff_or_admin_required
+def send_job_tracking_sms(job_id):
+    """
+    Staff-triggered: send (or re-send) the tracking link to the customer via SMS.
+    Accessible from the job board or tracking page.
+    """
+    sid  = session["studio_id"]
+    conn = get_db()
+
+    job = conn.execute(
+        "SELECT * FROM jobs WHERE id=? AND studio_id=?", (job_id, sid)
+    ).fetchone()
+    if not job:
+        return "Job not found", 404
+
+    # Ensure a token exists (safe to call on legacy jobs)
+    token = job["tracking_token"] if "tracking_token" in job.keys() else None
+    if not token:
+        token = _generate_tracking_token()
+        conn.execute(
+            "UPDATE jobs SET tracking_token=? WHERE id=?", (token, job_id)
+        )
+        conn.commit()
+
+    customer = _get_job_customer(conn, job)
+    if not customer or not customer.get("phone"):
+        # Redirect back with a notice — no phone on file
+        redirect_to = request.form.get("redirect_to") or url_for("main.jobs_list")
+        return redirect(redirect_to)
+
+    send_tracking_sms(
+        phone=customer["phone"],
+        job_token=token,
+        customer_name=customer.get("name", ""),
+    )
+
+    redirect_to = request.form.get("redirect_to") or url_for("main.jobs_list")
+    return redirect(redirect_to)
+
+
+# ── Public customer-facing tracking routes (NO staff login required) ──────────
+
+@bp.route("/customer/tracking/<token>/status")
+def customer_tracking_status(token):
+    """
+    Public JSON endpoint — no login required.
+    Polled by the customer page every 10 s to get live status updates
+    without reloading the page or sending a new SMS link.
+    """
+    conn = get_db()
+    job = conn.execute(
+        "SELECT status FROM jobs WHERE tracking_token = ?", (token,)
+    ).fetchone()
+
+    if not job:
+        return jsonify({"error": "not_found"}), 404
+
+    status = job["status"]
+    progress_index = JOB_STATUSES.index(status) if status in JOB_STATUSES else 0
+    total = len(JOB_STATUSES)
+
+    status_messages = {
+        "Pending":     "Your vehicle has been received and is queued for service. Our team will begin work soon.",
+        "In Progress": "Work is currently underway on your vehicle. We'll update you when it's ready.",
+        "Completed":   "✓ Your vehicle is ready! Please contact us to arrange pickup.",
+    }
+
+    return jsonify({
+        "status":         status,
+        "progress_index": progress_index,
+        "progress_pct":   round((progress_index + 1) / total * 100, 1),
+        "statuses":       JOB_STATUSES,
+        "message":        status_messages.get(status, f"Status: {status}"),
+    })
+
+
+@bp.route("/customer/tracking/<token>")
+def customer_tracking(token):
+    """
+    Public route — no login required.
+    Customer opens this link from their SMS.
+    Shows live progress for their single job.
+    """
+    conn = get_db()
+    job = conn.execute(
+        "SELECT j.*, s.name as studio_name, s.city as studio_city, s.logo as studio_logo "
+        "FROM jobs j "
+        "JOIN studios s ON j.studio_id = s.id "
+        "WHERE j.tracking_token = ?",
+        (token,)
+    ).fetchone()
+
+    if not job:
+        return render_template("customer_tracking_invalid.html"), 404
+
+    status = job["status"]
+    progress_index = JOB_STATUSES.index(status) if status in JOB_STATUSES else 0
+    dvi_url = url_for("main.customer_dvi", token=token)
+
+    return render_template(
+        "customer_tracking.html",
+        job=job,
+        progress_index=progress_index,
+        job_statuses=JOB_STATUSES,
+        dvi_url=dvi_url,
+        token=token,
+    )
+
+
+@bp.route("/customer/tracking/<token>/dvi")
+def customer_dvi(token):
+    """
+    Public route — no login required.
+    Shows DVI (Digital Vehicle Inspection) details for the job.
+    """
+    conn = get_db()
+    job = conn.execute(
+        "SELECT j.*, s.name as studio_name, s.city as studio_city, s.logo as studio_logo "
+        "FROM jobs j "
+        "JOIN studios s ON j.studio_id = s.id "
+        "WHERE j.tracking_token = ?",
+        (token,)
+    ).fetchone()
+
+    if not job:
+        return render_template("customer_tracking_invalid.html"), 404
+
+    status = job["status"]
+    progress_index = JOB_STATUSES.index(status) if status in JOB_STATUSES else 0
+
+    # Load client-visible notes only (no internal notes exposed)
+    notes = conn.execute(
+        "SELECT * FROM notes WHERE job_id=? AND note_type='client' ORDER BY created_at DESC",
+        (job["id"],)
+    ).fetchall()
+
+    # Load media (before/during/after photos) for this job
+    media = conn.execute(
+        "SELECT * FROM media WHERE job_id=? ORDER BY uploaded_at DESC",
+        (job["id"],)
+    ).fetchall()
+
+    tracking_url = url_for("main.customer_tracking", token=token)
+
+    return render_template(
+        "customer_dvi.html",
+        job=job,
+        progress_index=progress_index,
+        job_statuses=JOB_STATUSES,
+        notes=notes,
+        media=media,
+        tracking_url=tracking_url,
+        token=token,
+    )

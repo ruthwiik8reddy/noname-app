@@ -58,6 +58,10 @@
           </div>
           <div class="tracking-actions">
             <a href="{{ job.dvi_url }}" class="action-link">Open DVI Details</a>
+            <form method="POST" action="/jobs/{{ job.id }}/send-tracking-sms" style="margin:0">
+              <input type="hidden" name="redirect_to" value="/tracking">
+              <button type="submit" class="action-link" style="background:transparent;cursor:pointer;border:none;color:#C8A96E;border:1px solid rgba(200,169,110,0.3);padding:8px 14px;border-radius:6px;font-size:12px;">Send SMS Link</button>
+            </form>
           </div>
         </div>
         <div class="progress-track">

@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Vehicle Status — {{ job.studio_name }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: #0D0D0D;
+      color: #E8E6E0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px 60px;
+    }
+
+    /* Studio header */
+    .studio-header {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+    .studio-logo {
+      height: 48px;
+      max-width: 200px;
+      object-fit: contain;
+      margin-bottom: 10px;
+    }
+    .studio-name {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      letter-spacing: .12em;
+      color: #C8A96E;
+    }
+    .studio-city {
+      font-size: 12px;
+      color: rgba(255,255,255,0.35);
+      margin-top: 2px;
+    }
+
+    /* Card */
+    .card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 28px 24px;
+      width: 100%;
+      max-width: 520px;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 26px;
+      letter-spacing: .1em;
+      color: #C8A96E;
+      margin-bottom: 4px;
+    }
+    .card-sub {
+      font-size: 13px;
+      color: rgba(255,255,255,0.4);
+      margin-bottom: 24px;
+    }
+
+    /* Job info */
+    .field-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .field {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px;
+      padding: 14px;
+    }
+    .field-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: rgba(255,255,255,0.3);
+      margin-bottom: 6px;
+    }
+    .field-value {
+      font-size: 14px;
+      color: #E8E6E0;
+    }
+
+    /* Status badge */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .badge-pending   { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.75); }
+    .badge-in-progress { background: rgba(200,169,110,0.18); color: #C8A96E; }
+    .badge-completed { background: rgba(74,222,128,0.16); color: #4ADE80; }
+
+    /* Progress bar */
+    .progress-section { margin-bottom: 8px; }
+    .progress-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: rgba(255,255,255,0.3);
+      margin-bottom: 10px;
+    }
+    .progress-track {
+      height: 8px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #C8A96E, #F5E2A8);
+      border-radius: 999px;
+      transition: width .4s ease;
+    }
+    .stepper {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+    }
+    .step {
+      text-align: center;
+      font-size: 11px;
+      color: rgba(255,255,255,0.35);
+      padding-top: 8px;
+    }
+    .step::before {
+      content: '';
+      display: block;
+      width: 12px;
+      height: 12px;
+      background: rgba(255,255,255,0.12);
+      border-radius: 50%;
+      margin: 0 auto 6px;
+    }
+    .step.done { color: #C8A96E; }
+    .step.done::before { background: #C8A96E; }
+    .step.active { color: #E8E6E0; font-weight: 700; }
+    .step.active::before {
+      background: #C8A96E;
+      box-shadow: 0 0 0 4px rgba(200,169,110,0.15);
+    }
+
+    /* Status message */
+    .status-message {
+      margin-top: 20px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px;
+      padding: 16px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.6;
+    }
+    .status-message.completed {
+      border-color: rgba(74,222,128,0.2);
+      color: #4ADE80;
+    }
+
+    /* CTA button */
+    .cta-btn {
+      display: block;
+      width: 100%;
+      max-width: 520px;
+      padding: 16px;
+      text-align: center;
+      background: rgba(200,169,110,0.12);
+      border: 1px solid rgba(200,169,110,0.3);
+      border-radius: 12px;
+      color: #C8A96E;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: .03em;
+      margin-bottom: 14px;
+      transition: background .15s;
+    }
+    .cta-btn:hover { background: rgba(200,169,110,0.2); }
+
+    /* Footer */
+    .footer {
+      margin-top: 32px;
+      text-align: center;
+      font-size: 11px;
+      color: rgba(255,255,255,0.2);
+    }
+
+    @media (max-width: 480px) {
+      .field-grid { grid-template-columns: 1fr; }
+      body { padding: 24px 16px 40px; }
+      .card { padding: 20px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Studio branding -->
+  <div class="studio-header">
+    {% if job.studio_logo %}
+    <img
+      src="/static/logos/{{ job.studio_logo }}"
+      alt="{{ job.studio_name }}"
+      class="studio-logo"
+      onerror="this.style.display='none'"
+    >
+    {% endif %}
+    <div class="studio-name">{{ job.studio_name }}</div>
+    <div class="studio-city">{{ job.studio_city }}</div>
+  </div>
+
+  <!-- Job tracking card -->
+  <div class="card">
+    <div class="card-title">Live Tracking</div>
+    <p class="card-sub">Here's the latest on your vehicle.</p>
+
+    <!-- Vehicle + Service info -->
+    <div class="field-grid">
+      <div class="field">
+        <div class="field-label">Vehicle</div>
+        <div class="field-value">{{ job.car }}</div>
+      </div>
+      <div class="field">
+        <div class="field-label">Service</div>
+        <div class="field-value">{{ job.service }}</div>
+      </div>
+      <div class="field">
+        <div class="field-label">Current Status</div>
+        <div class="field-value">
+          <span id="status-badge" class="badge badge-{{ job.status | lower | replace(' ', '-') }}">
+            {{ job.status }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Progress bar + stepper -->
+    <div class="progress-section">
+      <div class="progress-label">Progress</div>
+      <div class="progress-track">
+        <div id="progress-fill" class="progress-fill" style="width: {{ ((progress_index + 1) / job_statuses|length) * 100 }}%;"></div>
+      </div>
+      <div id="stepper" class="stepper">
+        {% for status in job_statuses %}
+        <div class="step
+          {% if loop.index0 < progress_index %}done
+          {% elif loop.index0 == progress_index %}active
+          {% endif %}
+        ">{{ status }}</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Human-readable status message -->
+    <div id="status-message" class="status-message {% if job.status == 'Completed' %}completed{% endif %}">
+      {% if job.status == 'Pending' %}
+        Your vehicle has been received and is queued for service. Our team will begin work soon.
+      {% elif job.status == 'In Progress' %}
+        Work is currently underway on your vehicle. We'll update you when it's ready.
+      {% elif job.status == 'Completed' %}
+        ✓ Your vehicle is ready! Please contact us to arrange pickup.
+      {% else %}
+        Status: {{ job.status }}
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- DVI link -->
+  <a href="{{ dvi_url }}" class="cta-btn">
+    View Full Inspection Details (DVI) →
+  </a>
+
+  <div class="footer">
+    This link is unique to your vehicle's service job.<br>
+    Powered by {{ job.studio_name }}.
+  </div>
+
+  <script>
+    // ── Live status polling ──────────────────────────────────────────────────
+    // Polls every 10 s. Updates the badge, progress bar, stepper, and message
+    // in-place — no page reload, no new SMS needed.
+
+    const TOKEN    = "{{ token }}";
+    const STATUSES = {{ job_statuses | tojson }};
+    const POLL_MS  = 10000;
+
+    // Badge class map
+    const BADGE_CLASS = {
+      "Pending":     "badge-pending",
+      "In Progress": "badge-in-progress",
+      "Completed":   "badge-completed",
+    };
+
+    let lastStatus = "{{ job.status }}";
+
+    function updateUI(data) {
+      if (data.status === lastStatus) return; // nothing changed
+      lastStatus = data.status;
+
+      // 1. Badge
+      const badge = document.getElementById("status-badge");
+      badge.textContent = data.status;
+      badge.className = "badge " + (BADGE_CLASS[data.status] || "badge-pending");
+
+      // 2. Progress fill
+      document.getElementById("progress-fill").style.width = data.progress_pct + "%";
+
+      // 3. Stepper steps
+      const steps = document.querySelectorAll("#stepper .step");
+      steps.forEach((el, i) => {
+        el.className = "step";
+        if (i < data.progress_index)      el.classList.add("done");
+        else if (i === data.progress_index) el.classList.add("active");
+      });
+
+      // 4. Status message
+      const msg = document.getElementById("status-message");
+      msg.textContent = data.message;
+      msg.className   = "status-message" + (data.status === "Completed" ? " completed" : "");
+
+      // 5. Stop polling once completed — no more status changes expected
+      if (data.status === "Completed") clearInterval(poller);
+    }
+
+    function poll() {
+      fetch("/customer/tracking/" + TOKEN + "/status")
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data && !data.error) updateUI(data); })
+        .catch(() => {}); // silently ignore network errors
+    }
+
+    // Don't poll if already completed on load
+    {% if job.status != 'Completed' %}
+    const poller = setInterval(poll, POLL_MS);
+    {% endif %}
+  </script>
+
+</body>
+</html>
