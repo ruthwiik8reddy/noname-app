@@ -44,6 +44,33 @@
     select option { background:#1A1A1A; color:#E8E6E0; }
     textarea { resize:vertical; min-height:80px; }
 
+    /* Customer lookup — inline with form grid */
+    .lookup-row { display:flex; gap:8px; align-items:stretch; }
+    .lookup-row input { flex:1; }
+    .lookup-row input[type=number] { appearance:textfield; }
+    .lookup-row input[type=number]::-webkit-outer-spin-button,
+    .lookup-row input[type=number]::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+    .lookup-row button {
+      padding:0 16px;
+      background:rgba(255,255,255,0.06);
+      border:1px solid rgba(255,255,255,0.12);
+      border-radius:4px; color:rgba(255,255,255,0.55);
+      font-family:'DM Sans',sans-serif; font-size:13px;
+      cursor:pointer; white-space:nowrap; transition:border-color .15s,color .15s;
+    }
+    .lookup-row button:hover { border-color:#C8A96E; color:#C8A96E; }
+
+    /* Toast popup */
+    .toast {
+      position:fixed; bottom:28px; left:50%; transform:translateX(-50%);
+      background:#1e1e1e; border:1px solid rgba(248,113,113,0.4);
+      color:#F87171; font-size:13px; padding:10px 20px;
+      border-radius:8px; pointer-events:none;
+      opacity:0; transition:opacity .2s;
+      z-index:999;
+    }
+    .toast.show { opacity:1; }
+
     /* Service cards — clicking sets a hidden radio */
     .service-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
     .service-card {
@@ -94,22 +121,37 @@
   </div>
   {% endif %}
 
+  <div id="toast" class="toast">Customer not found</div>
+
   <form method="POST" id="bookingForm">
     <div class="form-grid">
 
+      <!-- Customer ID lookup — sits naturally in the grid -->
+      <div class="form-group full">
+        <label>Customer ID (returning customer)</label>
+        <div class="lookup-row">
+          <input type="number" id="lookupId" placeholder="Enter ID to auto-fill" min="1"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();lookupCustomer();}">
+          <button type="button" onclick="lookupCustomer()">Search</button>
+        </div>
+      </div>
+
       <div class="form-group">
         <label>Customer Name *</label>
-        <input type="text" name="customer_name" value="{{ form.get('customer_name','') }}" placeholder="John Smith" required>
+        <input type="text" id="field_customer_name" name="customer_name" value="{{ form.get('customer_name','') }}" placeholder="John Smith" required>
       </div>
 
       <div class="form-group">
         <label>Phone Number *</label>
-        <input type="text" name="customer_phone" value="{{ form.get('customer_phone','') }}" placeholder="+1 (555) 000-0000" required>
+        <input type="text" id="field_customer_phone" name="customer_phone" value="{{ form.get('customer_phone','') }}" placeholder="+1 (555) 000-0000" required>
       </div>
 
       <div class="form-group full">
         <label>Vehicle *</label>
-        <input type="text" name="vehicle" value="{{ form.get('vehicle','') }}" placeholder="e.g. 2023 BMW M4 Competition" required>
+        <select id="field_vehicle_select" name="vehicle" style="display:none">
+          <option value="">— Select vehicle —</option>
+        </select>
+        <input type="text" id="field_vehicle_text" name="vehicle" value="{{ form.get('vehicle','') }}" placeholder="e.g. 2023 BMW M4 Competition" required>
       </div>
 
       <!-- Service selection — real radio buttons styled as cards -->
@@ -205,6 +247,43 @@ function refreshSlots() {
         }
       });
     });
+}
+
+// ── Customer lookup ────────────────────────────────────────────────────────
+function lookupCustomer() {
+  const id = document.getElementById('lookupId').value.trim();
+  if (!id) return;
+
+  fetch('/customers/' + id + '/lookup')
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(c => {
+      document.getElementById('field_customer_name').value  = c.name;
+      document.getElementById('field_customer_phone').value = c.phone;
+
+      const sel = document.getElementById('field_vehicle_select');
+      const txt = document.getElementById('field_vehicle_text');
+      sel.innerHTML = '<option value="">— Select vehicle —</option>';
+
+      if (c.vehicles.length > 0) {
+        c.vehicles.forEach(v => {
+          const label = v.year ? v.year + ' ' + v.make_model : v.make_model;
+          sel.innerHTML += `<option value="${v.make_model}">${label}</option>`;
+        });
+        sel.options[1].selected = true;
+        sel.setAttribute('required', 'required');
+        sel.style.display = 'block';
+        txt.style.display = 'none';
+        txt.removeAttribute('required');
+      }
+    })
+    .catch(() => showToast('Customer not found'));
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
 }
 </script>
 </body>

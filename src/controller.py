@@ -331,6 +331,12 @@ def update_job_status(job_id):
         "UPDATE jobs SET status=? WHERE id=? AND studio_id=?",
         (new_status, job_id, sid)
     )
+    # Stamp completed_at when job is marked done
+    if new_status == "Completed":
+        conn.execute(
+            "UPDATE jobs SET completed_at=date('now') WHERE id=? AND studio_id=?",
+            (job_id, sid)
+        )
     conn.commit()
 
     if new_status == "Completed":
@@ -926,6 +932,42 @@ def add_vehicle(customer_id):
     return redirect(url_for("main.customer_detail", customer_id=customer_id))
 
 
+@bp.route("/customers/<int:customer_id>/lookup")
+@staff_or_admin_required
+def customer_lookup(customer_id):
+    """
+    AJAX endpoint — returns customer details + their vehicles as JSON.
+    Used by new_booking and new_estimate forms to auto-fill fields
+    when staff enters a customer ID.
+    """
+    sid  = session["studio_id"]
+    conn = get_db()
+
+    customer = conn.execute(
+        "SELECT id, name, phone, email FROM customers WHERE id=? AND studio_id=?",
+        (customer_id, sid)
+    ).fetchone()
+
+    if not customer:
+        return jsonify({"error": "Customer not found"}), 404
+
+    vehicles = conn.execute(
+        "SELECT id, make_model, year FROM vehicles WHERE customer_id=? ORDER BY created_at DESC",
+        (customer_id,)
+    ).fetchall()
+
+    return jsonify({
+        "id":       customer["id"],
+        "name":     customer["name"],
+        "phone":    customer["phone"],
+        "email":    customer["email"] or "",
+        "vehicles": [
+            {"id": v["id"], "make_model": v["make_model"], "year": v["year"] or ""}
+            for v in vehicles
+        ],
+    })
+
+
 # ── Follow-up Reminders ──────────────────────────────────────────────────────
 
 @bp.route("/reminders")
@@ -1122,6 +1164,93 @@ def send_job_tracking_sms(job_id):
 
 # ── Public customer-facing tracking routes (NO staff login required) ──────────
 
+@bp.route("/customer/tracking/<token>/warranty.pdf")
+def customer_warranty_pdf(token):
+    """
+    Public route — no login required.
+    Generates and streams the warranty card as a PDF using xhtml2pdf.
+    Only works when the job is Completed. Returns 403 otherwise.
+    """
+    from io import BytesIO
+    from xhtml2pdf import pisa
+    from flask import Response
+    from datetime import datetime
+
+    conn = get_db()
+    row = conn.execute(
+        """
+        SELECT j.*, s.name as studio_name, s.city as studio_city,
+               s.owner as studio_owner, s.logo as studio_logo
+        FROM jobs j
+        JOIN studios s ON j.studio_id = s.id
+        WHERE j.tracking_token = ?
+        """,
+        (token,)
+    ).fetchone()
+
+    if not row:
+        return "Not found", 404
+
+    if row["status"] != "Completed":
+        return "Warranty card is only available once the job is completed.", 403
+
+    # Resolve customer info if linked
+    customer = {"name": "", "phone": ""}
+    if row["customer_id"]:
+        cust = conn.execute(
+            "SELECT name, phone FROM customers WHERE id=?", (row["customer_id"],)
+        ).fetchone()
+        if cust:
+            customer = {"name": cust["name"], "phone": cust["phone"]}
+
+    # Format completed date
+    completed_raw = row["completed_at"] or ""
+    try:
+        completed_date = datetime.strptime(completed_raw, "%Y-%m-%d").strftime("%B %d, %Y")
+    except ValueError:
+        completed_date = datetime.now().strftime("%B %d, %Y")
+
+    # Price display
+    price_cents = row["price"] or 0
+    price_display = f"${price_cents / 100:.2f}" if price_cents >= 100 else f"${price_cents}.00"
+
+    # Warranty reference = first 12 chars of token, uppercase
+    warranty_id = token[:12].upper()
+
+    # Tracking URL
+    tracking_url = url_for("main.customer_tracking", token=token, _external=True)
+
+    studio = {
+        "name":  row["studio_name"],
+        "city":  row["studio_city"],
+        "owner": row["studio_owner"],
+    }
+
+    html_string = render_template(
+        "warranty_card.html",
+        job=row,
+        studio=studio,
+        customer=customer,
+        completed_date=completed_date,
+        price_display=price_display,
+        warranty_id=warranty_id,
+        tracking_url=tracking_url,
+    )
+
+    buf = BytesIO()
+    pisa_status = pisa.CreatePDF(html_string, dest=buf)
+    if pisa_status.err:
+        return "PDF generation failed", 500
+
+    buf.seek(0)
+    filename = f"warranty-{warranty_id}.pdf"
+    return Response(
+        buf.read(),
+        mimetype="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
 @bp.route("/customer/tracking/<token>/status")
 def customer_tracking_status(token):
     """
@@ -1153,6 +1282,7 @@ def customer_tracking_status(token):
         "progress_pct":   round((progress_index + 1) / total * 100, 1),
         "statuses":       JOB_STATUSES,
         "message":        status_messages.get(status, f"Status: {status}"),
+        "warranty_url":   url_for("main.customer_warranty_pdf", token=token) if status == "Completed" else None,
     })
 
 

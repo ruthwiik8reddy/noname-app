@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<!--
+  warranty_card.html
+  ──────────────────
+  This template is rendered server-side by WeasyPrint to generate a PDF.
+
+  TO CUSTOMISE THIS CARD:
+  - Edit the HTML/CSS below freely — it is standard HTML.
+  - All {{ variable }} placeholders are filled automatically from the job record.
+  - Do NOT change the variable names (they come from the database).
+  - The page size and margins are set in the @page rule in <style>.
+  - To preview in a browser, visit /customer/tracking/<token>/warranty.pdf
+    while the server is running — WeasyPrint renders it on the fly.
+
+  AVAILABLE PLACEHOLDERS:
+    {{ studio.name }}           — Studio name
+    {{ studio.city }}           — Studio city
+    {{ studio.owner }}          — Studio owner name
+    {{ job.car }}               — Vehicle (e.g. 2023 BMW M4)
+    {{ job.service }}           — Service performed
+    {{ job.technician }}        — Technician name
+    {{ job.price }}             — Price (in cents — use price_display for $)
+    {{ price_display }}         — Formatted price e.g. $850.00
+    {{ job.warranty_duration }} — e.g. "5 Years", "30 Days"
+    {{ completed_date }}        — Date completed e.g. June 30, 2026
+    {{ warranty_id }}           — Unique warranty reference (first 12 chars of token)
+    {{ customer.name }}         — Customer name (if linked, else empty)
+    {{ customer.phone }}        — Customer phone
+    {{ tracking_url }}          — Permanent link to the customer tracking page
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    /* ── Page setup ─────────────────────────────────────────────────────── */
+    @page {
+      size: A4;
+      margin: 0;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      background: #fff;
+      color: #1a1a1a;
+      width: 210mm;
+      min-height: 297mm;
+    }
+
+    /* ── Gold header band ────────────────────────────────────────────────── */
+    .header {
+      background: #1a1a1a;
+      color: #C8A96E;
+      padding: 36px 48px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .header-left h1 {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: #C8A96E;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .header-left p {
+      font-size: 12px;
+      color: rgba(200,169,110,0.6);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .header-right {
+      text-align: right;
+    }
+    .header-right .studio-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: .04em;
+    }
+    .header-right .studio-city {
+      font-size: 12px;
+      color: rgba(255,255,255,0.45);
+      margin-top: 3px;
+    }
+
+    /* ── Gold accent line ────────────────────────────────────────────────── */
+    .accent-line {
+      height: 4px;
+      background: linear-gradient(90deg, #C8A96E, #F5E2A8, #C8A96E);
+    }
+
+    /* ── Body padding ────────────────────────────────────────────────────── */
+    .body {
+      padding: 40px 48px;
+    }
+
+    /* ── Warranty ID chip ────────────────────────────────────────────────── */
+    .warranty-ref {
+      display: inline-block;
+      background: #f5f0e8;
+      border: 1px solid #C8A96E;
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-size: 11px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: #7a6035;
+      margin-bottom: 32px;
+    }
+    .warranty-ref strong {
+      color: #1a1a1a;
+      font-size: 13px;
+      letter-spacing: .06em;
+    }
+
+    /* ── Section title ───────────────────────────────────────────────────── */
+    .section-title {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: #999;
+      margin-bottom: 14px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #eee;
+    }
+
+    /* ── Two-column detail grid ──────────────────────────────────────────── */
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      margin-bottom: 32px;
+    }
+    .detail-item {
+      padding: 12px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .detail-item:nth-child(odd)  { padding-right: 24px; }
+    .detail-item:nth-child(even) { padding-left: 24px; border-left: 1px solid #f0f0f0; }
+    .detail-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: #aaa;
+      margin-bottom: 4px;
+    }
+    .detail-value {
+      font-size: 14px;
+      color: #1a1a1a;
+      font-weight: 500;
+    }
+
+    /* ── Warranty duration highlight ─────────────────────────────────────── */
+    .warranty-highlight {
+      background: #1a1a1a;
+      color: #fff;
+      border-radius: 10px;
+      padding: 22px 28px;
+      margin-bottom: 32px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .warranty-highlight .duration {
+      font-size: 42px;
+      font-weight: 900;
+      color: #C8A96E;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .warranty-highlight .warranty-text h3 {
+      font-size: 16px;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+    .warranty-highlight .warranty-text p {
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      line-height: 1.5;
+    }
+
+    /* ── Aftercare guidelines ────────────────────────────────────────────── */
+    .guidelines {
+      background: #fafafa;
+      border: 1px solid #ececec;
+      border-radius: 8px;
+      padding: 20px 24px;
+      margin-bottom: 32px;
+    }
+    .guidelines ul {
+      list-style: none;
+      padding: 0;
+    }
+    .guidelines ul li {
+      font-size: 12px;
+      color: #444;
+      padding: 6px 0;
+      border-bottom: 1px solid #efefef;
+      padding-left: 18px;
+      position: relative;
+      line-height: 1.5;
+    }
+    .guidelines ul li:last-child { border-bottom: none; }
+    .guidelines ul li::before {
+      content: '✓';
+      position: absolute;
+      left: 0;
+      color: #C8A96E;
+      font-weight: 700;
+      font-size: 11px;
+    }
+
+    /* ── Terms ───────────────────────────────────────────────────────────── */
+    .terms {
+      font-size: 10px;
+      color: #bbb;
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+
+    /* ── Footer ──────────────────────────────────────────────────────────── */
+    .footer {
+      border-top: 1px solid #eee;
+      padding-top: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .footer-left {
+      font-size: 11px;
+      color: #999;
+      line-height: 1.6;
+    }
+    .footer-left strong { color: #1a1a1a; }
+    .footer-right {
+      text-align: right;
+      font-size: 10px;
+      color: #ccc;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <div class="header">
+    <div class="header-left">
+      <h1>Warranty Certificate</h1>
+      <p>Automotive Detailing Service</p>
+    </div>
+    <div class="header-right">
+      <!-- STUDIO NAME AND CITY — filled from DB -->
+      <div class="studio-name">{{ studio.name }}</div>
+      <div class="studio-city">{{ studio.city }}</div>
+    </div>
+  </div>
+  <div class="accent-line"></div>
+
+  <div class="body">
+
+    <!-- ── Warranty reference chip ──────────────────────────────────────── -->
+    <div class="warranty-ref">
+      Warranty Reference &nbsp;|&nbsp; <strong>{{ warranty_id }}</strong>
+      &nbsp;&nbsp;·&nbsp;&nbsp; Issued {{ completed_date }}
+    </div>
+
+    <!-- ── Vehicle + Customer details ───────────────────────────────────── -->
+    <div class="section-title">Service Record</div>
+    <div class="detail-grid">
+
+      <div class="detail-item">
+        <!-- VEHICLE — from jobs.car -->
+        <div class="detail-label">Vehicle</div>
+        <div class="detail-value">{{ job.car }}</div>
+      </div>
+
+      <div class="detail-item">
+        <!-- SERVICE PERFORMED — from jobs.service -->
+        <div class="detail-label">Service Performed</div>
+        <div class="detail-value">{{ job.service }}</div>
+      </div>
+
+      <div class="detail-item">
+        <!-- CUSTOMER NAME — from customers.name if linked -->
+        <div class="detail-label">Customer</div>
+        <div class="detail-value">{{ customer.name if customer.name else '—' }}</div>
+      </div>
+
+      <div class="detail-item">
+        <!-- DATE OF SERVICE — jobs.completed_at -->
+        <div class="detail-label">Date of Service</div>
+        <div class="detail-value">{{ completed_date }}</div>
+      </div>
+
+      <div class="detail-item">
+        <!-- TECHNICIAN — from jobs.technician -->
+        <div class="detail-label">Technician</div>
+        <div class="detail-value">{{ job.technician }}</div>
+      </div>
+
+      <div class="detail-item">
+        <!-- PRICE — formatted as $XXX.XX -->
+        <div class="detail-label">Service Value</div>
+        <div class="detail-value">{{ price_display }}</div>
+      </div>
+
+    </div>
+
+    <!-- ── Warranty duration highlight ──────────────────────────────────── -->
+    <div class="warranty-highlight">
+      <div class="duration">
+        <!-- WARRANTY DURATION — from jobs.warranty_duration, e.g. "5 Years" -->
+        {{ job.warranty_duration if job.warranty_duration else 'See Terms' }}
+      </div>
+      <div class="warranty-text">
+        <h3>Manufacturer-Grade Warranty</h3>
+        <p>
+          This vehicle has received a professional {{ job.service }} at
+          {{ studio.name }}. The service is warranted against defects in
+          application and material failure for the duration stated.
+        </p>
+      </div>
+    </div>
+
+    <!-- ── Aftercare guidelines ─────────────────────────────────────────── -->
+    <div class="section-title">Aftercare Guidelines</div>
+    <div class="guidelines">
+      <ul>
+        <!--
+          TO CUSTOMISE THESE GUIDELINES:
+          Edit the <li> items below. They are plain text — no code knowledge needed.
+          You can add, remove, or reorder them freely.
+        -->
+        <li>Do not wash the vehicle for the first 7 days after service.</li>
+        <li>Avoid automatic car washes with brushes — use touchless or hand wash only.</li>
+        <li>Use a pH-neutral automotive shampoo for routine washing.</li>
+        <li>Do not apply wax, polish, or abrasive products over the coated surface.</li>
+        <li>Remove bird droppings, tree sap, and insect residue promptly — do not let them bake in sun.</li>
+        <li>For ceramic and graphene coatings, apply a maintenance spray every 3–4 months to maintain hydrophobic performance.</li>
+        <li>Park in shaded or covered areas where possible to extend coating life.</li>
+        <li>Schedule your next maintenance inspection at {{ studio.name }} as recommended.</li>
+      </ul>
+    </div>
+
+    <!-- ── Terms ─────────────────────────────────────────────────────────── -->
+    <div class="terms">
+      This warranty is valid only when vehicle care guidelines above are followed.
+      Warranty is non-transferable and applies to the original vehicle and customer only.
+      Warranty claims must be submitted to {{ studio.name }} within the warranty period with this certificate.
+      {{ studio.name }} reserves the right to inspect the vehicle before processing any warranty claim.
+      This certificate does not cover damage from accidents, misuse, environmental fallout, or failure to follow aftercare guidelines.
+    </div>
+
+    <!-- ── Footer ────────────────────────────────────────────────────────── -->
+    <div class="footer">
+      <div class="footer-left">
+        <strong>{{ studio.name }}</strong><br>
+        {{ studio.city }}<br>
+        <!-- Add studio phone/email here when those fields are added to the DB -->
+        Warranty Reference: {{ warranty_id }}
+      </div>
+      <div class="footer-right">
+        Track your service at:<br>
+        {{ tracking_url }}
+      </div>
+    </div>
+
+  </div><!-- end .body -->
+</body>
+</html>

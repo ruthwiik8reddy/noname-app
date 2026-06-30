@@ -190,6 +190,84 @@
     }
     .cta-btn:hover { background: rgba(200,169,110,0.2); }
 
+    /* Post-completion section */
+    .completion-section {
+      width: 100%;
+      max-width: 520px;
+      margin-bottom: 14px;
+      display: none; /* shown by JS when Completed */
+    }
+    .completion-section.visible { display: block; }
+
+    .aftercare-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 22px 24px;
+      margin-bottom: 14px;
+    }
+    .aftercare-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #E8E6E0;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .aftercare-title::before { content: '✦'; color: #C8A96E; font-size: 11px; }
+    .aftercare-list {
+      list-style: none;
+      padding: 0;
+    }
+    .aftercare-list li {
+      font-size: 12px;
+      color: rgba(255,255,255,0.55);
+      padding: 7px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      padding-left: 16px;
+      position: relative;
+      line-height: 1.5;
+    }
+    .aftercare-list li:last-child { border-bottom: none; }
+    .aftercare-list li::before {
+      content: '→';
+      position: absolute;
+      left: 0;
+      color: #C8A96E;
+      font-size: 11px;
+    }
+
+    .action-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 15px 16px;
+      text-align: center;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: .02em;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+      margin-bottom: 12px;
+    }
+    .action-btn-warranty {
+      background: #C8A96E;
+      border: 1px solid #C8A96E;
+      color: #0D0D0D;
+    }
+    .action-btn-warranty:hover { background: #dbbe85; }
+    .action-btn-schedule {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.7);
+    }
+    .action-btn-schedule:hover { border-color: rgba(200,169,110,0.4); color: #C8A96E; }
+
     /* Footer */
     .footer {
       margin-top: 32px;
@@ -282,6 +360,38 @@
     View Full Inspection Details (DVI) →
   </a>
 
+  <!-- ── Post-completion sections (hidden until job = Completed) ────────── -->
+  <div id="completion-section" class="completion-section {% if job.status == 'Completed' %}visible{% endif %}">
+
+    <!-- AfterCare Guidelines -->
+    <div class="aftercare-card">
+      <div class="aftercare-title">AfterCare Guidelines</div>
+      <ul class="aftercare-list">
+        <li>Do not wash your vehicle for the first 7 days after service.</li>
+        <li>Avoid automatic car washes with brushes — use touchless or hand wash only.</li>
+        <li>Use a pH-neutral shampoo for routine washing.</li>
+        <li>Do not apply wax, polish, or abrasive compounds over the treated surface.</li>
+        <li>Remove bird droppings and tree sap promptly — do not let them bake in sunlight.</li>
+        <li>Apply a maintenance spray every 3–4 months to preserve hydrophobic performance.</li>
+        <li>Schedule a maintenance inspection to keep your warranty valid.</li>
+      </ul>
+    </div>
+
+    <!-- Warranty Card Download -->
+    <a id="warranty-btn"
+       href="/customer/tracking/{{ token }}/warranty.pdf"
+       class="action-btn action-btn-warranty">
+      ↓ Download Warranty Card (PDF)
+    </a>
+
+    <!-- Schedule Maintenance Appointment -->
+    <a href="mailto:{{ job.studio_name }}?subject=Maintenance Appointment Request for {{ job.car }}"
+       class="action-btn action-btn-schedule">
+      📅 Schedule a Maintenance Appointment
+    </a>
+
+  </div>
+
   <div class="footer">
     This link is unique to your vehicle's service job.<br>
     Powered by {{ job.studio_name }}.
@@ -330,8 +440,16 @@
       msg.textContent = data.message;
       msg.className   = "status-message" + (data.status === "Completed" ? " completed" : "");
 
-      // 5. Stop polling once completed — no more status changes expected
-      if (data.status === "Completed") clearInterval(poller);
+      // 5. Show completion section (aftercare + warranty + schedule)
+      if (data.status === "Completed") {
+        const section = document.getElementById("completion-section");
+        if (section) section.classList.add("visible");
+        if (data.warranty_url) {
+          const btn = document.getElementById("warranty-btn");
+          if (btn) btn.href = data.warranty_url;
+        }
+        clearInterval(poller);
+      }
     }
 
     function poll() {
