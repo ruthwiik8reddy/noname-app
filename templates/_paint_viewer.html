@@ -1,0 +1,321 @@
+<!--
+  _paint_viewer.html — 3D Paint Health Viewer (REAL panel highlighting)
+  ----------------------------------------------------------------------
+  Loads a compressed BMW X7 GLB (~2MB, Draco) whose body panels are
+  separate named meshes. Clicking/selecting a panel recolors the ACTUAL
+  sheet metal by health rating — no floating markers. Shows treatment +
+  before/after photos.
+
+  REQUIRES the including page to set, BEFORE including this file:
+    window.PANELS_URL  — JSON endpoint for panel data
+    window.MODEL_URL   — path to the GLB (e.g. /static/models/bmw_x7.glb)
+-->
+<style>
+  .pv-wrap { display:grid; grid-template-columns: 1fr 320px; gap:18px; width:100%; }
+  @media (max-width: 760px) { .pv-wrap { grid-template-columns: 1fr; } }
+  .pv-stage { position:relative; width:100%; aspect-ratio:16/11; background:radial-gradient(ellipse at 50% 35%, #232328 0%, #0d0d0d 78%); border:1px solid rgba(255,255,255,0.08); border-radius:14px; overflow:hidden; min-height:340px; }
+  .pv-stage canvas { display:block; width:100%; height:100%; }
+  .pv-hint { position:absolute; bottom:12px; left:50%; transform:translateX(-50%); font-size:11px; color:rgba(255,255,255,0.35); white-space:nowrap; background:rgba(0,0,0,0.4); padding:5px 12px; border-radius:20px; pointer-events:none; }
+  .pv-loading { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:13px; color:rgba(255,255,255,0.4); text-align:center; padding:20px; }
+  .pv-legend { position:absolute; top:12px; left:12px; display:flex; flex-direction:column; gap:5px; background:rgba(0,0,0,0.35); padding:10px 12px; border-radius:8px; }
+  .pv-legend-row { display:flex; align-items:center; gap:7px; font-size:10px; color:rgba(255,255,255,0.55); }
+  .pv-swatch { width:11px; height:11px; border-radius:3px; }
+  .pv-detail { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:18px 20px; min-height:340px; }
+  .pv-detail-empty { color:rgba(255,255,255,0.3); font-size:13px; text-align:center; padding-top:70px; line-height:1.6; }
+  .pv-panel-name { font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.06em; color:#C8A96E; margin-bottom:4px; }
+  .pv-health-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 12px; border-radius:999px; font-size:11px; font-weight:600; margin-bottom:16px; }
+  .pv-health-excellent { background:rgba(74,222,128,0.16); color:#4ADE80; }
+  .pv-health-good { background:rgba(132,204,90,0.16); color:#A3E635; }
+  .pv-health-fair { background:rgba(251,191,36,0.16); color:#FBBF24; }
+  .pv-health-poor { background:rgba(248,113,113,0.16); color:#F87171; }
+  .pv-health-none { background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.4); }
+  .pv-field-label { font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:rgba(255,255,255,0.3); margin:14px 0 5px; }
+  .pv-field-value { font-size:14px; color:#E8E6E0; line-height:1.5; }
+  .pv-photos { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; }
+  .pv-photo { border-radius:8px; overflow:hidden; border:1px solid rgba(255,255,255,0.08); }
+  .pv-photo img { width:100%; height:90px; object-fit:cover; display:block; }
+  .pv-photo-label { font-size:9px; text-transform:uppercase; letter-spacing:.06em; color:rgba(255,255,255,0.3); padding:4px 6px; text-align:center; }
+  .pv-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:14px; justify-content:center; }
+  .pv-chip { font-size:10px; padding:4px 9px; border-radius:999px; cursor:pointer; border:1px solid rgba(255,255,255,0.12); color:rgba(255,255,255,0.5); background:rgba(255,255,255,0.03); }
+  .pv-chip:hover { border-color:rgba(200,169,110,0.5); color:#C8A96E; }
+</style>
+
+<div class="pv-wrap">
+  <div class="pv-stage" id="pvStage">
+    <div class="pv-legend">
+      <div class="pv-legend-row"><span class="pv-swatch" style="background:#4ADE80"></span> Excellent</div>
+      <div class="pv-legend-row"><span class="pv-swatch" style="background:#A3E635"></span> Good</div>
+      <div class="pv-legend-row"><span class="pv-swatch" style="background:#FBBF24"></span> Fair</div>
+      <div class="pv-legend-row"><span class="pv-swatch" style="background:#F87171"></span> Poor</div>
+      <div class="pv-legend-row"><span class="pv-swatch" style="background:#5a5a64"></span> Not inspected</div>
+    </div>
+    <div class="pv-loading" id="pvLoading">Loading 3D model…</div>
+    <div class="pv-hint">Drag to rotate · scroll to zoom · click a panel</div>
+  </div>
+
+  <div class="pv-detail" id="pvDetail">
+    <div class="pv-detail-empty" id="pvDetailEmpty">
+      Click a highlighted panel on the<br>vehicle to see its paint health<br>and the treatment applied.
+      <div class="pv-chips" id="pvChips"></div>
+    </div>
+    <div id="pvDetailContent" style="display:none;">
+      <div class="pv-panel-name" id="pvPanelName">—</div>
+      <span class="pv-health-badge pv-health-none" id="pvHealthBadge">Not inspected</span>
+      <div id="pvTreatmentBlock" style="display:none;">
+        <div class="pv-field-label">Treatment Applied</div>
+        <div class="pv-field-value" id="pvTreatment">—</div>
+      </div>
+      <div id="pvNotesBlock" style="display:none;">
+        <div class="pv-field-label">Notes</div>
+        <div class="pv-field-value" id="pvNotes">—</div>
+      </div>
+      <div id="pvPhotosBlock" style="display:none;">
+        <div class="pv-field-label">Before / After</div>
+        <div class="pv-photos">
+          <div class="pv-photo" id="pvBeforeWrap"><img id="pvBeforeImg" src="" alt="Before"><div class="pv-photo-label">Before</div></div>
+          <div class="pv-photo" id="pvAfterWrap"><img id="pvAfterImg" src="" alt="After"><div class="pv-photo-label">After</div></div>
+        </div>
+      </div>
+      <div class="pv-chips"><span class="pv-chip" onclick="window.__pvClear()">← All panels</span></div>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.module.min.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+
+const HEALTH_COLORS = { excellent:0x4ADE80, good:0xA3E635, fair:0xFBBF24, poor:0xF87171, "":0x5a5a64 };
+const HEALTH_LABELS = { excellent:"Excellent", good:"Good", fair:"Fair", poor:"Poor", "":"Not inspected" };
+
+const PANEL_LABELS = {
+  hood:"Hood", body_shell:"Roof / Body Shell", trunk:"Trunk / Tailgate",
+  front_bumper:"Front Bumper", rear_bumper:"Rear Bumper",
+  front_left_door:"Front Left Door", rear_left_door:"Rear Left Door",
+  front_right_door:"Front Right Door", rear_right_door:"Rear Right Door",
+  left_fender:"Left Fender", right_fender:"Right Fender",
+};
+
+// Map our panel keys -> the GLB mesh node-name prefixes whose 'body' child we recolor.
+// Each panel key -> the exact GLB body-mesh node name to recolor + raycast.
+const PANEL_MESH_NAME = {
+  hood:             "inmx7m60i_hood_inmx7m60i_body_0",
+  trunk:            "inmx7m60i_tailgate_inmx7m60i_body_0",
+  front_left_door:  "inmx7m60i_doorfl_inmx7m60i_body_0",
+  front_right_door: "inmx7m60i_doorfr_inmx7m60i_body_0",
+  rear_left_door:   "inmx7m60i_doorrl_inmx7m60i_body_0",
+  rear_right_door:  "inmx7m60i_doorrr_inmx7m60i_body_0",
+  left_fender:      "inmx7m60i_fender_l_inmx7m60i_body_0",
+  right_fender:     "inmx7m60i_fender_r_inmx7m60i_body_0",
+  front_bumper:     "inmx7m60i_f_bump1_inmx7m60i_body_0",
+  rear_bumper:      "inmx7m60i_r_bump1_inmx7m60i_body_0",
+  body_shell:       "inmx7m60i_bodyshell_inmx7m60i_body_0",
+};
+
+const stage = document.getElementById('pvStage');
+const loadingEl = document.getElementById('pvLoading');
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, 16/11, 0.1, 1000);
+camera.position.set(5, 2.6, 5.5);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+function sizeRenderer(){ const r=stage.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/r.height; camera.updateProjectionMatrix(); }
+stage.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.minDistance = 3.5; controls.maxDistance = 14;
+controls.maxPolarAngle = Math.PI/2.05;
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x202024, 0.7));
+const key = new THREE.DirectionalLight(0xffffff, 2.0); key.position.set(-5,8,5); scene.add(key);
+const fill = new THREE.DirectionalLight(0xe8f0ff, 0.9); fill.position.set(6,3,-2); scene.add(fill);
+const rim  = new THREE.DirectionalLight(0xffffff, 1.4); rim.position.set(0,4,-8); scene.add(rim);
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envS = new THREE.Scene();
+(() => { const c=document.createElement('canvas'); c.width=2; c.height=256; const ctx=c.getContext('2d');
+  const g=ctx.createLinearGradient(0,0,0,256); g.addColorStop(0,'#4a4a54'); g.addColorStop(0.5,'#1a1a1e'); g.addColorStop(1,'#070708');
+  ctx.fillStyle=g; ctx.fillRect(0,0,2,256); const t=new THREE.CanvasTexture(c); t.mapping=THREE.EquirectangularReflectionMapping; envS.background=t; })();
+scene.environment = pmrem.fromScene(envS).texture;
+
+const ground = new THREE.Mesh(new THREE.CircleGeometry(10,56), new THREE.MeshStandardMaterial({ color:0x0a0a0c, roughness:0.92, metalness:0 }));
+ground.rotation.x = -Math.PI/2; scene.add(ground);
+
+const carGroup = new THREE.Group(); scene.add(carGroup);
+
+let panelData = {};
+const panelMeshes = {};   // panelKey -> [meshes to recolor]
+const panelOrigMat = {};  // mesh.uuid -> original material (to restore)
+
+const draco = new DRACOLoader();
+draco.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/gltf/');
+const loader = new GLTFLoader();
+loader.setDRACOLoader(draco);
+
+loader.load(window.MODEL_URL, (gltf) => {
+  const car = gltf.scene;
+
+  // Collect the exact paintable mesh per panel by matching node names.
+  // Build a reverse lookup: meshName -> panelKey
+  const nameToKey = {};
+  for (const k in PANEL_MESH_NAME) nameToKey[PANEL_MESH_NAME[k]] = k;
+  car.traverse((o) => {
+    if (!o.isMesh) return;
+    const key = nameToKey[o.name];
+    if (key) {
+      (panelMeshes[key] = panelMeshes[key] || []).push(o);
+      panelOrigMat[o.uuid] = o.material;
+    }
+  });
+
+  // Normalize size & center on ground
+  let box = new THREE.Box3().setFromObject(car);
+  const size = new THREE.Vector3(); box.getSize(size);
+  const scale = 4.8 / Math.max(size.x, size.z);
+  car.scale.setScalar(scale);
+  box = new THREE.Box3().setFromObject(car);
+  const c = new THREE.Vector3(); box.getCenter(c);
+  car.position.x -= c.x; car.position.z -= c.z; car.position.y -= box.min.y;
+  carGroup.add(car);
+
+  const fb = new THREE.Box3().setFromObject(car);
+  controls.target.set(0, fb.max.y*0.4, 0);
+
+  applyPanelColors();
+  loadingEl.style.display = 'none';
+}, (xhr) => {
+  if (xhr.total) loadingEl.textContent = `Loading 3D model… ${Math.round(xhr.loaded/xhr.total*100)}%`;
+}, (err) => { console.error(err); loadingEl.textContent = 'Could not load the 3D model.'; });
+
+function tintMaterial(baseHex) {
+  return new THREE.MeshPhysicalMaterial({
+    color: baseHex, metalness: 0.5, roughness: 0.35,
+    clearcoat: 1.0, clearcoatRoughness: 0.06, envMapIntensity: 1.2,
+    emissive: new THREE.Color(baseHex).multiplyScalar(0.12),
+  });
+}
+
+function applyPanelColors() {
+  for (const key in panelMeshes) {
+    const d = panelData[key];
+    const rating = d ? d.health_rating : "";
+    panelMeshes[key].forEach(m => {
+      if (rating) {
+        // Inspected -> recolor the real sheet metal by health rating
+        m.material = tintMaterial(HEALTH_COLORS[rating]);
+      } else {
+        // Not inspected -> keep the car's ORIGINAL paint (looks like a real car).
+        // We clone it so we can add a hover emissive glow without affecting others.
+        const orig = panelOrigMat[m.uuid];
+        m.material = orig.clone();
+        if (!m.material.emissive) m.material.emissive = new THREE.Color(0x000000);
+        m.material.emissive = new THREE.Color(0xC8A96E); // gold glow tint when hovered
+        m.material.emissiveIntensity = 0.0;
+      }
+    });
+  }
+  if (typeof refreshHoverVisuals === 'function') refreshHoverVisuals();
+}
+
+// ── Click to select a panel (raycast against the paint meshes) ──
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+function allPaintMeshes(){ const a=[]; for(const k in panelMeshes) panelMeshes[k].forEach(m=>{ m.userData.__panelKey=k; a.push(m); }); return a; }
+function onClick(ev){
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((ev.clientX-rect.left)/rect.width)*2-1;
+  mouse.y = -((ev.clientY-rect.top)/rect.height)*2+1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(allPaintMeshes(), false);
+  if (hits.length) selectPanel(hits[0].object.userData.__panelKey);
+}
+renderer.domElement.addEventListener('click', onClick);
+
+// ── Hover highlight so the customer knows panels are clickable ──
+let hoveredKey = null;
+function onMove(ev){
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((ev.clientX-rect.left)/rect.width)*2-1;
+  mouse.y = -((ev.clientY-rect.top)/rect.height)*2+1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(allPaintMeshes(), false);
+  const newKey = hits.length ? hits[0].object.userData.__panelKey : null;
+  if (newKey !== hoveredKey){
+    hoveredKey = newKey;
+    renderer.domElement.style.cursor = newKey ? 'pointer' : 'default';
+    refreshHoverVisuals();
+  }
+}
+renderer.domElement.addEventListener('pointermove', onMove);
+
+function refreshHoverVisuals(){
+  for (const key in panelMeshes){
+    panelMeshes[key].forEach(m => {
+      if (m.material && m.material.emissive){
+        const isHover = (key === hoveredKey);
+        const isSel   = (key === selectedKey);
+        m.material.emissiveIntensity = isSel ? 0.6 : (isHover ? 0.4 : (panelData[key] && panelData[key].health_rating ? 0.18 : 0.0));
+      }
+    });
+  }
+}
+
+let selectedKey = null;
+function selectPanel(key){
+  selectedKey = key;
+  const d = panelData[key] || {};
+  document.getElementById('pvDetailEmpty').style.display='none';
+  document.getElementById('pvDetailContent').style.display='block';
+  document.getElementById('pvPanelName').textContent = PANEL_LABELS[key] || key;
+  const rating = d.health_rating || "";
+  const badge = document.getElementById('pvHealthBadge');
+  badge.textContent = HEALTH_LABELS[rating] || "Not inspected";
+  badge.className = 'pv-health-badge pv-health-' + (rating || 'none');
+  const tB=document.getElementById('pvTreatmentBlock'); if(d.treatment){tB.style.display='block'; document.getElementById('pvTreatment').textContent=d.treatment;} else tB.style.display='none';
+  const nB=document.getElementById('pvNotesBlock'); if(d.notes){nB.style.display='block'; document.getElementById('pvNotes').textContent=d.notes;} else nB.style.display='none';
+  const pB=document.getElementById('pvPhotosBlock');
+  if(d.before_photo||d.after_photo){ pB.style.display='block';
+    document.getElementById('pvBeforeWrap').style.display=d.before_photo?'block':'none';
+    document.getElementById('pvAfterWrap').style.display=d.after_photo?'block':'none';
+    if(d.before_photo)document.getElementById('pvBeforeImg').src=d.before_photo;
+    if(d.after_photo)document.getElementById('pvAfterImg').src=d.after_photo;
+  } else pB.style.display='none';
+
+  refreshHoverVisuals();
+}
+window.__pvClear = function(){
+  selectedKey=null;
+  document.getElementById('pvDetailContent').style.display='none';
+  document.getElementById('pvDetailEmpty').style.display='block';
+};
+
+fetch(window.PANELS_URL).then(r=>r.ok?r.json():Promise.reject()).then(json=>{
+  (json.panels||[]).forEach(p=>{ panelData[p.panel_key]=p; });
+  applyPanelColors();
+  const chips = document.getElementById('pvChips');
+  (json.panels||[]).filter(p=>p.health_rating && PANEL_MESH_NAME[p.panel_key]).forEach(p=>{
+    const c=document.createElement('span'); c.className='pv-chip'; c.textContent=p.label;
+    c.onclick=()=>selectPanel(p.panel_key); chips.appendChild(c);
+  });
+}).catch(()=>{ /* model still renders */ });
+
+sizeRenderer(); window.addEventListener('resize', sizeRenderer);
+let idleSpin=true; controls.addEventListener('start',()=>{ idleSpin=false; });
+function animate(){ requestAnimationFrame(animate); if(idleSpin) carGroup.rotation.y+=0.0022; controls.update(); renderer.render(scene,camera); }
+animate();
+</script>

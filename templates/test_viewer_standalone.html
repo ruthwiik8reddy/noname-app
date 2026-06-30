@@ -1,0 +1,366 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Paint Viewer Test</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>body{font-family:DM Sans,sans-serif;background:#0D0D0D;color:#E8E6E0;margin:0;padding:30px}h1{font-family:Bebas Neue,sans-serif;color:#C8A96E;letter-spacing:.08em}.test-note{background:rgba(200,169,110,0.08);border:1px solid rgba(200,169,110,0.25);border-radius:8px;padding:12px 16px;font-size:13px;margin-bottom:20px;max-width:900px}</style>
+</head><body>
+<h1>3D Paint Viewer — Small Pins Test</h1>
+<div class="test-note">Real car + fake panel data. Markers are now small flat dots, not giant balls. Drag to rotate, tap a dot.</div>
+<script>
+const FAKE_PANELS={panels:[
+{panel_key:"hood",label:"Hood",health_rating:"excellent",treatment:"PPF applied - full hood",notes:"Flawless after correction",before_photo:"https://placehold.co/200x120/333/C8A96E?text=Before",after_photo:"https://placehold.co/200x120/222/4ADE80?text=After"},
+{panel_key:"roof",label:"Roof",health_rating:"good",treatment:"Ceramic coating 9H",notes:"",before_photo:"",after_photo:""},
+{panel_key:"front_bumper",label:"Front Bumper",health_rating:"fair",treatment:"Paint correction stage 1",notes:"Minor rock chips remain",before_photo:"",after_photo:"https://placehold.co/200x120/222/FBBF24?text=After"},
+{panel_key:"front_left_door",label:"Front Left Door",health_rating:"poor",treatment:"Needs respray",notes:"Customer declined",before_photo:"https://placehold.co/200x120/333/F87171?text=Damage",after_photo:""},
+{panel_key:"front_right_door",label:"Front Right Door",health_rating:"excellent",treatment:"PPF applied",notes:"",before_photo:"",after_photo:""},
+{panel_key:"rear_left_door",label:"Rear Left Door",health_rating:"good",treatment:"Ceramic",notes:"",before_photo:"",after_photo:""},
+{panel_key:"left_fender",label:"Left Fender",health_rating:"fair",treatment:"Buffed",notes:"",before_photo:"",after_photo:""},
+{panel_key:"trunk",label:"Trunk / Tailgate",health_rating:"good",treatment:"Ceramic coating",notes:"",before_photo:"",after_photo:""}
+]};
+const _f=window.fetch;window.fetch=function(u){if(String(u).includes("panels.json")){return Promise.resolve({ok:true,json:()=>Promise.resolve(FAKE_PANELS)})}return _f.apply(this,arguments)};
+window.PANELS_URL="fake://panels.json";
+window.MODEL_URL="https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/models/gltf/ferrari.glb";
+</script>
+<!--
+  _paint_viewer.html — 3D Paint Health Viewer (real GLB + hotspot zones)
+  ----------------------------------------------------------------------
+  Loads a realistic Ferrari GLB (MIT-licensed, from three.js examples,
+  ~1.7MB, Draco-compressed) and overlays invisible clickable hotspot
+  zones at each body panel location. Hotspots tint by health rating;
+  clicking shows treatment + before/after photos.
+
+  REQUIRES the including page to set:
+    window.PANELS_URL   — JSON endpoint for panel data
+    window.MODEL_URL    — path to /static/models/ferrari.glb
+  BEFORE including this file.
+-->
+<style>
+  .pv-wrap { display:grid; grid-template-columns: 1fr 320px; gap:18px; width:100%; }
+  @media (max-width: 760px) { .pv-wrap { grid-template-columns: 1fr; } }
+  .pv-stage { position:relative; width:100%; aspect-ratio:16/11; background:radial-gradient(ellipse at 50% 35%, #232328 0%, #0d0d0d 78%); border:1px solid rgba(255,255,255,0.08); border-radius:14px; overflow:hidden; min-height:340px; }
+  .pv-stage canvas { display:block; width:100%; height:100%; }
+  .pv-hint { position:absolute; bottom:12px; left:50%; transform:translateX(-50%); font-size:11px; color:rgba(255,255,255,0.35); white-space:nowrap; background:rgba(0,0,0,0.4); padding:5px 12px; border-radius:20px; pointer-events:none; }
+  .pv-loading { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:13px; color:rgba(255,255,255,0.4); text-align:center; padding:20px; }
+  .pv-legend { position:absolute; top:12px; left:12px; display:flex; flex-direction:column; gap:5px; background:rgba(0,0,0,0.35); padding:10px 12px; border-radius:8px; }
+  .pv-legend-row { display:flex; align-items:center; gap:7px; font-size:10px; color:rgba(255,255,255,0.55); }
+  .pv-swatch { width:11px; height:11px; border-radius:3px; }
+  .pv-detail { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:18px 20px; min-height:340px; }
+  .pv-detail-empty { color:rgba(255,255,255,0.3); font-size:13px; text-align:center; padding-top:90px; line-height:1.6; }
+  .pv-panel-name { font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.06em; color:#C8A96E; margin-bottom:4px; }
+  .pv-health-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 12px; border-radius:999px; font-size:11px; font-weight:600; margin-bottom:16px; }
+  .pv-health-excellent { background:rgba(74,222,128,0.16); color:#4ADE80; }
+  .pv-health-good { background:rgba(132,204,90,0.16); color:#A3E635; }
+  .pv-health-fair { background:rgba(251,191,36,0.16); color:#FBBF24; }
+  .pv-health-poor { background:rgba(248,113,113,0.16); color:#F87171; }
+  .pv-health-none { background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.4); }
+  .pv-field-label { font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:rgba(255,255,255,0.3); margin:14px 0 5px; }
+  .pv-field-value { font-size:14px; color:#E8E6E0; line-height:1.5; }
+  .pv-photos { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; }
+  .pv-photo { border-radius:8px; overflow:hidden; border:1px solid rgba(255,255,255,0.08); }
+  .pv-photo img { width:100%; height:90px; object-fit:cover; display:block; }
+  .pv-photo-label { font-size:9px; text-transform:uppercase; letter-spacing:.06em; color:rgba(255,255,255,0.3); padding:4px 6px; text-align:center; }
+  .pv-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:14px; }
+  .pv-chip { font-size:10px; padding:4px 9px; border-radius:999px; cursor:pointer; border:1px solid rgba(255,255,255,0.12); color:rgba(255,255,255,0.5); background:rgba(255,255,255,0.03); }
+  .pv-chip:hover { border-color:rgba(200,169,110,0.5); color:#C8A96E; }
+</style>
+
+<div class="pv-wrap">
+  <div class="pv-stage" id="pvStage">
+    <div class="pv-legend">
+      <div class="pv-legend-row"><span class="pv-swatch" style="background:#4ADE80"></span> Excellent</div>
+      <div class="pv-legend-row"><span class="pv-swatch" style="background:#A3E635"></span> Good</div>
+      <div class="pv-legend-row"><span class="pv-swatch" style="background:#FBBF24"></span> Fair</div>
+      <div class="pv-legend-row"><span class="pv-swatch" style="background:#F87171"></span> Poor</div>
+      <div class="pv-legend-row"><span class="pv-swatch" style="background:#888"></span> Not inspected</div>
+    </div>
+    <div class="pv-loading" id="pvLoading">Loading 3D model…</div>
+    <div class="pv-hint">Drag to rotate · scroll to zoom · tap a dot</div>
+  </div>
+
+  <div class="pv-detail" id="pvDetail">
+    <div class="pv-detail-empty" id="pvDetailEmpty">
+      Click any highlighted marker on the<br>vehicle to see its paint health and<br>the treatment applied.
+      <div class="pv-chips" id="pvChips"></div>
+    </div>
+    <div id="pvDetailContent" style="display:none;">
+      <div class="pv-panel-name" id="pvPanelName">—</div>
+      <span class="pv-health-badge pv-health-none" id="pvHealthBadge">Not inspected</span>
+      <div id="pvTreatmentBlock" style="display:none;">
+        <div class="pv-field-label">Treatment Applied</div>
+        <div class="pv-field-value" id="pvTreatment">—</div>
+      </div>
+      <div id="pvNotesBlock" style="display:none;">
+        <div class="pv-field-label">Notes</div>
+        <div class="pv-field-value" id="pvNotes">—</div>
+      </div>
+      <div id="pvPhotosBlock" style="display:none;">
+        <div class="pv-field-label">Before / After</div>
+        <div class="pv-photos">
+          <div class="pv-photo" id="pvBeforeWrap"><img id="pvBeforeImg" src="" alt="Before"><div class="pv-photo-label">Before</div></div>
+          <div class="pv-photo" id="pvAfterWrap"><img id="pvAfterImg" src="" alt="After"><div class="pv-photo-label">After</div></div>
+        </div>
+      </div>
+      <div class="pv-chips"><span class="pv-chip" onclick="window.__pvClear()">← All panels</span></div>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.module.min.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+
+const HEALTH_COLORS = { excellent:0x4ADE80, good:0xA3E635, fair:0xFBBF24, poor:0xF87171, "":0x888888 };
+const HEALTH_LABELS = { excellent:"Excellent", good:"Good", fair:"Fair", poor:"Poor", "":"Not inspected" };
+
+// Each panel's hotspot position as a FRACTION of the car's bounding box.
+// fx: -1=left,+1=right ; fy: 0=bottom,1=top ; fz: -1=rear,+1=front
+const PANEL_LAYOUT = {
+  hood:             { fx:0.0,  fy:0.62, fz:0.72 },
+  roof:             { fx:0.0,  fy:0.95, fz:0.02 },
+  trunk:            { fx:0.0,  fy:0.62, fz:-0.78 },
+  front_bumper:     { fx:0.0,  fy:0.30, fz:0.98 },
+  rear_bumper:      { fx:0.0,  fy:0.32, fz:-0.98 },
+  front_left_door:  { fx:-0.9, fy:0.5,  fz:0.18 },
+  rear_left_door:   { fx:-0.9, fy:0.5,  fz:-0.3 },
+  front_right_door: { fx:0.9,  fy:0.5,  fz:0.18 },
+  rear_right_door:  { fx:0.9,  fy:0.5,  fz:-0.3 },
+  left_fender:      { fx:-0.92,fy:0.5,  fz:0.62 },
+  right_fender:     { fx:0.92, fy:0.5,  fz:0.62 },
+  left_quarter:     { fx:-0.92,fy:0.5,  fz:-0.66 },
+  right_quarter:    { fx:0.92, fy:0.5,  fz:-0.66 },
+};
+const PANEL_LABELS = {
+  hood:"Hood", roof:"Roof", trunk:"Trunk / Tailgate",
+  front_bumper:"Front Bumper", rear_bumper:"Rear Bumper",
+  front_left_door:"Front Left Door", rear_left_door:"Rear Left Door",
+  front_right_door:"Front Right Door", rear_right_door:"Rear Right Door",
+  left_fender:"Left Fender", right_fender:"Right Fender",
+  left_quarter:"Left Quarter Panel", right_quarter:"Right Quarter Panel",
+};
+
+const stage = document.getElementById('pvStage');
+const loadingEl = document.getElementById('pvLoading');
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, 16/11, 0.1, 100);
+camera.position.set(4.5, 2.4, 5.2);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+function sizeRenderer(){ const r=stage.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/r.height; camera.updateProjectionMatrix(); }
+stage.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.minDistance = 3; controls.maxDistance = 11;
+controls.maxPolarAngle = Math.PI/2.05;
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x202024, 0.6));
+const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(-5,7,4); scene.add(key);
+const fill = new THREE.DirectionalLight(0xe8f0ff, 1.0); fill.position.set(6,2,2); scene.add(fill);
+const rim  = new THREE.DirectionalLight(0xffffff, 1.6); rim.position.set(0,3,-7); scene.add(rim);
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+(() => { const c=document.createElement('canvas'); c.width=2; c.height=256; const ctx=c.getContext('2d');
+  const g=ctx.createLinearGradient(0,0,0,256); g.addColorStop(0,'#42424c'); g.addColorStop(0.5,'#18181b'); g.addColorStop(1,'#050505');
+  ctx.fillStyle=g; ctx.fillRect(0,0,2,256); const t=new THREE.CanvasTexture(c); t.mapping=THREE.EquirectangularReflectionMapping; envScene.background=t; })();
+scene.environment = pmrem.fromScene(envScene).texture;
+
+const ground = new THREE.Mesh(new THREE.CircleGeometry(8,56), new THREE.MeshStandardMaterial({ color:0x0a0a0c, roughness:0.92, metalness:0 }));
+ground.rotation.x = -Math.PI/2; ground.position.y = 0; scene.add(ground);
+
+const carGroup = new THREE.Group();
+scene.add(carGroup);
+
+const hotspots = {};   // panelKey -> hotspot mesh
+let panelData = {};
+
+function makeHotspots(box) {
+  const size = new THREE.Vector3(); box.getSize(size);
+  const center = new THREE.Vector3(); box.getCenter(center);
+  // Small, fixed pin size relative to the car (much smaller than before)
+  const pinR = Math.min(size.x, size.z) * 0.045;
+
+  for (const key in PANEL_LAYOUT) {
+    const L = PANEL_LAYOUT[key];
+    const px = center.x + (L.fx * size.x / 2) * 0.92;
+    const py = box.min.y + L.fy * size.y;
+    const pz = center.z + (L.fz * size.z / 2) * 0.92;
+
+    // A small flat disc that always faces the camera (a clean dot marker)
+    const disc = new THREE.Mesh(
+      new THREE.CircleGeometry(pinR, 24),
+      new THREE.MeshBasicMaterial({ color: HEALTH_COLORS[""], transparent:true, opacity:0.95, depthTest:true })
+    );
+    disc.position.set(px, py, pz);
+    disc.renderOrder = 3;
+    disc.userData.panelKey = key;
+    disc.userData.isPin = true;
+    carGroup.add(disc);
+
+    // Thin white ring outline around the dot so it reads as a marker
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(pinR*1.0, pinR*1.25, 24),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent:true, opacity:0.85, side:THREE.DoubleSide, depthTest:true })
+    );
+    ring.position.set(px, py, pz);
+    ring.renderOrder = 4;
+    disc.userData.ring = ring;
+    carGroup.add(ring);
+
+    hotspots[key] = disc;
+  }
+  applyHotspotColors();
+}
+
+function applyHotspotColors() {
+  for (const key in hotspots) {
+    const d = panelData[key];
+    const rating = d ? d.health_rating : "";
+    const pin = hotspots[key];
+    pin.material.color.setHex(HEALTH_COLORS[rating] ?? HEALTH_COLORS[""]);
+    pin.material.opacity = rating ? 1.0 : 0.55;
+    if (pin.userData.ring) pin.userData.ring.material.opacity = rating ? 0.9 : 0.4;
+  }
+}
+
+// ── Load the real car model ──
+const draco = new DRACOLoader();
+draco.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/gltf/');
+const loader = new GLTFLoader();
+loader.setDRACOLoader(draco);
+
+loader.load(window.MODEL_URL, (gltf) => {
+  const car = gltf.scene;
+
+  // Improve body material if present
+  car.traverse((c) => {
+    if (c.isMesh && c.name === 'body') {
+      c.material = new THREE.MeshPhysicalMaterial({
+        color: 0x111418, metalness: 0.6, roughness: 0.3,
+        clearcoat: 1.0, clearcoatRoughness: 0.05, envMapIntensity: 1.4,
+      });
+    }
+    if (c.isMesh && c.name === 'glass') {
+      c.material = new THREE.MeshPhysicalMaterial({ color:0x14141c, transmission:0.85, transparent:true, opacity:0.6, roughness:0.05, metalness:0, ior:1.5 });
+    }
+  });
+
+  // Normalize: center on ground, scale to a consistent size
+  const box = new THREE.Box3().setFromObject(car);
+  const size = new THREE.Vector3(); box.getSize(size);
+  const targetLen = 4.4;                       // desired car length in scene units
+  const longest = Math.max(size.x, size.z);
+  const scale = targetLen / longest;
+  car.scale.setScalar(scale);
+
+  // Recompute box after scaling, then drop onto ground & center
+  const box2 = new THREE.Box3().setFromObject(car);
+  const c2 = new THREE.Vector3(); box2.getCenter(c2);
+  car.position.x -= c2.x;
+  car.position.z -= c2.z;
+  car.position.y -= box2.min.y;
+
+  carGroup.add(car);
+
+  // Final box (in carGroup space) for hotspot placement
+  const finalBox = new THREE.Box3().setFromObject(car);
+  controls.target.set(0, (finalBox.max.y)*0.45, 0);
+  makeHotspots(finalBox);
+
+  loadingEl.style.display = 'none';
+
+  // If data already arrived before model, re-apply
+  applyHotspotColors();
+}, (xhr) => {
+  if (xhr.total) loadingEl.textContent = `Loading 3D model… ${Math.round(xhr.loaded/xhr.total*100)}%`;
+}, (err) => {
+  console.error(err);
+  loadingEl.textContent = 'Could not load the 3D model.';
+});
+
+// ── Raycasting on hotspots ──
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+function onClick(ev){
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((ev.clientX-rect.left)/rect.width)*2-1;
+  mouse.y = -((ev.clientY-rect.top)/rect.height)*2+1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(Object.values(hotspots), false);
+  if (hits.length) selectPanel(hits[0].object.userData.panelKey);
+}
+renderer.domElement.addEventListener('click', onClick);
+
+function selectPanel(key){
+  const d = panelData[key] || {};
+  document.getElementById('pvDetailEmpty').style.display='none';
+  document.getElementById('pvDetailContent').style.display='block';
+  document.getElementById('pvPanelName').textContent = PANEL_LABELS[key] || key;
+  const rating = d.health_rating || "";
+  const badge = document.getElementById('pvHealthBadge');
+  badge.textContent = HEALTH_LABELS[rating] || "Not inspected";
+  badge.className = 'pv-health-badge pv-health-' + (rating || 'none');
+  const tB=document.getElementById('pvTreatmentBlock'); if(d.treatment){tB.style.display='block'; document.getElementById('pvTreatment').textContent=d.treatment;} else tB.style.display='none';
+  const nB=document.getElementById('pvNotesBlock'); if(d.notes){nB.style.display='block'; document.getElementById('pvNotes').textContent=d.notes;} else nB.style.display='none';
+  const pB=document.getElementById('pvPhotosBlock');
+  if(d.before_photo||d.after_photo){ pB.style.display='block';
+    document.getElementById('pvBeforeWrap').style.display=d.before_photo?'block':'none';
+    document.getElementById('pvAfterWrap').style.display=d.after_photo?'block':'none';
+    if(d.before_photo)document.getElementById('pvBeforeImg').src=d.before_photo;
+    if(d.after_photo)document.getElementById('pvAfterImg').src=d.after_photo;
+  } else pB.style.display='none';
+  // emphasize the selected hotspot
+  for(const k in hotspots){ hotspots[k].scale.setScalar(1); }
+  if(hotspots[key]) hotspots[key].scale.setScalar(1.6);
+}
+window.__pvClear = function(){
+  document.getElementById('pvDetailContent').style.display='none';
+  document.getElementById('pvDetailEmpty').style.display='block';
+  for(const k in hotspots){ hotspots[k].scale.setScalar(1); }
+};
+
+fetch(window.PANELS_URL).then(r=>r.ok?r.json():Promise.reject()).then(json=>{
+  (json.panels||[]).forEach(p=>{ panelData[p.panel_key]=p; });
+  applyHotspotColors();
+  // build quick-jump chips for inspected panels
+  const chips = document.getElementById('pvChips');
+  (json.panels||[]).filter(p=>p.health_rating).forEach(p=>{
+    const c=document.createElement('span'); c.className='pv-chip'; c.textContent=p.label;
+    c.onclick=()=>selectPanel(p.panel_key); chips.appendChild(c);
+  });
+}).catch(()=>{ /* model still shows; data just absent */ });
+
+sizeRenderer(); window.addEventListener('resize', sizeRenderer);
+let idleSpin=true; controls.addEventListener('start',()=>{ idleSpin=false; });
+function animate(){
+  requestAnimationFrame(animate);
+  if(idleSpin) carGroup.rotation.y += 0.0022;
+  // billboard the pin discs + rings so they always face the camera as flat dots
+  const camWorld = camera.position;
+  for(const k in hotspots){
+    const pin = hotspots[k];
+    pin.lookAt(camWorld);
+    const r = pin.userData.ring;
+    if(r){ r.position.copy(pin.position); r.lookAt(camWorld); }
+  }
+  controls.update();
+  renderer.render(scene,camera);
+}
+animate();
+</script>
+
+</body></html>

@@ -329,6 +329,17 @@
     </div>
   </div>
 
+  <!-- ── 3D Paint Health Report ── -->
+  <div class="card" style="max-width:900px;">
+    <div class="card-title" style="font-size:22px;">Paint Health Report</div>
+    <p class="card-sub">Explore your vehicle in 3D. Tap any marker to see that panel's paint condition and the treatment we applied.</p>
+    <script>
+      window.PANELS_URL = "/customer/tracking/{{ token }}/panels.json";
+      window.MODEL_URL  = "/static/models/bmw_x7.glb";
+    </script>
+    {% include "_paint_viewer.html" %}
+  </div>
+
   <!-- Notes from the studio (client-visible only) -->
   {% if notes %}
   <div class="card">

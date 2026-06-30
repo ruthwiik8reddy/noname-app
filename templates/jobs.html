@@ -55,7 +55,7 @@
     {% if jobs %}
     <table>
       <thead>
-        <tr><th>#</th><th>Vehicle</th><th>Service</th><th>Technician</th><th>Price</th><th>Status</th><th>Tracking SMS</th></tr>
+        <tr><th>#</th><th>Vehicle</th><th>Service</th><th>Technician</th><th>Price</th><th>Status</th><th>Tracking SMS</th><th>Paint Inspection</th></tr>
       </thead>
       <tbody>
         {% for job in jobs %}
@@ -88,6 +88,18 @@
                 cursor:pointer;
               ">Send Link</button>
             </form>
+          </td>
+          <td>
+            <a href="/jobs/{{ job.id }}/inspection" style="
+              display:inline-block;
+              background:rgba(200,169,110,0.12);
+              border:1px solid rgba(200,169,110,0.3);
+              color:#C8A96E;
+              padding:5px 12px;
+              border-radius:5px;
+              font-size:11px;
+              text-decoration:none;
+            ">3D Inspection →</a>
           </td>
         </tr>
         {% endfor %}
