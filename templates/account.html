@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account — {{ studio }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'DM Sans',sans-serif; background:#0D0D0D; color:#E8E6E0; min-height:100vh; display:flex; }
+    .main { flex:1; padding:44px 48px; overflow-y:auto; max-width:860px; }
+    .page-heading { font-family:'Bebas Neue',sans-serif; font-size:30px; letter-spacing:.1em; color:#C8A96E; margin-bottom:4px; }
+    .page-sub { font-size:13px; color:rgba(255,255,255,0.3); margin-bottom:36px; }
+
+    /* Section */
+    .section { margin-bottom:36px; }
+    .section-title {
+      font-size:11px; font-weight:600; letter-spacing:.12em; text-transform:uppercase;
+      color:rgba(255,255,255,0.3); margin-bottom:16px;
+      padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.06);
+    }
+
+    /* Info card grid */
+    .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .info-card {
+      background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07);
+      border-radius:10px; padding:16px 18px;
+    }
+    .info-label { font-size:10px; text-transform:uppercase; letter-spacing:.1em; color:rgba(255,255,255,0.3); margin-bottom:6px; }
+    .info-value { font-size:14px; color:#E8E6E0; font-weight:500; }
+    .info-value.gold { color:#C8A96E; }
+
+    /* Plan card */
+    .plan-card {
+      background:rgba(200,169,110,0.06); border:1px solid rgba(200,169,110,0.2);
+      border-radius:12px; padding:22px 24px;
+      display:flex; align-items:center; justify-content:space-between; gap:20px;
+    }
+    .plan-left h3 {
+      font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.08em;
+      color:#C8A96E; margin-bottom:4px;
+    }
+    .plan-left p { font-size:13px; color:rgba(255,255,255,0.4); line-height:1.5; }
+    .plan-badge {
+      display:inline-block; padding:4px 12px; border-radius:999px;
+      font-size:11px; font-weight:600; background:rgba(74,222,128,0.15); color:#4ADE80;
+      margin-top:8px;
+    }
+    .btn-upgrade {
+      padding:11px 24px; background:#C8A96E; color:#0D0D0D; border:none;
+      border-radius:6px; font-family:'Bebas Neue',sans-serif; font-size:15px;
+      letter-spacing:.08em; cursor:pointer; white-space:nowrap;
+      text-decoration:none; transition:opacity .15s;
+    }
+    .btn-upgrade:hover { opacity:.85; }
+
+    /* Plan features */
+    .plan-features { margin-top:16px; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .plan-feature {
+      font-size:12px; color:rgba(255,255,255,0.5);
+      padding-left:16px; position:relative; line-height:1.5;
+    }
+    .plan-feature::before { content:'✓'; position:absolute; left:0; color:#C8A96E; font-size:11px; font-weight:700; }
+
+    /* Form inputs */
+    .form-group { display:flex; flex-direction:column; gap:7px; margin-bottom:18px; }
+    .form-group label { font-size:11px; font-weight:500; letter-spacing:.07em; text-transform:uppercase; color:rgba(255,255,255,0.4); }
+    .form-group input {
+      padding:11px 14px; background:rgba(255,255,255,0.06);
+      border:1px solid rgba(255,255,255,0.1); border-radius:4px;
+      color:#E8E6E0; font-family:'DM Sans',sans-serif; font-size:13px;
+      outline:none; transition:border-color .2s; max-width:420px;
+    }
+    .form-group input:focus { border-color:#C8A96E; }
+    .form-hint { font-size:11px; color:rgba(255,255,255,0.25); margin-top:4px; line-height:1.5; }
+
+    .btn-save {
+      padding:10px 26px; background:rgba(200,169,110,0.12); color:#C8A96E;
+      border:1px solid rgba(200,169,110,0.3); border-radius:4px;
+      font-family:'DM Sans',sans-serif; font-size:13px; cursor:pointer;
+      transition:background .15s;
+    }
+    .btn-save:hover { background:rgba(200,169,110,0.2); }
+
+    /* Flash */
+    .flash-ok {
+      background:rgba(74,222,128,0.08); border:1px solid rgba(74,222,128,0.25);
+      border-radius:6px; padding:10px 16px; font-size:13px; color:#4ADE80;
+      margin-bottom:20px;
+    }
+    .flash-err {
+      background:rgba(248,113,113,0.08); border:1px solid rgba(248,113,113,0.25);
+      border-radius:6px; padding:10px 16px; font-size:13px; color:#F87171;
+      margin-bottom:20px;
+    }
+
+    /* Divider */
+    .divider { height:1px; background:rgba(255,255,255,0.06); margin:32px 0; }
+  </style>
+</head>
+<body>
+{% include "_sidebar.html" %}
+
+<main class="main">
+  <h1 class="page-heading">Account</h1>
+  <p class="page-sub">Your profile and workspace settings</p>
+
+  {% if flash_ok %}<div class="flash-ok">{{ flash_ok }}</div>{% endif %}
+  {% if flash_err %}<div class="flash-err">{{ flash_err }}</div>{% endif %}
+
+  <!-- ── Profile ─────────────────────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-title">Profile</div>
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="info-label">Name</div>
+        <div class="info-value">{{ current_name }}</div>
+      </div>
+      <div class="info-card">
+        <div class="info-label">Role</div>
+        <div class="info-value gold">{{ current_role_label }}</div>
+      </div>
+      <div class="info-card">
+        <div class="info-label">Studio</div>
+        <div class="info-value">{{ studio }}</div>
+      </div>
+      <div class="info-card">
+        <div class="info-label">Location</div>
+        <div class="info-value">{{ city }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Admin-only sections ──────────────────────────────────────────────── -->
+  {% if is_admin %}
+
+  <div class="divider"></div>
+
+  <!-- Subscription plan -->
+  <div class="section">
+    <div class="section-title">Subscription</div>
+    <div class="plan-card">
+      <div class="plan-left">
+        <h3>{{ plan_name }}</h3>
+        <p>{{ plan_description }}</p>
+        <span class="plan-badge">{{ plan_status }}</span>
+      </div>
+      {% if plan_name == "Free" %}
+      <a href="#" class="btn-upgrade">Upgrade Plan</a>
+      {% endif %}
+    </div>
+
+    <div class="plan-features">
+      {% for feature in plan_features %}
+      <div class="plan-feature">{{ feature }}</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- SMS / Twilio configuration -->
+  <div class="section">
+    <div class="section-title">SMS Configuration (Twilio)</div>
+    <p style="font-size:13px;color:rgba(255,255,255,0.4);margin-bottom:20px;line-height:1.6;">
+      Configure your Twilio credentials to send customers live tracking links and status updates via SMS.
+      These are stored securely in your environment config.
+    </p>
+
+    <form method="POST" action="/account/sms-config">
+      <div class="form-group">
+        <label>Twilio Account SID</label>
+        <input type="text" name="twilio_sid" value="{{ twilio_sid }}" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+        <span class="form-hint">Found in your Twilio Console dashboard.</span>
+      </div>
+
+      <div class="form-group">
+        <label>Twilio Auth Token</label>
+        <input type="password" name="twilio_token" value="{{ twilio_token_masked }}"
+               placeholder="Enter to update"
+               autocomplete="new-password">
+        <span class="form-hint">Leave blank to keep existing token unchanged.</span>
+      </div>
+
+      <div class="form-group">
+        <label>Twilio From Number</label>
+        <input type="text" name="twilio_from" value="{{ twilio_from }}" placeholder="+1XXXXXXXXXX">
+        <span class="form-hint">The phone number SMS messages are sent from. Must be a verified Twilio number.</span>
+      </div>
+
+      <div class="form-group">
+        <label>App Base URL</label>
+        <input type="text" name="app_base_url" value="{{ app_base_url }}" placeholder="https://yourdomain.com">
+        <span class="form-hint">Used to build the tracking link in SMS messages. No trailing slash.</span>
+      </div>
+
+      <button type="submit" class="btn-save">Save SMS Settings</button>
+    </form>
+  </div>
+
+  {% else %}
+  <!-- Non-admin: show a simple note -->
+  <div class="divider"></div>
+  <div class="section">
+    <p style="font-size:13px;color:rgba(255,255,255,0.3);line-height:1.6;">
+      Subscription and billing settings are managed by your studio admin.<br>
+      Contact <strong>{{ owner }}</strong> to make changes.
+    </p>
+  </div>
+  {% endif %}
+
+</main>
+</body>
+</html>

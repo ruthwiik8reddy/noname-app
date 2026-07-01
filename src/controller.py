@@ -1060,6 +1060,138 @@ def assistant_query():
     return jsonify(answer.as_dict())
 
 
+# ── Account ───────────────────────────────────────────────────────────────────
+
+# Subscription plan definitions — extend these when you add paid tiers
+PLANS = {
+    "free": {
+        "name":        "Free",
+        "description": "Everything you need to get started — no credit card required.",
+        "status":      "Active",
+        "features": [
+            "Unlimited bookings",
+            "Job tracking & DVI",
+            "Customer CRM",
+            "Estimates & approvals",
+            "Before/after media gallery",
+            "AI Assistant",
+            "Live customer tracking link",
+            "Warranty card PDF",
+            "SMS (bring your own Twilio)",
+        ],
+    },
+    # Future tiers go here — e.g. "pro", "enterprise"
+}
+
+
+def _get_studio_plan(studio_id: int) -> dict:
+    """Return the current plan for a studio. Extend this when billing is added."""
+    # Currently all studios are on the free plan.
+    # When you add a `plan` column to the studios table, look it up here.
+    return PLANS["free"]
+
+
+@bp.route("/account")
+@login_required
+def account():
+    sid  = session["studio_id"]
+    role = current_role()
+    conn = get_db()
+
+    # Twilio config — read from env so it reflects whatever is live
+    twilio_sid   = os.getenv("TWILIO_ACCOUNT_SID", "")
+    twilio_token = os.getenv("TWILIO_AUTH_TOKEN", "")
+    twilio_from  = os.getenv("TWILIO_FROM_NUMBER", "")
+    app_base_url = os.getenv("APP_BASE_URL", "")
+
+    # Mask the auth token — show last 4 chars only for confirmation
+    twilio_token_masked = ("•" * 20 + twilio_token[-4:]) if twilio_token else ""
+
+    plan = _get_studio_plan(sid)
+
+    return render_template("account.html",
+        **sidebar_context(), **auth_context(), active_page="account",
+        plan_name=plan["name"],
+        plan_description=plan["description"],
+        plan_status=plan["status"],
+        plan_features=plan["features"],
+        twilio_sid=twilio_sid,
+        twilio_token_masked=twilio_token_masked,
+        twilio_from=twilio_from,
+        app_base_url=app_base_url,
+        flash_ok=request.args.get("saved"),
+        flash_err=request.args.get("error"),
+    )
+
+
+@bp.route("/account/sms-config", methods=["POST"])
+@admin_required
+def account_sms_config():
+    """
+    Save Twilio credentials to the .env file.
+    Only admins can reach this route.
+    """
+    f = request.form
+
+    twilio_sid   = f.get("twilio_sid", "").strip()
+    twilio_token = f.get("twilio_token", "").strip()
+    twilio_from  = f.get("twilio_from", "").strip()
+    app_base_url = f.get("app_base_url", "").rstrip("/").strip()
+
+    env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
+
+    try:
+        # Read existing .env
+        if os.path.exists(env_path):
+            with open(env_path, "r", encoding="utf-8") as fh:
+                lines = fh.readlines()
+        else:
+            lines = []
+
+        # Keys we manage — map env key → new value
+        updates = {
+            "TWILIO_ACCOUNT_SID": twilio_sid,
+            "TWILIO_FROM_NUMBER": twilio_from,
+            "APP_BASE_URL":       app_base_url,
+        }
+        # Only update auth token if a new one was supplied (not masked placeholder)
+        if twilio_token and not twilio_token.startswith("•"):
+            updates["TWILIO_AUTH_TOKEN"] = twilio_token
+
+        # Update lines in-place, add missing keys at the end
+        handled = set()
+        new_lines = []
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith("#") or "=" not in stripped:
+                new_lines.append(line)
+                continue
+            key = stripped.split("=", 1)[0].strip()
+            if key in updates:
+                new_lines.append(f"{key}={updates[key]}\n")
+                handled.add(key)
+            else:
+                new_lines.append(line)
+
+        for key, val in updates.items():
+            if key not in handled:
+                new_lines.append(f"{key}={val}\n")
+
+        with open(env_path, "w", encoding="utf-8") as fh:
+            fh.writelines(new_lines)
+
+        # Also update os.environ for the current process so SMS works immediately
+        # without restarting the server
+        import os as _os
+        for key, val in updates.items():
+            _os.environ[key] = val
+
+        return redirect(url_for("main.account") + "?saved=SMS+settings+saved+successfully")
+
+    except Exception as exc:
+        return redirect(url_for("main.account") + f"?error=Save+failed:+{exc}")
+
+
 # ── Tracking token helpers ─────────────────────────────────────────────────────
 
 def _generate_tracking_token() -> str:
