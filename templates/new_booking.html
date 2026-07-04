@@ -126,14 +126,15 @@
   <form method="POST" id="bookingForm">
     <div class="form-grid">
 
-      <!-- Customer ID lookup — sits naturally in the grid -->
+      <!-- Estimate ID lookup — replaces Customer ID lookup -->
       <div class="form-group full">
-        <label>Customer ID (returning customer)</label>
+        <label>Estimate ID</label>
         <div class="lookup-row">
-          <input type="number" id="lookupId" placeholder="Enter ID to auto-fill" min="1"
-            onkeydown="if(event.key==='Enter'){event.preventDefault();lookupCustomer();}">
-          <button type="button" onclick="lookupCustomer()">Search</button>
+          <input type="number" id="lookupEstId" placeholder="Enter EST-ID to auto-fill" min="1"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();lookupEstimate();}">
+          <button type="button" onclick="lookupEstimate()">Search</button>
         </div>
+        <input type="hidden" name="estimate_id" id="field_estimate_id">
       </div>
 
       <div class="form-group">
@@ -148,10 +149,16 @@
 
       <div class="form-group full">
         <label>Vehicle *</label>
-        <select id="field_vehicle_select" name="vehicle" style="display:none">
-          <option value="">— Select vehicle —</option>
-        </select>
-        <input type="text" id="field_vehicle_text" name="vehicle" value="{{ form.get('vehicle','') }}" placeholder="e.g. 2023 BMW M4 Competition" required>
+        <input type="text" id="field_vehicle" name="vehicle" value="{{ form.get('vehicle','') }}" placeholder="e.g. 2023 BMW M4 Competition" required>
+      </div>
+
+      <!-- Services from estimate — read-only display + hidden value -->
+      <div class="form-group full">
+        <label>Services (from estimate)</label>
+        <input type="text" id="field_services" name="services_summary"
+               value="{{ form.get('services_summary','') }}"
+               placeholder="Will be filled from estimate"
+               readonly style="color:rgba(255,255,255,0.45);cursor:default;">
       </div>
 
       <!-- Service selection — real radio buttons styled as cards -->
@@ -249,39 +256,29 @@ function refreshSlots() {
     });
 }
 
-// ── Customer lookup ────────────────────────────────────────────────────────
-function lookupCustomer() {
-  const id = document.getElementById('lookupId').value.trim();
+// ── Estimate lookup ────────────────────────────────────────────────────────
+function lookupEstimate() {
+  const id = document.getElementById('lookupEstId').value.trim();
   if (!id) return;
 
-  fetch('/customers/' + id + '/lookup')
+  fetch('/estimates/' + id + '/lookup')
     .then(r => r.ok ? r.json() : Promise.reject())
-    .then(c => {
-      document.getElementById('field_customer_name').value  = c.name;
-      document.getElementById('field_customer_phone').value = c.phone;
-
-      const sel = document.getElementById('field_vehicle_select');
-      const txt = document.getElementById('field_vehicle_text');
-      sel.innerHTML = '<option value="">— Select vehicle —</option>';
-
-      if (c.vehicles.length > 0) {
-        c.vehicles.forEach(v => {
-          const label = v.year ? v.year + ' ' + v.make_model : v.make_model;
-          sel.innerHTML += `<option value="${v.make_model}">${label}</option>`;
-        });
-        sel.options[1].selected = true;
-        sel.setAttribute('required', 'required');
-        sel.style.display = 'block';
-        txt.style.display = 'none';
-        txt.removeAttribute('required');
-      }
+    .then(e => {
+      document.getElementById('field_estimate_id').value    = e.id;
+      document.getElementById('field_customer_name').value  = e.customer_name;
+      document.getElementById('field_customer_phone').value = e.customer_phone;
+      document.getElementById('field_vehicle').value        = e.vehicle;
+      document.getElementById('field_services').value       = e.services_summary;
+      showToast('✓ EST-' + e.id + ' — ' + e.customer_name, true);
     })
-    .catch(() => showToast('Customer not found'));
+    .catch(() => showToast('Estimate not found'));
 }
 
-function showToast(msg) {
+function showToast(msg, ok) {
   const t = document.getElementById('toast');
   t.textContent = msg;
+  t.style.borderColor = ok ? 'rgba(74,222,128,0.4)' : 'rgba(248,113,113,0.4)';
+  t.style.color       = ok ? '#4ADE80' : '#F87171';
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2500);
 }

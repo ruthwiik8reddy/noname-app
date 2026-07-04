@@ -111,37 +111,26 @@
 
       <!-- Row 1: Customer ID + Search (full width) -->
       <div class="form-group full">
-        <label>Customer ID (returning customer)</label>
+        <label>Customer ID</label>
         <div class="lookup-row">
-          <input type="number" id="lookupId" placeholder="Enter ID to auto-fill" min="1"
+          <input type="number" id="lookupId" placeholder="Enter customer ID" min="1"
             onkeydown="if(event.key==='Enter'){event.preventDefault();lookupCustomer();}">
           <button type="button" onclick="lookupCustomer()">Search</button>
         </div>
+        <!-- Hidden field — carries customer_id to POST -->
+        <input type="hidden" id="field_customer_id" name="customer_id">
       </div>
 
-      <div class="form-group">
-        <label>Customer Name *</label>
-        <input type="text" id="field_customer_name" name="customer_name" placeholder="John Smith" required>
-      </div>
-      <div class="form-group">
-        <label>Email *</label>
-        <input type="email" id="field_customer_email" name="customer_email" placeholder="john@email.com" required>
-      </div>
-      <div class="form-group">
-        <label>Phone</label>
-        <input type="text" id="field_customer_phone" name="customer_phone" placeholder="+1 (555) 000-0000">
-      </div>
-
-      <!-- Vehicle field | AI Estimate button — same row -->
-      <div class="form-group">
+      <!-- Vehicle — shown after customer lookup -->
+      <div class="form-group full" id="vehicle-row" style="display:none">
         <label>Vehicle *</label>
-        <select id="field_vehicle_select" name="vehicle" style="display:none">
+        <select id="field_vehicle_select" name="vehicle">
           <option value="">— Select vehicle —</option>
         </select>
-        <input type="text" id="field_vehicle_text" name="vehicle" placeholder="2023 BMW M4 Competition" required>
       </div>
 
-      <div class="form-group" style="justify-content:flex-end;">
+      <!-- AI Estimate button beside vehicle -->
+      <div class="form-group" style="justify-content:flex-end; display:none;" id="ai-btn-row">
         <label style="visibility:hidden">placeholder</label>
         <a href="/assistant" class="btn-ai" style="align-self:flex-start;">✦ AI Estimate</a>
       </div>
@@ -270,32 +259,33 @@ function lookupCustomer() {
   fetch('/customers/' + id + '/lookup')
     .then(r => r.ok ? r.json() : Promise.reject())
     .then(c => {
-      document.getElementById('field_customer_name').value  = c.name;
-      document.getElementById('field_customer_email').value = c.email;
-      document.getElementById('field_customer_phone').value = c.phone;
+      // Store customer_id as hidden field
+      document.getElementById('field_customer_id').value = c.id;
 
+      // Populate vehicle dropdown
       const sel = document.getElementById('field_vehicle_select');
-      const txt = document.getElementById('field_vehicle_text');
       sel.innerHTML = '<option value="">— Select vehicle —</option>';
+      c.vehicles.forEach(v => {
+        const label = v.year ? v.year + ' ' + v.make_model : v.make_model;
+        sel.innerHTML += `<option value="${v.make_model}">${label}</option>`;
+      });
+      if (c.vehicles.length > 0) sel.options[1].selected = true;
+      sel.setAttribute('required', 'required');
 
-      if (c.vehicles.length > 0) {
-        c.vehicles.forEach(v => {
-          const label = v.year ? v.year + ' ' + v.make_model : v.make_model;
-          sel.innerHTML += `<option value="${v.make_model}">${label}</option>`;
-        });
-        sel.options[1].selected = true;
-        sel.setAttribute('required', 'required');
-        sel.style.display = 'block';
-        txt.style.display = 'none';
-        txt.removeAttribute('required');
-      }
+      // Show vehicle row + AI button
+      document.getElementById('vehicle-row').style.display = 'flex';
+      document.getElementById('ai-btn-row').style.display  = 'flex';
+
+      showToast('✓ ' + c.name + ' — ' + c.vehicles.length + ' vehicle(s)', true);
     })
     .catch(() => showToast('Customer not found'));
 }
 
-function showToast(msg) {
+function showToast(msg, ok) {
   const t = document.getElementById('toast');
   t.textContent = msg;
+  t.style.borderColor = ok ? 'rgba(74,222,128,0.4)' : 'rgba(248,113,113,0.4)';
+  t.style.color       = ok ? '#4ADE80' : '#F87171';
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2500);
 }

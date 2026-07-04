@@ -172,8 +172,9 @@ def new_booking():
         customer_name  = f["customer_name"].strip()
         customer_phone = f["customer_phone"].strip()
         vehicle_name   = f["vehicle"].strip()
+        estimate_id    = f.get("estimate_id") or None
 
-        # Auto-create or find customer record (CRM integration)
+        # Auto-create or find customer record
         existing_customer = conn.execute(
             "SELECT id FROM customers WHERE studio_id=? AND phone=?",
             (sid, customer_phone)
@@ -203,11 +204,11 @@ def new_booking():
         conn.execute("""
             INSERT INTO bookings
             (studio_id, customer_name, customer_phone, vehicle,
-             service_id, bay_id, date, time_slot, notes, status, customer_id)
-            VALUES (?,?,?,?,?,?,?,?,?,'Pending',?)
+             service_id, bay_id, date, time_slot, notes, status, customer_id, estimate_id)
+            VALUES (?,?,?,?,?,?,?,?,?,'Pending',?,?)
         """, (sid, customer_name, customer_phone, vehicle_name,
               f["service_id"], f.get("bay_id") or None, f["date"], f["time_slot"],
-              f.get("notes", "").strip(), customer_id))
+              f.get("notes", "").strip(), customer_id, estimate_id))
         conn.commit()
         return redirect(url_for("main.bookings"))
 
@@ -373,6 +374,24 @@ def new_estimate():
 
     if request.method == "POST":
         f = request.form
+
+        # Customer comes from the CRM lookup — pull from DB, not form fields
+        customer_id_raw = f.get("customer_id", "").strip()
+        customer_name  = ""
+        customer_email = ""
+        customer_phone = ""
+        vehicle        = f.get("vehicle", "").strip()
+
+        if customer_id_raw:
+            cust = conn.execute(
+                "SELECT name, email, phone FROM customers WHERE id=? AND studio_id=?",
+                (customer_id_raw, sid)
+            ).fetchone()
+            if cust:
+                customer_name  = cust["name"]
+                customer_email = cust["email"] or ""
+                customer_phone = cust["phone"] or ""
+
         names       = f.getlist("item_name")
         descs       = f.getlist("item_desc")
         quantities  = f.getlist("item_qty")
@@ -395,20 +414,24 @@ def new_estimate():
         tax_amount = int(subtotal * tax_pct / 100)
         total      = subtotal + tax_amount
 
+        # Build human-readable services summary for booking autofill
+        services_summary = ", ".join(
+            it["name"] + (f" ×{it['qty']}" if it["qty"] > 1 else "")
+            for it in items
+        )
+
         cur = conn.execute("""
             INSERT INTO estimates
             (studio_id, customer_name, customer_email, customer_phone,
              vehicle, status, subtotal, tax_percent, tax_amount, total,
-             notes, internal_notes)
-            VALUES (?,?,?,?,?,'Draft',?,?,?,?,?,?)
-        """, (sid,
-              f.get("customer_name", "").strip(),
-              f.get("customer_email", "").strip(),
-              f.get("customer_phone", "").strip(),
-              f.get("vehicle", "").strip(),
+             notes, internal_notes, customer_id, services_summary)
+            VALUES (?,?,?,?,?,'Draft',?,?,?,?,?,?,?,?)
+        """, (sid, customer_name, customer_email, customer_phone, vehicle,
               subtotal, tax_pct, tax_amount, total,
               f.get("notes", "").strip(),
-              f.get("internal_notes", "").strip()))
+              f.get("internal_notes", "").strip(),
+              customer_id_raw or None,
+              services_summary))
         estimate_id = cur.lastrowid
 
         for it in items:
@@ -425,6 +448,34 @@ def new_estimate():
     return render_template("new_estimate.html",
         **sidebar_context(), **auth_context(), active_page="estimates", services=services
     )
+
+
+@bp.route("/estimates/<int:estimate_id>/lookup")
+@staff_or_admin_required
+def estimate_lookup(estimate_id):
+    """
+    AJAX — returns estimate data for the new_booking form autofill.
+    Returns customer name, phone, vehicle, services summary, and total.
+    """
+    sid  = session["studio_id"]
+    conn = get_db()
+    est  = conn.execute(
+        "SELECT * FROM estimates WHERE id=? AND studio_id=?", (estimate_id, sid)
+    ).fetchone()
+    if not est:
+        return jsonify({"error": "Estimate not found"}), 404
+
+    return jsonify({
+        "id":               est["id"],
+        "customer_name":    est["customer_name"],
+        "customer_phone":   est["customer_phone"],
+        "customer_email":   est["customer_email"],
+        "vehicle":          est["vehicle"],
+        "services_summary": est["services_summary"] or "",
+        "total":            est["total"],
+        "total_display":    f"${est['total']/100:.2f}",
+        "status":           est["status"],
+    })
 
 
 @bp.route("/estimates/<int:estimate_id>")
