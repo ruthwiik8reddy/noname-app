@@ -1,4 +1,4 @@
-<!--
+<!-- 
   _paint_viewer.html — 3D Paint Health Viewer (REAL panel highlighting)
   ----------------------------------------------------------------------
   Loads a compressed BMW X7 GLB (~2MB, Draco) whose body panels are
@@ -9,7 +9,7 @@
   REQUIRES the including page to set, BEFORE including this file:
     window.PANELS_URL  — JSON endpoint for panel data
     window.MODEL_URL   — path to the GLB (e.g. /static/models/bmw_x7.glb)
--->
+
 <style>
   .pv-wrap { display:grid; grid-template-columns: 1fr 320px; gap:18px; width:100%; }
   @media (max-width: 760px) { .pv-wrap { grid-template-columns: 1fr; } }
@@ -318,4 +318,509 @@ sizeRenderer(); window.addEventListener('resize', sizeRenderer);
 let idleSpin=true; controls.addEventListener('start',()=>{ idleSpin=false; });
 function animate(){ requestAnimationFrame(animate); if(idleSpin) carGroup.rotation.y+=0.0022; controls.update(); renderer.render(scene,camera); }
 animate();
+</script>  -->
+
+<style>
+  .pv-wrap {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 18px;
+    width: 100%;
+  }
+  @media (max-width: 760px) {
+    .pv-wrap {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Left Stage (Blueprint) */
+  .pv-stage {
+    position: relative;
+    width: 100%;
+    background: radial-gradient(ellipse at 50% 35%, #232328 0%, #0d0d0d 78%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    overflow: hidden;
+    min-height: 340px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 30px 0;
+  }
+  .pv-hint {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.35);
+    white-space: nowrap;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 5px 12px;
+    border-radius: 20px;
+    pointer-events: none;
+  }
+
+  .pv-legend {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    background: rgba(0, 0, 0, 0.35);
+    padding: 10px 12px;
+    border-radius: 8px;
+  }
+  .pv-legend-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.55);
+  }
+  .pv-swatch {
+    width: 11px;
+    height: 11px;
+    border-radius: 3px;
+  }
+
+  /* Right Stage (Details) */
+  .pv-detail {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 18px 20px;
+    min-height: 340px;
+  }
+  .pv-detail-empty {
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 13px;
+    text-align: center;
+    padding-top: 70px;
+    line-height: 1.6;
+  }
+  .pv-panel-name {
+    font-family: "Bebas Neue", sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.06em;
+    color: #c8a96e;
+    margin-bottom: 4px;
+  }
+  .pv-health-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-bottom: 16px;
+  }
+  .pv-health-excellent {
+    background: rgba(74, 222, 128, 0.16);
+    color: #4ade80;
+  }
+  .pv-health-good {
+    background: rgba(132, 204, 90, 0.16);
+    color: #a3e635;
+  }
+  .pv-health-fair {
+    background: rgba(251, 191, 36, 0.16);
+    color: #fbbf24;
+  }
+  .pv-health-poor {
+    background: rgba(248, 113, 113, 0.16);
+    color: #f87171;
+  }
+  .pv-health-none {
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.4);
+  }
+  .pv-field-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.3);
+    margin: 14px 0 5px;
+  }
+  .pv-field-value {
+    font-size: 14px;
+    color: #e8e6e0;
+    line-height: 1.5;
+  }
+  .pv-photos {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 8px;
+  }
+  .pv-photo {
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .pv-photo img {
+    width: 100%;
+    height: 90px;
+    object-fit: cover;
+    display: block;
+  }
+  .pv-photo-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.3);
+    padding: 4px 6px;
+    text-align: center;
+  }
+  .pv-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 14px;
+    justify-content: center;
+  }
+  .pv-chip {
+    font-size: 10px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.03);
+  }
+  .pv-chip:hover {
+    border-color: rgba(200, 169, 110, 0.5);
+    color: #c8a96e;
+  }
+
+  /* Interactive Blueprint Engine */
+  #car-blueprint {
+    width: 100%;
+    max-width: 240px;
+    filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.9));
+    transition: transform 0.3s ease;
+  }
+  .car-panel {
+    fill: rgba(20, 20, 22, 0.85);
+    stroke: rgba(255, 255, 255, 0.1);
+    stroke-width: 2;
+    cursor: pointer;
+    transition: fill 0.3s ease, stroke 0.3s ease, filter 0.3s ease;
+  }
+  .car-glass {
+    fill: rgba(0, 0, 0, 0.9);
+    stroke: rgba(255, 255, 255, 0.05);
+    stroke-width: 2;
+    cursor: pointer;
+    transition: fill 0.3s ease;
+  }
+
+  @keyframes bgrn {
+    0%,
+    100% {
+      fill: rgba(24, 48, 28, 0.9);
+      stroke: rgba(48, 209, 88, 0.45);
+    }
+    50% {
+      fill: rgba(30, 60, 35, 1);
+      stroke: rgba(48, 209, 88, 0.85);
+    }
+  }
+  @keyframes bamb {
+    0%,
+    100% {
+      fill: rgba(50, 44, 14, 0.9);
+      stroke: rgba(255, 214, 10, 0.45);
+    }
+    50% {
+      fill: rgba(62, 54, 16, 1);
+      stroke: rgba(255, 214, 10, 0.85);
+    }
+  }
+  @keyframes bred {
+    0%,
+    100% {
+      fill: rgba(50, 16, 16, 0.9);
+      stroke: rgba(255, 69, 58, 0.45);
+    }
+    50% {
+      fill: rgba(62, 20, 20, 1);
+      stroke: rgba(255, 69, 58, 0.85);
+    }
+  }
+
+  .hd-excellent {
+    animation: bgrn 3.5s infinite ease-in-out;
+  }
+  .hd-good {
+    animation: bgrn 3.5s infinite ease-in-out;
+  }
+  .hd-fair {
+    animation: bamb 3.5s infinite ease-in-out;
+  }
+  .hd-poor {
+    animation: bred 3.5s infinite ease-in-out;
+  }
+
+  .car-panel:hover {
+    fill: rgba(70, 70, 75, 1);
+  }
+  .active-panel {
+    animation: none !important;
+    fill: rgba(80, 80, 85, 1) !important;
+    stroke: #c8a96e !important;
+    stroke-width: 3 !important;
+    filter: drop-shadow(0 0 16px rgba(200, 169, 110, 0.7));
+  }
+</style>
+
+<div class="pv-wrap">
+  <div class="pv-stage" id="pvStage">
+    <div class="pv-legend">
+      <div class="pv-legend-row">
+        <span class="pv-swatch" style="background: #4ade80"></span> Excellent
+      </div>
+      <div class="pv-legend-row">
+        <span class="pv-swatch" style="background: #a3e635"></span> Good
+      </div>
+      <div class="pv-legend-row">
+        <span class="pv-swatch" style="background: #fbbf24"></span> Fair
+      </div>
+      <div class="pv-legend-row">
+        <span class="pv-swatch" style="background: #f87171"></span> Poor
+      </div>
+      <div class="pv-legend-row">
+        <span class="pv-swatch" style="background: #5a5a64"></span> Not
+        inspected
+      </div>
+    </div>
+
+    <svg viewBox="0 0 300 600" id="car-blueprint">
+      <path
+        id="front_bumper"
+        class="car-panel"
+        d="M 50,100 Q 150,50 250,100 L 240,120 L 60,120 Z"
+        data-name="Front Bumper"
+      />
+      <path
+        id="hood"
+        class="car-panel"
+        d="M 60,125 L 240,125 L 230,220 L 70,220 Z"
+        data-name="Hood"
+      />
+      <path
+        id="windshield"
+        class="car-glass"
+        d="M 70,230 L 230,230 L 220,280 L 80,280 Z"
+        data-name="Windshield"
+      />
+      <path
+        id="body_shell"
+        class="car-panel"
+        d="M 80,290 L 220,290 L 220,400 L 80,400 Z"
+        data-name="Roof / Body Shell"
+      />
+      <path
+        id="rear_glass"
+        class="car-glass"
+        d="M 80,410 L 220,410 L 230,450 L 70,450 Z"
+        data-name="Rear Glass"
+      />
+      <path
+        id="trunk"
+        class="car-panel"
+        d="M 70,460 L 230,460 L 240,530 Q 150,550 60,530 Z"
+        data-name="Trunk"
+      />
+      <path
+        id="left_doors"
+        class="car-panel"
+        d="M 40,230 L 75,230 L 75,400 L 40,400 Z"
+        data-name="Left Doors"
+      />
+      <path
+        id="right_doors"
+        class="car-panel"
+        d="M 260,230 L 225,230 L 225,400 L 260,400 Z"
+        data-name="Right Doors"
+      />
+    </svg>
+
+    <div class="pv-hint">Tap an illuminated panel to view details</div>
+  </div>
+
+  <div class="pv-detail" id="pvDetail">
+    <div class="pv-detail-empty" id="pvDetailEmpty">
+      Click a highlighted panel on the<br />vehicle to see its paint health<br />and
+      the treatment applied.
+      <div class="pv-chips" id="pvChips"></div>
+    </div>
+    <div id="pvDetailContent" style="display: none">
+      <div class="pv-panel-name" id="pvPanelName">—</div>
+      <span class="pv-health-badge pv-health-none" id="pvHealthBadge"
+        >Not inspected</span
+      >
+
+      <div id="pvTreatmentBlock" style="display: none">
+        <div class="pv-field-label">Treatment Applied</div>
+        <div class="pv-field-value" id="pvTreatment">—</div>
+      </div>
+
+      <div id="pvNotesBlock" style="display: none">
+        <div class="pv-field-label">Notes</div>
+        <div class="pv-field-value" id="pvNotes">—</div>
+      </div>
+
+      <div id="pvPhotosBlock" style="display: none">
+        <div class="pv-field-label">Before / After</div>
+        <div class="pv-photos">
+          <div class="pv-photo" id="pvBeforeWrap">
+            <img id="pvBeforeImg" src="" alt="Before" />
+            <div class="pv-photo-label">Before</div>
+          </div>
+          <div class="pv-photo" id="pvAfterWrap">
+            <img id="pvAfterImg" src="" alt="After" />
+            <div class="pv-photo-label">After</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pv-chips">
+        <span class="pv-chip" onclick="window.__pvClear()"
+          >← Clear selection</span
+        >
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let panelData = {};
+  const HEALTH_LABELS = {
+    excellent: "Excellent",
+    good: "Good",
+    fair: "Fair",
+    poor: "Poor",
+    "": "Not inspected",
+  };
+
+  // Maps backend panel keys to the simplified SVG blueprint IDs
+  const SVG_MAPPING = {
+    hood: "hood",
+    trunk: "trunk",
+    body_shell: "body_shell",
+    front_bumper: "front_bumper",
+    rear_bumper: "front_bumper", // Fallback for simple blueprint
+    front_left_door: "left_doors",
+    rear_left_door: "left_doors",
+    front_right_door: "right_doors",
+    rear_right_door: "right_doors",
+    left_fender: "left_doors", // Fallback
+    right_fender: "right_doors", // Fallback
+  };
+
+  function selectPanel(svgId, actualKey = null) {
+    const keyToUse = actualKey || svgId;
+    const d = panelData[keyToUse] || {};
+
+    // Manage UI State
+    document.getElementById("pvDetailEmpty").style.display = "none";
+    document.getElementById("pvDetailContent").style.display = "block";
+
+    const svgEl = document.getElementById(svgId);
+    document.getElementById("pvPanelName").textContent = svgEl
+      ? svgEl.getAttribute("data-name")
+      : keyToUse.replace(/_/g, " ");
+
+    // Health Badge
+    const rating = d.health_rating || "";
+    const badge = document.getElementById("pvHealthBadge");
+    badge.textContent = HEALTH_LABELS[rating] || "Not inspected";
+    badge.className = "pv-health-badge pv-health-" + (rating || "none");
+
+    // Details
+    const tB = document.getElementById("pvTreatmentBlock");
+    if (d.treatment) {
+      tB.style.display = "block";
+      document.getElementById("pvTreatment").textContent = d.treatment;
+    } else tB.style.display = "none";
+
+    const nB = document.getElementById("pvNotesBlock");
+    if (d.notes) {
+      nB.style.display = "block";
+      document.getElementById("pvNotes").textContent = d.notes;
+    } else nB.style.display = "none";
+
+    // Photos
+    const pB = document.getElementById("pvPhotosBlock");
+    if (d.before_photo || d.after_photo) {
+      pB.style.display = "block";
+      document.getElementById("pvBeforeWrap").style.display = d.before_photo
+        ? "block"
+        : "none";
+      document.getElementById("pvAfterWrap").style.display = d.after_photo
+        ? "block"
+        : "none";
+      if (d.before_photo)
+        document.getElementById("pvBeforeImg").src = d.before_photo;
+      if (d.after_photo)
+        document.getElementById("pvAfterImg").src = d.after_photo;
+    } else {
+      pB.style.display = "none";
+    }
+
+    // SVG Active State
+    document
+      .querySelectorAll(".active-panel")
+      .forEach((p) => p.classList.remove("active-panel"));
+    if (svgEl) svgEl.classList.add("active-panel");
+  }
+
+  window.__pvClear = function () {
+    document.getElementById("pvDetailContent").style.display = "none";
+    document.getElementById("pvDetailEmpty").style.display = "block";
+    document
+      .querySelectorAll(".active-panel")
+      .forEach((p) => p.classList.remove("active-panel"));
+  };
+
+  // Fetch Panel Data
+  fetch(window.PANELS_URL)
+    .then((r) => (r.ok ? r.json() : Promise.reject()))
+    .then((json) => {
+      const chipsContainer = document.getElementById("pvChips");
+
+      (json.panels || []).forEach((p) => {
+        panelData[p.panel_key] = p;
+
+        // Link data to SVG mapping
+        const svgId = SVG_MAPPING[p.panel_key];
+        const svgEl = document.getElementById(svgId);
+
+        if (p.health_rating && svgEl) {
+          // Add breathing animation based on health class
+          svgEl.classList.add(`hd-${p.health_rating}`);
+
+          // Override default onclick if multiple panels map to one SVG
+          svgEl.onclick = () => selectPanel(svgId, p.panel_key);
+
+          // Add quick-select chips
+          const c = document.createElement("span");
+          c.className = "pv-chip";
+          c.textContent = p.label;
+          c.onclick = () => selectPanel(svgId, p.panel_key);
+          chipsContainer.appendChild(c);
+        }
+      });
+    })
+    .catch((err) => console.error("Could not load panel data", err));
+
+  // Default Click Listeners for SVG panels
+  document.querySelectorAll(".car-panel, .car-glass").forEach((panel) => {
+    if (!panel.onclick) {
+      panel.onclick = () => selectPanel(panel.id);
+    }
+  });
 </script>
