@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inspection Report — {{ job.car }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#0D0D0D;color:#E8E6E0;min-height:100vh;display:flex}
+.main{flex:1;padding:40px 44px;overflow-y:auto}
+.back-link{font-size:12px;color:rgba(255,255,255,0.3);text-decoration:none}
+.top{display:flex;justify-content:space-between;align-items:flex-start;margin:6px 0 24px}
+.page-heading{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:.1em;color:#C8A96E}
+.page-sub{font-size:13px;color:rgba(255,255,255,0.35)}
+.preview-link{font-size:12px;color:#C8A96E;text-decoration:none;border:1px solid rgba(200,169,110,0.3);padding:9px 15px;border-radius:6px}
+.preview-link:hover{background:rgba(200,169,110,0.08)}
+
+/* payment gate card */
+.pay-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 20px;margin-bottom:22px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px}
+.pay-info{font-size:13px;line-height:1.6}
+.pay-status{font-weight:600}
+.pay-paid{color:#4ADE80}.pay-unpaid{color:#FBBF24}
+.pay-note{color:rgba(255,255,255,0.4);font-size:12px;margin-top:2px}
+.pay-toggle{display:flex;align-items:center;gap:10px}
+.btn{padding:10px 20px;border-radius:6px;font-family:'Bebas Neue',sans-serif;letter-spacing:.06em;font-size:15px;cursor:pointer;border:none}
+.btn-gold{background:#C8A96E;color:#0D0D0D}
+.btn-outline{background:transparent;border:1px solid rgba(255,255,255,0.2);color:#E8E6E0}
+
+.panel-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px 18px;margin-bottom:12px}
+.panel-title{font-size:14px;font-weight:500;margin-bottom:12px}
+.grid3{display:grid;grid-template-columns:130px 1fr;gap:12px;margin-bottom:10px}
+@media(max-width:700px){.grid3{grid-template-columns:1fr}}
+label{font-size:10px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px}
+input[type=text],input[type=number]{width:100%;padding:9px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#E8E6E0;font-family:'DM Sans',sans-serif;font-size:13px}
+.up-row{display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.up-row input[type=file]{font-size:12px;color:rgba(255,255,255,0.5)}
+.tag-sel{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#E8E6E0;border-radius:4px;padding:7px 10px;font-size:12px}
+.thumbs{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.thumb{position:relative}
+.thumb img{width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid rgba(255,255,255,0.12)}
+.thumb .tg{position:absolute;top:3px;left:3px;font-size:7px;padding:1px 4px;border-radius:3px;text-transform:uppercase;font-weight:700}
+.tg-b{background:rgba(255,69,58,.85)}.tg-a{background:rgba(48,209,88,.85)}
+.save-bar{position:sticky;bottom:0;background:linear-gradient(transparent,#0D0D0D 40%);padding:20px 0 8px;margin-top:8px}
+</style>
+</head>
+<body>
+{% include "_sidebar.html" %}
+<main class="main">
+  <a href="/jobs" class="back-link">← Back to Jobs</a>
+  <div class="top">
+    <div>
+      <h1 class="page-heading">Inspection Report</h1>
+      <p class="page-sub">{{ job.car }} — {{ job.service }} · Enter thickness, treatment &amp; photos per panel</p>
+    </div>
+    {% if job.tracking_token %}
+    <a href="/customer/tracking/{{ job.tracking_token }}/inspection" target="_blank" class="preview-link">Preview customer view →</a>
+    {% endif %}
+  </div>
+
+  <!-- PAYMENT + WARRANTY GATE -->
+  <div class="pay-card">
+    <div class="pay-info">
+      <div>Payment status:
+        {% if job.payment_received %}<span class="pay-status pay-paid">✓ Received</span>
+        {% else %}<span class="pay-status pay-unpaid">Awaiting payment</span>{% endif %}
+      </div>
+      <div class="pay-note">The customer's warranty certificate appears only when the vehicle is <strong>Ready/Completed</strong> AND payment is received.</div>
+    </div>
+    <form method="POST" action="/jobs/{{ job.id }}/payment" class="pay-toggle">
+      <input type="hidden" name="redirect_to" value="/jobs/{{ job.id }}/inspection-report">
+      {% if job.payment_received %}
+        <button class="btn btn-outline" type="submit">Mark as Unpaid</button>
+      {% else %}
+        <input type="hidden" name="payment_received" value="on">
+        <button class="btn btn-gold" type="submit">Mark Payment Received</button>
+      {% endif %}
+    </form>
+  </div>
+
+  <!-- PER-PANEL ENTRY -->
+  <form method="POST">
+    {% for key, label in panels %}
+    {% set d = data.get(key, {}) %}
+    <div class="panel-card">
+      <div class="panel-title">{{ label }}</div>
+      <div class="grid3">
+        <div>
+          <label>Thickness (μm)</label>
+          <input type="number" name="{{ key }}__thickness" value="{{ d.thickness or '' }}" placeholder="e.g. 120">
+        </div>
+        <div>
+          <label>Treatment / Solution</label>
+          <input type="text" name="{{ key }}__solution" value="{{ d.solution or '' }}" placeholder="e.g. Ceramic Coating, Paint Correction">
+        </div>
+      </div>
+      <div>
+        <label>Technician Notes</label>
+        <input type="text" name="{{ key }}__notes" value="{{ d.notes or '' }}" placeholder="Observations for this panel">
+      </div>
+
+      <!-- Photo upload (separate mini-form, AJAX) -->
+      <div class="up-row">
+        <input type="file" accept="image/*" id="file-{{ key }}">
+        <select class="tag-sel" id="tag-{{ key }}"><option value="before">Before</option><option value="after">After</option></select>
+        <button type="button" class="btn btn-outline" style="padding:7px 14px;font-size:13px" onclick="uploadPhoto('{{ key }}')">Upload Photo</button>
+      </div>
+      <div class="thumbs" id="thumbs-{{ key }}">
+        {% for img in d.images or [] %}
+          <div class="thumb"><img src="{{ img }}">
+            {% if img in (d.after_images or []) %}<span class="tg tg-a">A</span>{% else %}<span class="tg tg-b">B</span>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+    <div class="save-bar"><button type="submit" class="btn btn-gold" style="padding:13px 36px;font-size:17px">Save Inspection</button></div>
+  </form>
+</main>
+
+<script>
+async function uploadPhoto(key){
+  const fileEl=document.getElementById('file-'+key), tag=document.getElementById('tag-'+key).value;
+  if(!fileEl.files.length){alert('Choose a photo first');return;}
+  const fd=new FormData();fd.append('photo',fileEl.files[0]);fd.append('tag',tag);
+  try{
+    const r=await fetch('/jobs/{{ job.id }}/inspection-upload/'+key,{method:'POST',body:fd});
+    const d=await r.json();
+    if(d.ok){
+      const wrap=document.getElementById('thumbs-'+key);
+      wrap.innerHTML+=`<div class="thumb"><img src="${d.url}"><span class="tg ${d.tag==='after'?'tg-a':'tg-b'}">${d.tag==='after'?'A':'B'}</span></div>`;
+      fileEl.value='';
+    }else alert('Upload failed');
+  }catch(e){alert('Upload error');}
+}
+</script>
+</body>
+</html>

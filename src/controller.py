@@ -1674,3 +1674,7 @@ def customer_panels_json(token):
     if not job:
         return jsonify({"error": "not_found"}), 404
     return jsonify({"panels": _serialize_panels(conn, job["studio_id"], job["id"])})
+
+
+# ── Full inspection tracker (video, SVG car, warranty gate, AI) ──
+from . import inspection_routes  # noqa: E402,F401

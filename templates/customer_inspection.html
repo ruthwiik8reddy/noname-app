@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Autofiera | Live Diagnostics</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=0">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+:root{--gold:#e9bc8b;--text:#f5f5f7;--muted:#86868b;--border:rgba(255,255,255,.08);--spring:cubic-bezier(.22,1,.36,1);--green:#30d158;--amber:#ffd60a;--red:#ff453a}
+html{scroll-behavior:smooth;background:#000}
+body{font-family:'Inter',-apple-system,sans-serif;background:transparent;color:var(--text);margin:0;padding:0;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.video-wrapper{position:fixed;inset:0;z-index:1;background:#050505;overflow:hidden}
+.video-background{position:absolute;top:50%;left:50%;min-width:100%;min-height:100%;transform:translate(-50%,-50%);object-fit:cover;opacity:0;transition:opacity 1.5s ease-in-out}
+.video-overlay{position:absolute;inset:0;z-index:2;pointer-events:none;background:rgba(0,0,0,.52)}
+.play-btn{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:rgba(28,28,30,.75);backdrop-filter:blur(20px);border:1px solid var(--gold);color:var(--gold);padding:14px 28px;border-radius:28px;font-weight:600;cursor:pointer;display:none}
+.hero-section,.tracker-section,.blueprint-section,.data-section,.warranty-section{position:relative;z-index:10}
+.reveal{opacity:0;transform:translateY(48px) scale(.98);transition:opacity .9s var(--spring),transform .9s var(--spring)}
+.reveal.show{opacity:1;transform:none}
+.hero-section{height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 20px}
+.hero-eyebrow{color:var(--gold);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:4px;margin-bottom:14px}
+.live-badge{display:inline-flex;align-items:center;gap:7px;background:rgba(233,188,139,.08);border:1px solid rgba(233,188,139,.25);border-radius:20px;padding:5px 14px;margin-bottom:20px}
+.live-dot{width:7px;height:7px;background:var(--green);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
+.live-text{font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--gold)}
+.hero-title{margin:0;font-size:clamp(34px,8vw,72px);font-weight:700;letter-spacing:-2px;line-height:1.05;text-shadow:0 4px 20px rgba(0,0,0,.5)}
+.hero-reg{font-size:13px;font-weight:500;color:var(--gold);letter-spacing:3px;margin-top:8px;opacity:.85}
+.hero-owner{color:var(--muted);font-size:17px;margin-top:6px}
+.health-wrap{margin-top:28px;display:none;flex-direction:column;align-items:center;gap:6px}
+.health-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+.health-ring{position:relative;width:80px;height:80px}
+.health-ring svg{transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:rgba(255,255,255,.07);stroke-width:6}
+.ring-fill{fill:none;stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset 1.6s var(--spring),stroke .5s}
+.ring-score{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700}
+.scroll-ind{position:absolute;bottom:34px;display:flex;flex-direction:column;align-items:center;gap:8px;opacity:.65;animation:bob 2s infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(8px)}}
+.scroll-txt{font-size:10px;text-transform:uppercase;letter-spacing:2px}
+.scroll-ln{width:1px;height:34px;background:linear-gradient(to bottom,var(--text),transparent)}
+.tracker-section{padding:80px 20px;display:flex;justify-content:center}
+.prog-wrap{display:flex;justify-content:space-between;position:relative;max-width:660px;width:100%}
+.prog-wrap::before{content:'';position:absolute;top:10px;left:0;width:100%;height:2px;background:rgba(255,255,255,.07);z-index:0}
+.prog-fill{position:absolute;top:10px;left:0;height:2px;background:var(--gold);z-index:0;transition:width 1.5s var(--spring) .5s;width:0%;box-shadow:0 0 12px var(--gold)}
+.step{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;width:60px}
+.step-dot{width:22px;height:22px;border-radius:50%;background:#000;border:2px solid rgba(255,255,255,.22);transition:all .7s var(--spring)}
+.step-lbl{margin-top:13px;font-size:11px;font-weight:500;color:rgba(255,255,255,.55);text-align:center;line-height:1.2}
+.step.active .step-dot{background:var(--gold);border-color:var(--gold);box-shadow:0 0 16px rgba(233,188,139,.5);transform:scale(1.15)}
+.step.active .step-lbl{color:#fff;font-weight:600}
+.blueprint-section{padding:40px 20px 80px;display:flex;flex-direction:column;align-items:center;min-height:65vh;justify-content:center}
+.bp-title{font-size:24px;font-weight:600;color:#fff;margin-bottom:6px;text-align:center;letter-spacing:-.5px}
+.bp-hint{font-size:12px;color:var(--muted);margin-bottom:24px;text-align:center}
+.map-wrap{position:relative;width:100%;max-width:400px;display:flex;justify-content:center}
+#car-bp{width:100%;max-width:320px;position:relative;z-index:2;filter:drop-shadow(0 20px 30px rgba(0,0,0,.9));transform-origin:center bottom;will-change:transform,opacity}
+.car-panel{fill:rgba(20,20,22,.85);stroke:rgba(255,255,255,.1);stroke-width:2;cursor:pointer;transition:fill .3s,stroke .3s,filter .3s}
+.car-glass{fill:rgba(0,0,0,.9);stroke:rgba(255,255,255,.05);stroke-width:2;cursor:pointer;transition:fill .3s}
+@keyframes bgrn{0%,100%{fill:rgba(24,48,28,.9);stroke:rgba(48,209,88,.45)}50%{fill:rgba(30,60,35,1);stroke:rgba(48,209,88,.85)}}
+@keyframes bamb{0%,100%{fill:rgba(50,44,14,.9);stroke:rgba(255,214,10,.45)}50%{fill:rgba(62,54,16,1);stroke:rgba(255,214,10,.85)}}
+@keyframes bred{0%,100%{fill:rgba(50,16,16,.9);stroke:rgba(255,69,58,.45)}50%{fill:rgba(62,20,20,1);stroke:rgba(255,69,58,.85)}}
+.hd-green{animation:bgrn 3.5s infinite ease-in-out}
+.hd-amber{animation:bamb 3.5s infinite ease-in-out}
+.hd-red{animation:bred 3.5s infinite ease-in-out}
+.active-panel{animation:none!important;fill:rgba(80,80,85,1)!important;stroke:var(--gold)!important;stroke-width:3!important;filter:drop-shadow(0 0 16px rgba(233,188,139,.7))}
+.data-section{width:100%;max-width:760px;padding:0 20px 60px;margin:0 auto}
+.empty-st{background:rgba(0,0,0,.32);backdrop-filter:blur(10px);text-align:center;color:var(--muted);font-size:15px;padding:52px 20px;border:1px dashed rgba(255,255,255,.14);border-radius:26px}
+#details-view{display:none}
+.panel-hdr{font-size:28px;font-weight:700;color:#fff;margin-bottom:22px;letter-spacing:-1px;border-bottom:1px solid var(--border);padding-bottom:16px}
+.bento-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.bento-card{background:rgba(18,18,20,.72);backdrop-filter:blur(40px) saturate(150%);-webkit-backdrop-filter:blur(40px) saturate(150%);border-radius:22px;padding:24px;display:flex;flex-direction:column;border:1px solid rgba(255,255,255,.09);box-shadow:0 14px 32px rgba(0,0,0,.5);opacity:0;transform:translateY(22px)}
+.full{grid-column:span 2}
+.bento-grid.go .bento-card:nth-child(1){animation:pu .65s var(--spring) .05s forwards}
+.bento-grid.go .bento-card:nth-child(2){animation:pu .65s var(--spring) .12s forwards}
+.bento-grid.go .bento-card:nth-child(3){animation:pu .65s var(--spring) .19s forwards}
+.bento-grid.go .bento-card:nth-child(4){animation:pu .65s var(--spring) .26s forwards}
+@keyframes pu{to{opacity:1;transform:none}}
+.bento-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:11px}
+.bento-val{font-size:16px;font-weight:400;color:#fff;line-height:1.6}
+.metric-big{font-size:50px;font-weight:700;letter-spacing:-2px;display:flex;align-items:baseline}
+.mu{font-size:17px;font-weight:600;color:var(--muted);margin-left:5px}
+.t-green{color:var(--green)}.t-amber{color:var(--amber)}.t-red{color:var(--red)}
+.t-badge{display:inline-flex;align-items:center;gap:5px;margin-top:7px;font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;padding:3px 9px;border-radius:10px}
+.b-green{background:rgba(48,209,88,.1);color:var(--green);border:1px solid rgba(48,209,88,.28)}
+.b-amber{background:rgba(255,214,10,.1);color:var(--amber);border:1px solid rgba(255,214,10,.28)}
+.b-red{background:rgba(255,69,58,.1);color:var(--red);border:1px solid rgba(255,69,58,.28)}
+.gallery{display:flex;gap:11px;overflow-x:auto;padding:6px 0}
+.gallery::-webkit-scrollbar{display:none}
+.gal-item{position:relative;flex-shrink:0}
+.gal-item img{width:86px;height:86px;object-fit:cover;border-radius:14px;border:1px solid rgba(255,255,255,.14);display:block}
+.gal-tag{position:absolute;top:5px;left:5px;font-size:8px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;padding:2px 6px;border-radius:5px}
+.tag-b{background:rgba(255,69,58,.85);color:#fff}.tag-a{background:rgba(48,209,88,.85);color:#fff}
+.warranty-section{padding:56px 20px 80px;max-width:760px;margin:0 auto;display:none}
+.w-card{background:linear-gradient(145deg,rgba(16,12,4,.97),rgba(8,6,2,.99));border:1px solid rgba(233,188,139,.22);border-radius:26px;padding:36px;position:relative;overflow:hidden}
+.w-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px}
+.w-title{font-size:20px;font-weight:700;color:#fff;letter-spacing:-.4px}
+.w-sub{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-top:3px}
+.w-seal{width:58px;height:58px;background:rgba(233,188,139,.07);border:2px solid rgba(233,188,139,.25);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px}
+.w-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+.w-field{border-bottom:1px solid rgba(255,255,255,.05);padding-bottom:11px}
+.wf-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+.wf-val{font-size:14px;font-weight:500;color:#fff}
+.w-validity{text-align:center;background:rgba(233,188,139,.05);border:1px solid rgba(233,188,139,.14);border-radius:14px;padding:18px}
+.w-yrs{font-size:44px;font-weight:700;color:var(--gold);letter-spacing:-2px;line-height:1}
+.w-yrs-lbl{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:3px}
+.w-footer{margin-top:20px;font-size:11px;color:var(--muted);text-align:center;line-height:1.6}
+.ai-fab{position:fixed;bottom:34px;right:34px;background:rgba(233,188,139,.11);backdrop-filter:blur(22px);border:1px solid rgba(233,188,139,.32);color:var(--gold);width:58px;height:58px;border-radius:29px;display:flex;justify-content:center;align-items:center;cursor:pointer;box-shadow:0 11px 32px rgba(0,0,0,.5);z-index:1000}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);z-index:998;opacity:0;pointer-events:none;transition:opacity .5s var(--spring)}
+.overlay.open{opacity:1;pointer-events:auto}
+.ai-win{position:fixed;bottom:108px;right:34px;width:350px;max-width:calc(100vw - 28px);height:560px;background:rgba(20,20,24,.88);backdrop-filter:blur(50px) saturate(200%);border:1px solid rgba(255,255,255,.07);border-radius:26px;display:flex;flex-direction:column;box-shadow:0 26px 52px rgba(0,0,0,.8);z-index:1000;opacity:0;pointer-events:none;transform:translateY(32px) scale(.95);transform-origin:bottom right;transition:all .45s var(--spring);overflow:hidden}
+.ai-win.open{opacity:1;pointer-events:auto;transform:none}
+.ai-hdr{padding:18px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,.05)}
+.ai-hdr span{color:#fff;font-weight:600;font-size:14px}
+.ai-x{width:28px;height:28px;background:rgba(255,255,255,.08);border-radius:50%;display:flex;justify-content:center;align-items:center;cursor:pointer;color:var(--muted);font-size:12px}
+.ai-msgs{flex:1;padding:18px;overflow-y:auto;display:flex;flex-direction:column;gap:13px;font-size:14px}
+.msg{padding:11px 15px;border-radius:17px;max-width:85%;line-height:1.45}
+.msg-u{background:#0A84FF;color:#fff;align-self:flex-end;border-bottom-right-radius:3px}
+.msg-a{background:rgba(255,255,255,.05);align-self:flex-start;border-bottom-left-radius:3px;color:#f5f5f7;border:1px solid rgba(255,255,255,.05)}
+.loading{background:linear-gradient(90deg,rgba(255,255,255,.04) 0%,rgba(233,188,139,.16) 50%,rgba(255,255,255,.04) 100%);background-size:200% 100%;animation:sh 1.4s infinite linear;color:transparent!important}
+@keyframes sh{0%{background-position:100% 0}100%{background-position:-100% 0}}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:0 16px 11px}
+.chips::-webkit-scrollbar{display:none}
+.chip{background:rgba(255,255,255,.07);border:1px solid var(--border);padding:8px 13px;border-radius:17px;font-size:12px;font-weight:500;color:var(--text);cursor:pointer;white-space:nowrap}
+.ai-inp{padding:0 16px 18px}
+.inp-wrap{display:flex;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.11);border-radius:22px;padding:4px 4px 4px 16px;align-items:center}
+.inp-wrap input{flex:1;background:transparent;border:none;color:white;font-size:14px;outline:none;padding:8px 0}
+.inp-wrap button{background:var(--gold);color:#000;border:none;width:34px;height:34px;border-radius:50%;cursor:pointer;display:flex;justify-content:center;align-items:center}
+@media(max-width:768px){.bento-grid,.w-grid{grid-template-columns:1fr}.full{grid-column:span 1}.ai-win{width:100%;bottom:0;right:0;height:87vh;border-radius:30px 30px 0 0}.ai-fab{bottom:20px;right:20px}}
+</style>
+</head>
+<body>
+<div class="video-wrapper"><video id="bgv" class="video-background" loop playsinline preload="auto" muted></video><div class="video-overlay"></div></div>
+<button id="play-btn" class="play-btn" onclick="forcePlay()">Tap to Start</button>
+<div class="overlay" id="overlay" onclick="toggleAI()"></div>
+
+<section class="hero-section reveal">
+  <div class="hero-eyebrow" id="svc-label">Autofiera Diagnostics</div>
+  <div class="live-badge"><span class="live-dot"></span><span class="live-text" id="status-badge">Live</span></div>
+  <h1 class="hero-title">{{ car }}</h1>
+  <div class="hero-reg">{{ reg }}</div>
+  <div class="hero-owner">Client: {{ name }}</div>
+  <div class="health-wrap" id="health-wrap">
+    <div class="health-label">Paint Health Score</div>
+    <div class="health-ring"><svg width="80" height="80" viewBox="0 0 80 80"><circle class="ring-bg" cx="40" cy="40" r="34"/><circle class="ring-fill" id="ring-fill" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6" stroke="var(--green)"/></svg><div class="ring-score" id="ring-score" style="color:var(--green)">—</div></div>
+  </div>
+  <div class="scroll-ind"><div class="scroll-txt">Scroll to inspect</div><div class="scroll-ln"></div></div>
+</section>
+
+<section class="tracker-section reveal"><div class="prog-wrap" id="prog-wrap"><div class="prog-fill" id="prog-fill"></div></div></section>
+
+<section class="blueprint-section" id="bp-anchor">
+  <div class="bp-title reveal">Interactive Diagnostic Map</div>
+  <div class="bp-hint reveal">Tap any glowing panel to view specifications</div>
+  <div class="map-wrap">
+    <svg viewBox="0 0 300 600" id="car-bp" style="opacity:0;transform:scale(.7) translateY(100px)">
+      <path id="front-bumper" class="car-panel" d="M 50,100 Q 150,50 250,100 L 240,120 L 60,120 Z" data-name="Front Bumper"/>
+      <path id="hood" class="car-panel" d="M 60,125 L 240,125 L 230,220 L 70,220 Z" data-name="Hood"/>
+      <path id="windshield" class="car-glass" d="M 70,230 L 230,230 L 220,280 L 80,280 Z" data-name="Windshield"/>
+      <path id="roof" class="car-panel" d="M 80,290 L 220,290 L 220,400 L 80,400 Z" data-name="Roof"/>
+      <path id="rear-glass" class="car-glass" d="M 80,410 L 220,410 L 230,450 L 70,450 Z" data-name="Rear Glass"/>
+      <path id="trunk" class="car-panel" d="M 70,460 L 230,460 L 240,530 Q 150,550 60,530 Z" data-name="Trunk"/>
+      <path id="door-l" class="car-panel" d="M 40,230 L 75,230 L 75,400 L 40,400 Z" data-name="Left Doors"/>
+      <path id="door-r" class="car-panel" d="M 260,230 L 225,230 L 225,400 L 260,400 Z" data-name="Right Doors"/>
+    </svg>
+  </div>
+</section>
+
+<section class="data-section" id="data-anchor">
+  <div id="empty-st" class="empty-st reveal">Tap an illuminated panel above to view diagnostics.</div>
+  <div id="details-view">
+    <div class="panel-hdr" id="panel-name">—</div>
+    <div id="bento-grid" class="bento-grid">
+      <div class="bento-card"><span class="bento-lbl">Paint Thickness</span><div class="metric-big" id="p-thick">--<span class="mu">μm</span></div><div id="t-badge"></div></div>
+      <div class="bento-card"><span class="bento-lbl">Treatment</span><div class="bento-val" id="p-sol" style="color:var(--gold);font-weight:500">—</div></div>
+      <div class="bento-card full"><span class="bento-lbl">Technician Notes</span><div class="bento-val" id="p-notes">—</div></div>
+      <div class="bento-card full" id="gal-card" style="display:none"><span class="bento-lbl">Evidence Photos</span><div id="p-gallery" class="gallery"></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="warranty-section" id="warranty-sec">
+  <div class="w-card">
+    <div class="w-header"><div><div class="w-title">Warranty Certificate</div><div class="w-sub">Autofiera Detailing Studio</div></div><div class="w-seal">🛡️</div></div>
+    <div class="w-grid">
+      <div class="w-field"><div class="wf-lbl">Vehicle</div><div class="wf-val">{{ car }}</div></div>
+      <div class="w-field"><div class="wf-lbl">Registration</div><div class="wf-val">{{ reg }}</div></div>
+      <div class="w-field"><div class="wf-lbl">Client</div><div class="wf-val">{{ name }}</div></div>
+      <div class="w-field"><div class="wf-lbl">Protection Applied</div><div class="wf-val" id="w-svc">—</div></div>
+    </div>
+    <div class="w-validity"><div class="w-yrs" id="w-yrs">—</div><div class="w-yrs-lbl">Year Warranty</div></div>
+    <div class="w-footer">Autofiera Detailing Studio</div>
+  </div>
+</section>
+
+<div class="ai-fab" onclick="toggleAI()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></div>
+<div class="ai-win" id="ai-win">
+  <div class="ai-hdr"><span>Autofiera AI Concierge</span><div class="ai-x" onclick="toggleAI()">✕</div></div>
+  <div class="ai-msgs" id="ai-msgs"><div class="msg msg-a">Hello! I have the complete diagnostic profile for <strong style="color:var(--gold)">{{ car }}</strong>. Ask me anything.</div></div>
+  <div class="chips" id="chips">
+    <div class="chip" onclick="fs('What is the overall paint health of my car?')">Paint health</div>
+    <div class="chip" onclick="fs('What treatments are being applied?')">Treatment plan</div>
+    <div class="chip" onclick="fs('How long will the coating last?')">Durability</div>
+  </div>
+  <div class="ai-inp"><div class="inp-wrap"><input type="text" id="ai-in" placeholder="Ask Autofiera AI…" onkeypress="if(event.key==='Enter')sendMsg()"><button onclick="sendMsg()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></button></div></div>
+</div>
+
+<script>
+const TOKEN='{{ token }}', CAR='{{ car }}', SVC='{{ svc }}';
+let cStatus='{{ status }}', cSvc='{{ svc }}', cdata={};
+const ceramicVids={'Inspection':'/static/inspection.mp4','Preparation':'/static/preparation.mp4','Correction':'/static/correction.mp4','Coating':'/static/coating.mp4','Ready':'/static/ready.mp4'};
+const ceramicSteps=['Inspection','Preparation','Correction','Coating','Ready'];
+const flows={
+  'Ceramic Coating':{steps:ceramicSteps,vids:ceramicVids},
+  'Nano Diamond Ceramic':{steps:ceramicSteps,vids:ceramicVids},
+  'Graphene Coating':{steps:ceramicSteps,vids:ceramicVids},
+  'PPF':{steps:['Inspection','Preparation','Correction','Installation','Ready'],vids:{'Inspection':'/static/inspection.mp4','Preparation':'/static/preparation.mp4','Correction':'/static/correction.mp4','Installation':'/static/coating.mp4','Ready':'/static/ready.mp4'}},
+  'Decontamination Wash':{steps:['Inspection','Iron Removal','Tar Removal','Clay Bar','pH Shampoo'],vids:{'Inspection':'/static/inspection.mp4','Iron Removal':'/static/iron_removal.mp4','Tar Removal':'/static/tar_removal.mp4','Clay Bar':'/static/clay_bar.mp4','pH Shampoo':'/static/ph_shampoo.mp4'}}
+};
+const bgv=document.getElementById('bgv');
+function forcePlay(){bgv.muted=true;bgv.play().then(()=>{bgv.style.opacity=.55;document.getElementById('play-btn').style.display='none';}).catch(()=>document.getElementById('play-btn').style.display='block');}
+let pDone=false;
+function loadWarranty(){
+  fetch(`/customer/tracking/${TOKEN}/warranty.json`).then(r=>r.json()).then(w=>{
+    if(w.available){
+      document.getElementById('warranty-sec').style.display='block';
+      document.getElementById('w-svc').textContent=w.product_name||cSvc;
+      document.getElementById('w-yrs').textContent=w.years||5;
+    } else {
+      document.getElementById('warranty-sec').style.display='none';
+    }
+  }).catch(()=>{document.getElementById('warranty-sec').style.display='none';});
+}
+function initFlow(){
+  const f=flows[cSvc]||flows['Ceramic Coating'];
+  document.getElementById('svc-label').textContent='Autofiera | '+cSvc;
+  const isReady=cStatus==='Ready'||cStatus==='Completed';
+  document.getElementById('status-badge').textContent=isReady?'✓ Ready for Pickup':'Live · '+cStatus;
+  bgv.src=f.vids[cStatus]||f.vids['Inspection'];forcePlay();
+  if(!pDone){pDone=true;renderProg(f.steps);}
+  loadWarranty(); // gate handled server-side (ready + paid)
+}
+setTimeout(initFlow,120);
+function renderProg(steps){
+  const c=document.getElementById('prog-wrap');let idx=steps.indexOf(cStatus);if(idx<0)idx=0;
+  setTimeout(()=>{document.getElementById('prog-fill').style.width=(idx/(steps.length-1)*100)+'%';},160);
+  steps.forEach((s,i)=>{const el=document.createElement('div');el.className='step';
+    el.innerHTML=`<div class="step-dot"></div><div class="step-lbl">${s.replace(' Removal','').replace(' Shampoo','')}</div>`;
+    c.appendChild(el);if(i<=idx)setTimeout(()=>el.classList.add('active'),320+i*170);});
+}
+const bpa=document.getElementById('bp-anchor'),cbp=document.getElementById('car-bp');
+window.addEventListener('scroll',()=>requestAnimationFrame(()=>{
+  const r=bpa.getBoundingClientRect(),p=Math.max(0,Math.min(1,(window.innerHeight-r.top)/(window.innerHeight*.7)));
+  const e=1-Math.pow(1-p,3);cbp.style.transform=`scale(${.7+.3*e}) translateY(${120*(1-e)}px)`;cbp.style.opacity=Math.min(p*1.5,1);
+}));
+document.querySelectorAll('.reveal').forEach(el=>{new IntersectionObserver((ents)=>ents.forEach(e=>{if(e.isIntersecting)e.target.classList.add('show');}),{threshold:.12}).observe(el);});
+function thickClass(t){if(!t)return null;const n=parseInt(t);return n>=120?'green':n>=80?'amber':'red';}
+function healthScore(data){const ps=Object.values(data).filter(p=>p.thickness);if(!ps.length)return null;
+  const sc=ps.map(p=>{const t=parseInt(p.thickness);return t>=120?100:t>=80?40+(t-80)*1.5:Math.max(0,t*.5);});
+  return Math.round(sc.reduce((a,b)=>a+b,0)/sc.length);}
+function showHealthRing(s){if(s===null)return;document.getElementById('health-wrap').style.display='flex';
+  const col=s>=70?'var(--green)':s>=40?'var(--amber)':'var(--red)';
+  document.getElementById('ring-fill').style.strokeDashoffset=213.6-(s/100*213.6);
+  document.getElementById('ring-fill').style.stroke=col;document.getElementById('ring-score').textContent=s;document.getElementById('ring-score').style.color=col;}
+document.addEventListener('DOMContentLoaded',async()=>{
+  cdata=await(await fetch(`/customer/tracking/${TOKEN}/checklist.json`)).json();
+  document.querySelectorAll('.car-panel,.car-glass').forEach(p=>{const d=cdata[p.id];
+    if(d&&(d.thickness||d.notes||(d.images&&d.images.length))){const cls=thickClass(d.thickness);
+      p.classList.add(cls==='green'?'hd-green':cls==='amber'?'hd-amber':cls==='red'?'hd-red':'hd-green');}});
+  showHealthRing(healthScore(cdata));
+});
+document.querySelectorAll('.car-panel,.car-glass').forEach(p=>{p.addEventListener('click',function(){
+  if(navigator.vibrate)navigator.vibrate(35);
+  document.querySelectorAll('.active-panel').forEach(x=>x.classList.remove('active-panel'));this.classList.add('active-panel');
+  document.getElementById('data-anchor').scrollIntoView({behavior:'smooth',block:'start'});
+  document.getElementById('empty-st').style.display='none';fillPanel(this);});});
+function animNum(el,end,dur){const t0=Date.now();(function step(){const p=Math.min((Date.now()-t0)/dur,1),e=1-Math.pow(1-p,4);
+  el.innerHTML=`${Math.floor(e*end)}<span class="mu">μm</span>`;if(p<1)requestAnimationFrame(step);})();}
+function fillPanel(el){const d=cdata[el.id]||{};const nm=el.getAttribute('data-name');
+  document.getElementById('panel-name').textContent=nm;document.getElementById('details-view').style.display='block';
+  const td=document.getElementById('p-thick'),tb=document.getElementById('t-badge');
+  if(d.thickness){const t=parseInt(d.thickness);animNum(td,t,1100);const cls=thickClass(d.thickness);td.className='metric-big t-'+cls;
+    const lbls={green:'Healthy',amber:'Caution — Thin',red:'Critical — Very Thin'};tb.innerHTML=`<span class="t-badge b-${cls}">${lbls[cls]}</span>`;
+  }else{td.innerHTML='--<span class="mu">μm</span>';td.className='metric-big';tb.innerHTML='';}
+  document.getElementById('p-notes').textContent=d.notes||'No observations recorded.';
+  document.getElementById('p-sol').textContent=d.solution||'Standard Preparation';
+  const gal=document.getElementById('p-gallery'),gc=document.getElementById('gal-card');gal.innerHTML='';
+  if(d.images&&d.images.length){gc.style.display='flex';d.images.forEach(src=>{
+    const isAfter=d.after_images&&d.after_images.includes(src);
+    const tag=isAfter?'<span class="gal-tag tag-a">After</span>':'<span class="gal-tag tag-b">Before</span>';
+    gal.innerHTML+=`<div class="gal-item"><a href="${src}" target="_blank"><img src="${src}"></a>${tag}</div>`;});}else gc.style.display='none';
+  const g=document.getElementById('bento-grid');g.classList.remove('go');void g.offsetWidth;g.classList.add('go');}
+function toggleAI(){const w=document.getElementById('ai-win'),o=document.getElementById('overlay');w.classList.toggle('open');o.classList.toggle('open');if(w.classList.contains('open'))setTimeout(()=>document.getElementById('ai-in').focus(),400);}
+function fs(m){document.getElementById('ai-in').value=m;sendMsg();}
+async function sendMsg(){const inp=document.getElementById('ai-in'),msg=inp.value.trim();if(!msg)return;
+  const box=document.getElementById('ai-msgs');box.innerHTML+=`<div class="msg msg-u">${msg}</div>`;inp.value='';
+  const lid='l'+Date.now();box.innerHTML+=`<div class="msg msg-a loading" id="${lid}">…</div>`;box.scrollTop=box.scrollHeight;
+  try{const r=await fetch(`/customer/tracking/${TOKEN}/chat`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})});
+    const d=await r.json();const el=document.getElementById(lid);el.classList.remove('loading');
+    el.innerHTML=(d.reply||'').replace(/\*\*(.*?)\*\*/g,'<strong style="color:var(--gold)">$1</strong>');
+  }catch(e){document.getElementById(lid).textContent='Connection lost.';}box.scrollTop=box.scrollHeight;}
+</script>
+</body>
+</html>
