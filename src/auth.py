@@ -230,7 +230,7 @@ NAV_PERMISSIONS = {
     "admin": [
         "dashboard", "bookings", "estimates", "jobs",
         "tracking", "customers", "staff", "media", "payments",
-        "warranties", "settings",
+        "products", "warranties", "settings",
     ],
     "general_manager": [
         "dashboard", "bookings", "estimates", "jobs",

@@ -1106,8 +1106,51 @@ def assistant_query():
     if not question:
         return jsonify({"error": "Question is required."}), 400
 
+    studio_id = session["studio_id"]
+
+    # ── Pricing questions: ground the AI in the real product catalog ──
+    try:
+        from .estimate_assistant import build_pricing_facts
+        facts = build_pricing_facts(studio_id, question)
+    except Exception as _e:
+        print(f"[assistant] pricing hook failed: {_e}")
+        facts = None
+
     service = AIService()
-    answer  = service.answer(session["studio_id"], question, attachments)
+
+    if facts:
+        # Force Gemini for quotes (the local model invents numbers), and hand it
+        # the exact computed prices so it can only report, not invent.
+        from .ai_service import GeminiBackend, OllamaBackend, AIAnswer
+        from .config import Config
+
+        prompt = (
+            "You are the AI assistant for a car detailing studio. "
+            "A staff member asked a pricing question.\n\n"
+            f"{facts}\n\n"
+            f"Staff question: {question}\n\n"
+            "Reply with the PRICE only — 1 or 2 short sentences. No cost breakdown, "
+            "no material/labour/markup figures, no calculation steps, no disclaimers, "
+            "no extra advice. Just the vehicle, the product, and the total."
+        )
+        text = None
+        if Config.GEMINI_API_KEY:
+            try:
+                text = GeminiBackend(Config).call(prompt)
+            except Exception as _e:
+                print(f"[assistant] Gemini failed: {_e}")
+        if not text:
+            try:
+                text = OllamaBackend(Config).call(prompt)
+            except Exception:
+                text = None
+        if text:
+            return jsonify(AIAnswer(
+                text, "Quoted from your product catalog.", ["catalog"], []
+            ).as_dict())
+        # else fall through to the normal assistant
+
+    answer = service.answer(studio_id, question, attachments)
     return jsonify(answer.as_dict())
 
 
@@ -1678,3 +1721,7 @@ def customer_panels_json(token):
 
 # ── Full inspection tracker (video, SVG car, warranty gate, AI) ──
 from . import inspection_routes  # noqa: E402,F401
+
+
+# ── Products catalog + AI sqft estimator ──
+from . import product_routes  # noqa: E402,F401
