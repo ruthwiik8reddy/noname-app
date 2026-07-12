@@ -29,9 +29,6 @@
     .step.active { color:#C8A96E; font-weight:700; }
     .step::before { content:''; display:block; width:14px; height:14px; margin:0 auto 8px; border-radius:50%; background:rgba(255,255,255,0.15); }
     .step.active::before { background:#C8A96E; box-shadow:0 0 0 4px rgba(200,169,110,0.1); }
-    .tracking-actions { display:flex; flex-direction:column; gap:10px; align-items:flex-end; }
-    .action-link { color:#C8A96E; text-decoration:none; font-size:12px; border:1px solid rgba(200,169,110,0.3); padding:8px 14px; border-radius:6px; transition:background .15s; }
-    .action-link:hover { background:rgba(200,169,110,0.08); }
     .empty { padding:60px; text-align:center; color:rgba(255,255,255,0.2); font-size:13px; }
   </style>
 </head>
@@ -39,7 +36,7 @@
 {% include "_sidebar.html" %}
 <main class="main">
   <h1 class="page-heading">Live Tracking</h1>
-  <p class="page-sub">Track every job through Pending, In Progress, and Completed. Tap into job status and DVI details.</p>
+  <p class="page-sub">Live progress for every active job — Pending, In Progress, and Completed.</p>
 
   <div class="tracking-list">
     {% if jobs %}
@@ -55,13 +52,6 @@
                 <span class="badge badge-{{ job.status | lower | replace(' ', '-') }}">{{ job.status }}</span>
               </span>
             </div>
-          </div>
-          <div class="tracking-actions">
-            <a href="{{ job.dvi_url }}" class="action-link">Open DVI Details</a>
-            <form method="POST" action="/jobs/{{ job.id }}/send-tracking-sms" style="margin:0">
-              <input type="hidden" name="redirect_to" value="/tracking">
-              <button type="submit" class="action-link" style="background:transparent;cursor:pointer;border:none;color:#C8A96E;border:1px solid rgba(200,169,110,0.3);padding:8px 14px;border-radius:6px;font-size:12px;">Send SMS Link</button>
-            </form>
           </div>
         </div>
         <div class="progress-track">

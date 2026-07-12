@@ -2,3 +2,4 @@ Flask>=2.0
 requests>=2.0
 twilio>=8.0
 xhtml2pdf>=0.2.17
+python-dotenv>=1.0

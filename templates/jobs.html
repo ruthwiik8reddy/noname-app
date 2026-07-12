@@ -39,6 +39,13 @@
     .status-form select option { background:#1A1A1A; }
     .empty { padding:60px; text-align:center; color:rgba(255,255,255,0.2); font-size:13px; }
     .hint { font-size:11px; color:rgba(255,255,255,0.2); margin-top:14px; }
+    .section-label {
+      font-size:11px; font-weight:600; letter-spacing:.12em; text-transform:uppercase;
+      color:rgba(255,255,255,0.3); margin:36px 0 12px;
+      padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.06);
+    }
+    .completed-wrap { opacity:.6; }
+    .completed-wrap:hover { opacity:.85; transition:opacity .15s; }
   </style>
 </head>
 <body>
@@ -52,13 +59,16 @@
   </div>
 
   <div class="table-wrap">
-    {% if jobs %}
+    {% set active_jobs    = jobs | selectattr("status", "ne", "Completed") | list %}
+    {% set completed_jobs = jobs | selectattr("status", "eq", "Completed") | list %}
+
+    {% if active_jobs %}
     <table>
       <thead>
         <tr><th>#</th><th>Vehicle</th><th>Service</th><th>Technician</th><th>Price</th><th>Status</th><th>Tracking SMS</th><th>Paint Inspection</th></tr>
       </thead>
       <tbody>
-        {% for job in jobs %}
+        {% for job in active_jobs %}
         <tr>
           <td style="color:rgba(255,255,255,0.25);font-size:11px;">{{ job.id }}</td>
           <td>{{ job.car }}</td>
@@ -78,37 +88,54 @@
           <td>
             <form method="POST" action="/jobs/{{ job.id }}/send-tracking-sms">
               <input type="hidden" name="redirect_to" value="/jobs">
-              <button type="submit" style="
-                background:transparent;
-                border:1px solid rgba(200,169,110,0.3);
-                color:#C8A96E;
-                padding:5px 12px;
-                border-radius:5px;
-                font-size:11px;
-                cursor:pointer;
-              ">Send Link</button>
+              <button type="submit" style="background:transparent;border:1px solid rgba(200,169,110,0.3);color:#C8A96E;padding:5px 12px;border-radius:5px;font-size:11px;cursor:pointer;">Send Link</button>
             </form>
           </td>
           <td>
-            <a href="/jobs/{{ job.id }}/inspection" style="
-              display:inline-block;
-              background:rgba(200,169,110,0.12);
-              border:1px solid rgba(200,169,110,0.3);
-              color:#C8A96E;
-              padding:5px 12px;
-              border-radius:5px;
-              font-size:11px;
-              text-decoration:none;
-            ">3D Inspection →</a>
+            <a href="/jobs/{{ job.id }}/inspection" style="display:inline-block;background:rgba(200,169,110,0.12);border:1px solid rgba(200,169,110,0.3);color:#C8A96E;padding:5px 12px;border-radius:5px;font-size:11px;text-decoration:none;">3D Inspection →</a>
           </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
     {% else %}
-    <div class="empty">No jobs assigned to you yet</div>
+    <div class="empty">No active jobs right now</div>
     {% endif %}
   </div>
+
+  {% if completed_jobs %}
+  <div class="section-label">Completed Jobs</div>
+  <div class="table-wrap completed-wrap">
+    <table>
+      <thead>
+        <tr><th>#</th><th>Vehicle</th><th>Service</th><th>Technician</th><th>Price</th><th>Status</th><th>Warranty</th><th>Paint Inspection</th></tr>
+      </thead>
+      <tbody>
+        {% for job in completed_jobs %}
+        <tr>
+          <td style="color:rgba(255,255,255,0.25);font-size:11px;">{{ job.id }}</td>
+          <td>{{ job.car }}</td>
+          <td>{{ job.service }}</td>
+          <td style="color:rgba(255,255,255,0.5);">{{ job.technician }}</td>
+          <td style="color:#4ADE80;">${{ job.price }}</td>
+          <td><span class="badge badge-completed"><span class="dot"></span>Completed</span></td>
+          <td>
+            {% if job.tracking_token %}
+            <a href="/customer/tracking/{{ job.tracking_token }}/warranty.pdf"
+               style="color:rgba(255,255,255,0.4);font-size:11px;text-decoration:none;">
+              ↓ Warranty PDF
+            </a>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            <a href="/jobs/{{ job.id }}/inspection" style="display:inline-block;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);color:#4ADE80;padding:5px 12px;border-radius:5px;font-size:11px;text-decoration:none;">View Inspection</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
 
   <p class="hint">Tip: changing a job's status to "Completed" automatically creates a review request and a rebooking reminder — check the Reminders page after.</p>
 </main>

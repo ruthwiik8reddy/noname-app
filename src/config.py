@@ -1,8 +1,16 @@
 import os
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-from dotenv import load_dotenv
+
+try:
+    from dotenv import load_dotenv
+except ImportError:  # pragma: no cover - fallback for minimal envs
+    def load_dotenv() -> bool:
+        return False
+
 load_dotenv()
+
+
 class Config:
     SECRET_KEY      = os.getenv("SECRET_KEY", "autofiera-secret-key")
     DB_PATH         = os.getenv("DATABASE_URL", os.path.join(BASE_DIR, "studios.db"))

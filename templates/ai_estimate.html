@@ -1,164 +1,190 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Estimate — Autofiera</title>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif;background:#0D0D0D;color:#E8E6E0;min-height:100vh;display:flex}
-.main{flex:1;padding:44px 48px;overflow-y:auto;max-width:1000px}
-.page-heading{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:.1em;color:#C8A96E}
-.page-sub{font-size:13px;color:rgba(255,255,255,0.3);margin-bottom:28px}
-.card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:24px;margin-bottom:20px}
-label{font-size:10px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,0.4);display:block;margin-bottom:6px}
-input,select{width:100%;padding:12px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:5px;color:#E8E6E0;font-family:'DM Sans',sans-serif;font-size:14px}
-select option{background:#1A1A1A}
-.row{display:grid;grid-template-columns:2fr 1fr auto;gap:14px;align-items:end}
-@media(max-width:760px){.row{grid-template-columns:1fr}}
-.btn-gold{background:#C8A96E;color:#0D0D0D;padding:12px 26px;border-radius:6px;font-family:'Bebas Neue',sans-serif;letter-spacing:.06em;font-size:16px;border:none;cursor:pointer;white-space:nowrap}
-.btn-gold:disabled{opacity:.5;cursor:wait}
-.sqft-box{display:none;margin-top:18px;padding:16px 18px;background:rgba(200,169,110,0.07);border:1px solid rgba(200,169,110,0.22);border-radius:8px}
-.sqft-num{font-family:'Bebas Neue',sans-serif;font-size:34px;color:#C8A96E;letter-spacing:.04em}
-.sqft-src{font-size:11px;color:rgba(255,255,255,0.35);margin-top:2px}
-.quotes{display:none}
-.q-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:.08em;color:#C8A96E;margin:26px 0 12px}
-table{width:100%;border-collapse:collapse;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:10px;overflow:hidden}
-th{text-align:left;padding:13px 15px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,0.35);border-bottom:1px solid rgba(255,255,255,0.07)}
-td{padding:14px 15px;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.04);font-variant-numeric:tabular-nums}
-tr:last-child td{border-bottom:none}
-tr.sel{background:rgba(200,169,110,0.07)}
-.cat{display:inline-block;font-size:10px;padding:3px 8px;border-radius:9px;background:rgba(200,169,110,0.12);color:#C8A96E}
-.total{font-weight:600;color:#C8A96E;font-size:15px}
-.breakdown{font-size:11px;color:rgba(255,255,255,0.35)}
-.save-card{display:none;margin-top:22px}
-.save-row{display:grid;grid-template-columns:1fr 1fr auto;gap:14px;align-items:end}
-@media(max-width:760px){.save-row{grid-template-columns:1fr}}
-.warn{background:rgba(251,191,36,0.07);border:1px solid rgba(251,191,36,0.25);color:#FBBF24;border-radius:8px;padding:14px 16px;font-size:13px;margin-bottom:18px;line-height:1.6}
-.empty{padding:50px;text-align:center;color:rgba(255,255,255,0.3);font-size:14px;border:1px dashed rgba(255,255,255,0.12);border-radius:12px}
-</style>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Estimate — {{ studio }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'DM Sans',sans-serif; background:#0D0D0D; color:#E8E6E0; min-height:100vh; display:flex; }
+    .main { flex:1; padding:44px 48px; overflow-y:auto; max-width:800px; }
+    .page-heading { font-family:'Bebas Neue',sans-serif; font-size:30px; letter-spacing:.1em; color:#C8A96E; margin-bottom:4px; }
+    .page-sub { font-size:13px; color:rgba(255,255,255,0.3); margin-bottom:36px; line-height:1.6; }
+
+    .form-group { display:flex; flex-direction:column; gap:7px; margin-bottom:20px; }
+    label { font-size:11px; font-weight:500; letter-spacing:.07em; text-transform:uppercase; color:rgba(255,255,255,0.4); }
+    input, select, textarea {
+      padding:11px 14px; background:rgba(255,255,255,0.06);
+      border:1px solid rgba(255,255,255,0.1); border-radius:4px;
+      color:#E8E6E0; font-family:'DM Sans',sans-serif; font-size:13px;
+      outline:none; transition:border-color .2s;
+    }
+    input:focus, select:focus, textarea:focus { border-color:#C8A96E; }
+    textarea { resize:vertical; min-height:100px; line-height:1.6; }
+
+    .btn-ask {
+      padding:12px 32px; background:#C8A96E; color:#0D0D0D;
+      border:none; border-radius:4px;
+      font-family:'Bebas Neue',sans-serif; font-size:17px; letter-spacing:.08em;
+      cursor:pointer; transition:opacity .2s;
+    }
+    .btn-ask:hover { opacity:.85; }
+    .btn-ask:disabled { opacity:.5; cursor:not-allowed; }
+
+    /* Response card */
+    .response-card {
+      background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08);
+      border-radius:12px; padding:24px; margin-top:28px; display:none;
+    }
+    .response-card.visible { display:block; }
+    .response-title {
+      font-size:11px; text-transform:uppercase; letter-spacing:.1em;
+      color:rgba(255,255,255,0.35); margin-bottom:14px;
+    }
+    .response-text {
+      font-size:14px; color:#E8E6E0; white-space:pre-wrap;
+      line-height:1.7; border-bottom:1px solid rgba(255,255,255,0.06);
+      padding-bottom:18px; margin-bottom:18px;
+    }
+
+    /* Use estimate button */
+    .btn-use {
+      display:inline-block; padding:10px 22px;
+      background:rgba(200,169,110,0.12); border:1px solid rgba(200,169,110,0.3);
+      border-radius:6px; color:#C8A96E; font-size:13px;
+      text-decoration:none; cursor:pointer; transition:background .15s;
+    }
+    .btn-use:hover { background:rgba(200,169,110,0.22); }
+
+    /* Thinking indicator */
+    .thinking {
+      display:none; align-items:center; gap:10px;
+      font-size:13px; color:rgba(255,255,255,0.4); margin-top:16px;
+    }
+    .thinking.visible { display:flex; }
+    .dot-pulse { width:8px; height:8px; border-radius:50%; background:#C8A96E; animation:pulse 1s infinite; }
+    @keyframes pulse { 0%,100% { opacity:.3; transform:scale(.8); } 50% { opacity:1; transform:scale(1); } }
+
+    .hint { font-size:11px; color:rgba(255,255,255,0.2); margin-top:10px; line-height:1.5; }
+
+    /* Services list parsed from AI */
+    .parsed-services { margin-top:16px; }
+    .parsed-item {
+      display:flex; justify-content:space-between; align-items:center;
+      padding:10px 14px; background:rgba(255,255,255,0.03);
+      border:1px solid rgba(255,255,255,0.07); border-radius:8px;
+      margin-bottom:8px; font-size:13px;
+    }
+    .parsed-item .item-name { color:#E8E6E0; }
+    .parsed-item .item-price { color:#C8A96E; font-weight:500; }
+  </style>
 </head>
 <body>
 {% include "_sidebar.html" %}
+
 <main class="main">
-  <h1 class="page-heading">AI Estimate</h1>
-  <p class="page-sub">Enter a vehicle — the AI estimates its surface area, then prices every product in your catalog.</p>
+  <h1 class="page-heading">✦ AI Estimate</h1>
+  <p class="page-sub">
+    Describe the vehicle and the work needed. The AI will suggest services and line items
+    based on your studio's catalog. You can then open a new estimate pre-filled with these details.
+  </p>
 
-  {% if not products %}
-    <div class="empty">
-      No products in your catalog yet.<br>
-      <a href="/products/new" style="color:#C8A96E">Add a product</a> first so the estimator has something to price.
-    </div>
-  {% else %}
-
-  <div class="card">
-    <div class="row">
-      <div>
-        <label>Vehicle</label>
-        <input type="text" id="vehicle" placeholder="e.g. 2023 BMW X7 M60i" autocomplete="off">
-      </div>
-      <div>
-        <label>Coverage</label>
-        <select id="coverage">
-          <option value="1.0">Full body (100%)</option>
-          <option value="0.55">Front end (55%)</option>
-          <option value="0.35">Partial front (35%)</option>
-          <option value="0.20">Hood + fenders (20%)</option>
-        </select>
-      </div>
-      <button class="btn-gold" id="go" onclick="estimate()">Estimate</button>
-    </div>
-
-    <div class="sqft-box" id="sqft-box">
-      <div class="sqft-num" id="sqft-num">—</div>
-      <div class="sqft-src" id="sqft-src"></div>
-    </div>
+  <!-- Input form -->
+  <div class="form-group">
+    <label>Vehicle</label>
+    <input type="text" id="ai_vehicle" placeholder="e.g. 2022 BMW M4, heavy swirl marks, minor scratches" value="{{ prefill_vehicle or '' }}">
   </div>
 
-  <div class="quotes" id="quotes">
-    <div class="q-title">Quotes</div>
-    <table>
-      <thead>
-        <tr><th>Product</th><th>Category</th><th>Area</th><th>Material</th><th>Labour</th><th>Margin</th><th>Total</th><th></th></tr>
-      </thead>
-      <tbody id="qbody"></tbody>
-    </table>
-
-    <div class="card save-card" id="save-card">
-      <form method="POST" action="/ai-estimate/save">
-        <input type="hidden" name="vehicle" id="s-vehicle">
-        <input type="hidden" name="product_id" id="s-pid">
-        <input type="hidden" name="sqft" id="s-sqft">
-        <input type="hidden" name="coverage" id="s-cov">
-        <div class="save-row">
-          <div>
-            <label>Customer name</label>
-            <input type="text" name="customer_name" placeholder="Walk-in">
-          </div>
-          <div>
-            <label>Tax %</label>
-            <input type="number" step="0.1" min="0" name="tax_percent" value="0">
-          </div>
-          <button type="submit" class="btn-gold">Save as Estimate</button>
-        </div>
-        <p style="margin-top:12px;font-size:12px;color:rgba(255,255,255,.35)">
-          Saving creates a Draft estimate with <span id="s-name" style="color:#C8A96E">—</span> as a line item.
-        </p>
-      </form>
-    </div>
+  <div class="form-group">
+    <label>Describe the job</label>
+    <textarea id="ai_description" placeholder="e.g. Full paint correction needed, ceramic coating after, interior needs deep clean. Customer wants premium finish for a car show.">{{ prefill_desc or '' }}</textarea>
   </div>
-  {% endif %}
+
+  <div class="form-group">
+    <label>Budget range (optional)</label>
+    <input type="text" id="ai_budget" placeholder="e.g. $500–$1500, or leave blank">
+  </div>
+
+  <button class="btn-ask" id="btn_ask" onclick="askAI()">Generate Estimate</button>
+  <p class="hint">Uses your studio's service catalog as context. Results are suggestions — review before saving.</p>
+
+  <!-- Thinking -->
+  <div class="thinking" id="thinking">
+    <div class="dot-pulse"></div>
+    <span>AI is building your estimate…</span>
+  </div>
+
+  <!-- Response -->
+  <div class="response-card" id="response_card">
+    <div class="response-title">AI Suggestion</div>
+    <div class="response-text" id="response_text"></div>
+
+    <div class="parsed-services" id="parsed_services"></div>
+
+    <a href="/estimates/new" class="btn-use" id="btn_use_estimate">
+      Open New Estimate with these details →
+    </a>
+  </div>
 </main>
 
 <script>
-let lastSqft=0, lastCov=1;
-async function estimate(){
-  const v=document.getElementById('vehicle').value.trim();
-  if(!v){alert('Enter a vehicle');return;}
-  const cov=parseFloat(document.getElementById('coverage').value);
-  const btn=document.getElementById('go');
-  btn.disabled=true; btn.textContent='Estimating…';
-  try{
-    const r=await fetch('/ai-estimate/sqft',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({vehicle:v, coverage:cov})});
-    const d=await r.json();
-    lastSqft=d.sqft; lastCov=d.coverage;
+  // Store AI result to pass to new estimate
+  let lastResult = "";
 
-    document.getElementById('sqft-box').style.display='block';
-    document.getElementById('sqft-num').textContent=`${d.sqft} sq ft`;
-    const srcTxt={ai:'Estimated by AI',cache:'From cache (previously estimated)',fallback:'Estimated from vehicle type (AI unavailable)'};
-    document.getElementById('sqft-src').textContent=`${srcTxt[d.source]||''} · covering ${Math.round(d.coverage*100)}% = ${(d.sqft*d.coverage).toFixed(0)} sq ft`;
+  async function askAI() {
+    const vehicle     = document.getElementById('ai_vehicle').value.trim();
+    const description = document.getElementById('ai_description').value.trim();
+    const budget      = document.getElementById('ai_budget').value.trim();
 
-    const body=document.getElementById('qbody'); body.innerHTML='';
-    d.quotes.forEach(q=>{
-      body.innerHTML+=`<tr id="row-${q.id}" onclick="pick(${q.id},'${q.name.replace(/'/g,"")}')" style="cursor:pointer">
-        <td><strong>${q.name}</strong>${q.brand?`<div class="breakdown">${q.brand}</div>`:''}</td>
-        <td><span class="cat">${q.category}</span></td>
-        <td>${q.area} ft²</td>
-        <td>$${q.material.toFixed(2)}</td>
-        <td>$${q.labour.toFixed(2)}</td>
-        <td>$${q.markup.toFixed(2)}</td>
-        <td class="total">$${q.total.toFixed(2)}</td>
-        <td style="font-size:11px;color:rgba(255,255,255,.3)">select</td>
-      </tr>`;
-    });
-    document.getElementById('quotes').style.display='block';
-    document.getElementById('save-card').style.display='none';
-  }catch(e){ alert('Estimate failed. Try again.'); }
-  btn.disabled=false; btn.textContent='Estimate';
-}
-function pick(pid,name){
-  document.querySelectorAll('#qbody tr').forEach(t=>t.classList.remove('sel'));
-  document.getElementById('row-'+pid).classList.add('sel');
-  document.getElementById('s-pid').value=pid;
-  document.getElementById('s-vehicle').value=document.getElementById('vehicle').value.trim();
-  document.getElementById('s-sqft').value=lastSqft;
-  document.getElementById('s-cov').value=lastCov;
-  document.getElementById('s-name').textContent=name;
-  document.getElementById('save-card').style.display='block';
-  document.getElementById('save-card').scrollIntoView({behavior:'smooth',block:'nearest'});
-}
-document.getElementById('vehicle').addEventListener('keypress',e=>{if(e.key==='Enter')estimate();});
+    if (!vehicle && !description) {
+      document.getElementById('ai_vehicle').focus();
+      return;
+    }
+
+    const question = buildPrompt(vehicle, description, budget);
+
+    document.getElementById('btn_ask').disabled = true;
+    document.getElementById('thinking').classList.add('visible');
+    document.getElementById('response_card').classList.remove('visible');
+
+    try {
+      const resp = await fetch('/assistant/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, attachments: [] }),
+      });
+      const data = await resp.json();
+      lastResult = data.answer || data.error || 'No response from AI.';
+
+      document.getElementById('response_text').textContent = lastResult;
+      document.getElementById('response_card').classList.add('visible');
+
+      // Build "Open New Estimate" URL with prefill params
+      const params = new URLSearchParams();
+      if (vehicle)     params.set('vehicle', vehicle);
+      if (lastResult)  params.set('ai_suggestion', lastResult.slice(0, 500));
+      document.getElementById('btn_use_estimate').href =
+        '/estimates/new?' + params.toString();
+
+    } catch (err) {
+      document.getElementById('response_text').textContent = 'Request failed: ' + err;
+      document.getElementById('response_card').classList.add('visible');
+    } finally {
+      document.getElementById('btn_ask').disabled = false;
+      document.getElementById('thinking').classList.remove('visible');
+    }
+  }
+
+  function buildPrompt(vehicle, description, budget) {
+    let prompt = `You are a service advisor at a professional auto detailing studio. `;
+    prompt += `Based on the job description below, suggest specific detailing services with estimated prices in USD. `;
+    prompt += `Format as a list: "Service Name — $price — brief reason".\n\n`;
+    if (vehicle)     prompt += `Vehicle: ${vehicle}\n`;
+    if (description) prompt += `Job description: ${description}\n`;
+    if (budget)      prompt += `Customer budget: ${budget}\n`;
+    prompt += `\nSuggest 2–5 line items appropriate for this job. Be specific and practical.`;
+    return prompt;
+  }
 </script>
 </body>
 </html>
