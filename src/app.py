@@ -3,6 +3,7 @@ from .config import Config
 from .controller import bp
 from .db_manager import close_db
 from .seed import initialize_db
+from logging_config import configure_logging
 
 
 def create_app():
@@ -21,3 +22,4 @@ def create_app():
 
 if __name__ == "__main__":
     create_app().run(debug=True, port=5055)
+    configure_logging()

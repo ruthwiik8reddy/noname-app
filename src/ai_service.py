@@ -21,11 +21,13 @@ import sqlite3
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional
+import logging
 
 import requests
 
 from .config import Config
 
+logger = logging.getLogger(__name__)
 
 # ── Response model ────────────────────────────────────────────────────────────
 
