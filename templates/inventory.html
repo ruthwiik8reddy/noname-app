@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Inventory & AI - Autofiera</title>
+    <!-- Load Bootstrap for the UI components -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      /* Dark Theme & Gold Accents matching your app */
+      body {
+        background-color: #121212;
+        color: #e8e8e8;
+        display: flex;
+        height: 100vh;
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        overflow: hidden;
+      }
+      .main-content {
+        flex: 1;
+        padding: 2rem;
+        overflow-y: auto;
+      }
+
+      .card {
+        background-color: #1e1e1e;
+        border: 1px solid rgba(255, 255, 255, 0.07);
+      }
+      .table {
+        color: #e8e8e8;
+      }
+      .table-light {
+        background-color: #2a2a2a;
+        color: #e8e8e8;
+      }
+      .table-light th {
+        background-color: #2a2a2a;
+        color: #c8a96e;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .table td {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      .table-hover tbody tr:hover {
+        color: #fff;
+        background-color: rgba(255, 255, 255, 0.05);
+      }
+
+      .modal-content {
+        background-color: #1e1e1e;
+        color: #e8e8e8;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .modal-header {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      }
+      .modal-footer {
+        border-top: 1px solid rgba(255, 255, 255, 0.07);
+      }
+
+      .form-control {
+        background-color: #2a2a2a;
+        color: #fff;
+        border: 1px solid #444;
+      }
+      .form-control:focus {
+        background-color: #333;
+        color: #fff;
+        border-color: #c8a96e;
+        box-shadow: 0 0 0 0.25rem rgba(200, 169, 110, 0.25);
+      }
+      .form-label {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.9rem;
+      }
+
+      .btn-primary {
+        background-color: #c8a96e;
+        border-color: #c8a96e;
+        color: #121212;
+        font-weight: 600;
+      }
+      .btn-primary:hover {
+        background-color: #b5955c;
+        border-color: #b5955c;
+        color: #121212;
+      }
+      .btn-outline-primary {
+        color: #c8a96e;
+        border-color: #c8a96e;
+      }
+      .btn-outline-primary:hover {
+        background-color: #c8a96e;
+        color: #121212;
+      }
+
+      /* Widget Styling */
+      #aiAnalyticsWidget .card-header {
+        background-color: #c8a96e !important;
+        color: #121212 !important;
+      }
+      .text-muted {
+        color: rgba(255, 255, 255, 0.5) !important;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Properly INCLUDE the sidebar -->
+    {% include "_sidebar.html" %}
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+      <div class="container-fluid py-2">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h2 class="h3 fw-bold mb-0 text-white">Inventory & Studio Stock</h2>
+            <p class="text-muted small mb-0">
+              Manage products, track usage, and monitor AI stock analytics.
+            </p>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary" onclick="runAIAnalytics()">
+              🤖 Run AI Stock Analysis
+            </button>
+            <!-- NEW SCAN BUTTON -->
+            <button class="btn btn-outline-light" onclick="startScanner()">
+              📷 Scan Barcode
+            </button>
+            <!-- EXISTING ADD BUTTON -->
+            <button
+              class="btn btn-primary"
+              data-bs-toggle="modal"
+              data-bs-target="#addItemModal"
+            >
+              + Add New Item
+            </button>
+          </div>
+        </div>
+
+        <!-- Metric Cards -->
+        <div class="row g-3 mb-4">
+          <div class="col-md-4">
+            <div class="card border-0 shadow-sm p-3">
+              <span class="text-muted small">Total Catalog SKUs</span>
+              <h3 class="fw-bold my-1">{{ total_items }}</h3>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card border-0 shadow-sm p-3">
+              <span class="text-muted small">Low Stock Warnings</span>
+              <h3 class="fw-bold text-danger my-1">{{ low_stock_count }}</h3>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card border-0 shadow-sm p-3">
+              <span class="text-muted small">Total Stock Valuation</span>
+              <h3 class="fw-bold text-success my-1">
+                {{ total_valuation_display }}
+              </h3>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI Analytics Widget (Hidden by default) -->
+        <div id="aiAnalyticsWidget" class="card shadow-sm mb-4 d-none">
+          <div
+            class="card-header d-flex justify-content-between align-items-center"
+          >
+            <h5 class="mb-0 fw-bold">
+              🤖 AI Inventory Health & Reorder Advisor
+            </h5>
+            <span
+              id="aiHealthBadge"
+              class="badge bg-dark text-white border border-light"
+              >Analyzing...</span
+            >
+          </div>
+          <div class="card-body" id="aiAnalyticsBody">
+            <div class="text-center py-3">
+              <div
+                class="spinner-border"
+                style="color: #c8a96e"
+                role="status"
+              ></div>
+              <p class="mt-2 text-muted">
+                Analyzing stock levels, job usage history, and upcoming
+                appointments...
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inventory Table -->
+        <div class="card border-0 shadow-sm">
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>SKU</th>
+                    <th>Product Name</th>
+                    <th>Category</th>
+                    <th>Stock Level</th>
+                    <th>Unit Cost</th>
+                    <th>Supplier</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for item in items %}
+                  <tr
+                    class="{% if item.quantity <= item.reorder_level %}table-danger text-dark{% endif %}"
+                  >
+                    <td><code>{{ item.sku }}</code></td>
+                    <td class="fw-bold">{{ item.name }}</td>
+                    <td>
+                      <span class="badge bg-secondary"
+                        >{{ item.category }}</span
+                      >
+                    </td>
+                    <td>
+                      {{ item.quantity }} {{ item.unit }} {% if item.quantity <=
+                      item.reorder_level %}
+                      <span class="badge bg-danger ms-1">Low Stock</span>
+                      {% endif %}
+                    </td>
+                    <td>${{ "%.2f"|format(item.cost_per_unit / 100) }}</td>
+                    <td>{{ item.supplier or 'N/A' }}</td>
+                    <td>
+                      <button
+                        class="btn btn-sm btn-outline-light"
+                        onclick="openAdjustModal('{{ item.id }}', '{{ item.name }}')"
+                      >
+                        Adjust
+                      </button>
+                    </td>
+                  </tr>
+                  {% else %}
+                  <tr>
+                    <td colspan="7" class="text-center py-4 text-muted">
+                      No inventory items found. Add your first product above!
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Add Item -->
+    <div
+      class="modal fade"
+      id="addItemModal"
+      tabindex="-1"
+      data-bs-theme="dark"
+    >
+      <div class="modal-dialog">
+        <form
+          action="{{ url_for('main.new_inventory_item') }}"
+          method="POST"
+          class="modal-content"
+        >
+          <div class="modal-header">
+            <h5 class="modal-title">Add Inventory Item</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">SKU</label>
+              <input
+                type="text"
+                name="sku"
+                class="form-control"
+                placeholder="e.g. COAT-CER-50"
+                required
+              />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Product Name</label>
+              <input
+                type="text"
+                name="name"
+                class="form-control"
+                placeholder="e.g. Ceramic Coating 50ml"
+                required
+              />
+            </div>
+            <div class="row">
+              <div class="col-6 mb-3">
+                <label class="form-label">Category</label>
+                <input
+                  type="text"
+                  name="category"
+                  class="form-control"
+                  placeholder="Coatings, Compounds..."
+                  required
+                />
+              </div>
+              <div class="col-6 mb-3">
+                <label class="form-label">Unit of Measure</label>
+                <input
+                  type="text"
+                  name="unit"
+                  class="form-control"
+                  placeholder="bottles, ml, pads"
+                  required
+                />
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-6 mb-3">
+                <label class="form-label">Initial Quantity</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  name="quantity"
+                  class="form-control"
+                  value="10"
+                  required
+                />
+              </div>
+              <div class="col-6 mb-3">
+                <label class="form-label">Reorder Level Alert</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  name="reorder_level"
+                  class="form-control"
+                  value="3"
+                  required
+                />
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-6 mb-3">
+                <label class="form-label">Unit Cost ($)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="cost_per_unit"
+                  class="form-control"
+                  placeholder="45.00"
+                />
+              </div>
+              <div class="col-6 mb-3">
+                <label class="form-label">Supplier Name</label>
+                <input
+                  type="text"
+                  name="supplier"
+                  class="form-control"
+                  placeholder="e.g. Gtechniq / CARPRO"
+                />
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-primary">Save Product</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal: Adjust Stock -->
+    <div
+      class="modal fade"
+      id="adjustItemModal"
+      tabindex="-1"
+      data-bs-theme="dark"
+    >
+      <div class="modal-dialog">
+        <form id="adjustForm" method="POST" class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              Adjust Stock:
+              <span id="adjustItemName" class="text-primary"></span>
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label"
+                >Change Quantity (+ to add, - to deduct)</label
+              >
+              <input
+                type="number"
+                step="0.1"
+                name="change_qty"
+                class="form-control"
+                placeholder="e.g., 5 or -1"
+                required
+              />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Reason</label>
+              <input
+                type="text"
+                name="reason"
+                class="form-control"
+                placeholder="e.g., New shipment arrived, spilled bottle..."
+                required
+              />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-primary">Update Stock</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal: Barcode Scanner -->
+    <div
+      class="modal fade"
+      id="scannerModal"
+      tabindex="-1"
+      data-bs-theme="dark"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Scan Barcode</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              onclick="stopScanner()"
+            ></button>
+          </div>
+          <div class="modal-body text-center">
+            <!-- The camera feed will render inside this div -->
+            <div
+              id="reader"
+              style="width: 100%; border-radius: 8px; overflow: hidden"
+            ></div>
+            <p class="text-muted small mt-3 mb-0">
+              Point your camera at the product barcode (UPC/EAN).
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Load Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- AI Analytics Logic -->
+    <script>
+      async function runAIAnalytics() {
+        const widget = document.getElementById("aiAnalyticsWidget");
+        const body = document.getElementById("aiAnalyticsBody");
+        const badge = document.getElementById("aiHealthBadge");
+
+        widget.classList.remove("d-none");
+        body.innerHTML = `
+        <div class="text-center py-3">
+            <div class="spinner-border" style="color: #C8A96E;" role="status"></div>
+            <p class="mt-2 text-muted">Running local AI inventory analysis against jobs and bookings...</p>
+        </div>`;
+
+        try {
+          const res = await fetch("/inventory/api/ai-analytics", {
+            method: "POST",
+          });
+          const data = await res.json();
+
+          if (!res.ok || data.error) {
+            body.innerHTML = `<div class="alert alert-danger mb-0">${
+              data.error || "Failed to generate AI analytics."
+            }</div>`;
+            return;
+          }
+
+          badge.innerText = `Health: ${data.health_score}`;
+          badge.className = data.health_score.includes("Critical")
+            ? "badge bg-danger"
+            : data.health_score.includes("Attention")
+            ? "badge bg-warning text-dark"
+            : "badge bg-success";
+
+          let reorderHtml = "";
+          if (data.urgent_reorders && data.urgent_reorders.length > 0) {
+            reorderHtml = `<h6 class="fw-bold text-danger mt-3">🚨 Recommended Reorders:</h6><ul>`;
+            data.urgent_reorders.forEach((item) => {
+              reorderHtml += `<li><strong>${item.name}</strong> (SKU: ${item.sku}) — Order +${item.suggested_order_qty}. <em class="text-muted">${item.reason}</em></li>`;
+            });
+            reorderHtml += `</ul>`;
+          }
+
+          let forecastHtml = "";
+          if (data.consumption_forecast) {
+            forecastHtml = `<h6 class="fw-bold text-info mt-3">📈 Usage Forecasts:</h6><ul>`;
+            data.consumption_forecast.forEach((f) => {
+              forecastHtml += `<li><strong>${f.category}</strong> [${f.trend} Trend]: <span class="text-muted">${f.insight}</span></li>`;
+            });
+            forecastHtml += `</ul>`;
+          }
+
+          body.innerHTML = `
+                <p class="lead text-white mb-2">${data.summary}</p>
+                ${reorderHtml}
+                ${forecastHtml}
+            `;
+        } catch (e) {
+          body.innerHTML = `<div class="alert alert-danger mb-0">Connection error while calling local AI Analytics.</div>`;
+        }
+      }
+    </script>
+    <!-- Load Html5Qrcode Library -->
+    <script
+      src="https://unpkg.com/html5-qrcode"
+      type="text/javascript"
+    ></script>
+
+    <script>
+      // --- Adjust Modal Logic ---
+      function openAdjustModal(id, name) {
+        document.getElementById("adjustItemName").innerText = name;
+        document.getElementById("adjustForm").action =
+          "/inventory/" + id + "/adjust";
+        new bootstrap.Modal(document.getElementById("adjustItemModal")).show();
+      }
+      let html5QrcodeScanner = null;
+
+      function startScanner() {
+        // Show the modal
+        new bootstrap.Modal(document.getElementById("scannerModal")).show();
+
+        // Initialize the scanner
+        html5QrcodeScanner = new Html5QrcodeScanner(
+          "reader",
+          { fps: 10, qrbox: { width: 250, height: 150 } },
+          /* verbose= */ false
+        );
+
+        html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+      }
+
+      function stopScanner() {
+        if (html5QrcodeScanner) {
+          html5QrcodeScanner.clear().catch((error) => {
+            console.error("Failed to clear scanner.", error);
+          });
+        }
+      }
+
+      async function onScanSuccess(decodedText, decodedResult) {
+        // 1. Stop the scanner and hide the Bootstrap 5 modal
+        if (typeof html5QrcodeScanner !== "undefined") {
+          html5QrcodeScanner.clear();
+        }
+        let scannerModalEl = document.getElementById("scannerModal");
+        if (scannerModalEl) {
+          let modal = bootstrap.Modal.getInstance(scannerModalEl);
+          if (modal) modal.hide();
+        }
+
+        // 2. Prompt the technician for the quantity used immediately after scanning
+        let qty = prompt(
+          `Scanned SKU: ${decodedText}\n\nHow much did you use on the current job?`
+        );
+
+        // 3. Validate the input is a positive number
+        if (
+          qty !== null &&
+          qty.trim() !== "" &&
+          !isNaN(qty) &&
+          Number(qty) > 0
+        ) {
+          try {
+            // 4. Fire the data to our new raw SQLite backend route
+            const response = await fetch("/api/jobs/log-material", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                sku: decodedText,
+                quantity_used: parseFloat(qty),
+              }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+              // Success: Show confirmation and refresh to update the Jinja2 UI
+              alert(`✅ Success: ${data.message}`);
+              location.reload();
+            } else {
+              // Fails if they don't have an "In Progress" job, or product isn't found
+              alert(`❌ Error: ${data.error}`);
+            }
+          } catch (error) {
+            console.error("Error logging material:", error);
+            alert("Failed to connect to the server.");
+          }
+        } else if (qty !== null) {
+          alert("Log cancelled: Please enter a valid number.");
+        }
+      }
+
+      function onScanFailure(error) {
+        // Html5Qrcode throws errors constantly as it tries to focus/find codes.
+        // We safely ignore these background errors.
+      }
+    </script>
+  </body>
+</html>

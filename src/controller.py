@@ -302,6 +302,160 @@ def update_job_status(job_id):
     redirect_to = request.form.get("redirect_to") or url_for("main.jobs_list")
     return redirect(redirect_to)
 
+# ── Inventory & Analytics Dashboard ─────────────────────────────────────────
+
+@bp.route("/inventory")
+@staff_or_admin_required
+def inventory_dashboard():
+    sid = session["studio_id"]
+    conn = get_db()
+
+    items = conn.execute(
+        "SELECT * FROM inventory_items WHERE studio_id=? ORDER BY category, name",
+        (sid,)
+    ).fetchall()
+
+    # Calculate analytical summary metrics
+    total_items = len(items)
+    low_stock_items = [i for i in items if i["quantity"] <= i["reorder_level"]]
+    total_valuation_cents = sum(int(i["quantity"] * i["cost_per_unit"]) for i in items)
+
+    # Categories list for filters
+    categories = sorted(list(set(i["category"] for i in items)))
+
+    return render_template(
+        "inventory.html",
+        **sidebar_context(), **auth_context(), active_page="inventory",
+        items=items,
+        total_items=total_items,
+        low_stock_count=len(low_stock_items),
+        total_valuation_display=f"${total_valuation_cents / 100:,.2f}",
+        categories=categories
+    )
+
+
+@bp.route("/inventory/new", methods=["POST"])
+@staff_or_admin_required
+def new_inventory_item():
+    sid = session["studio_id"]
+    conn = get_db()
+    f = request.form
+
+    sku = f.get("sku", "").strip().upper()
+    name = f.get("name", "").strip()
+    category = f.get("category", "General").strip()
+    qty = float(f.get("quantity", 0))
+    unit = f.get("unit", "units").strip()
+    reorder_level = float(f.get("reorder_level", 5))
+    cost_dollars = float(f.get("cost_per_unit", 0))
+    cost_cents = int(cost_dollars * 100)
+    supplier = f.get("supplier", "").strip()
+
+    if sku and name:
+        cur = conn.execute("""
+            INSERT INTO inventory_items 
+            (studio_id, sku, name, category, quantity, unit, reorder_level, cost_per_unit, supplier)
+            VALUES (?,?,?,?,?,?,?,?,?)
+        """, (sid, sku, name, category, qty, unit, reorder_level, cost_cents, supplier))
+        
+        item_id = cur.lastrowid
+        conn.execute("""
+            INSERT INTO inventory_logs (studio_id, item_id, change_qty, reason)
+            VALUES (?,?,?, 'Initial Stock Entry')
+        """, (sid, item_id, qty))
+        conn.commit()
+
+    return redirect(url_for("main.inventory_dashboard"))
+
+
+@bp.route("/inventory/<int:item_id>/adjust", methods=["POST"])
+@staff_or_admin_required
+def adjust_inventory_stock(item_id):
+    sid = session["studio_id"]
+    conn = get_db()
+    f = request.form
+
+    change_qty = float(f.get("change_qty", 0))
+    reason = f.get("reason", "Manual Adjustment").strip()
+
+    item = conn.execute(
+        "SELECT * FROM inventory_items WHERE id=? AND studio_id=?", (item_id, sid)
+    ).fetchone()
+
+    if item and change_qty != 0:
+        new_qty = max(0.0, item["quantity"] + change_qty)
+        conn.execute(
+            "UPDATE inventory_items SET quantity=?, updated_at=datetime('now') WHERE id=?",
+            (new_qty, item_id)
+        )
+        conn.execute(
+            "INSERT INTO inventory_logs (studio_id, item_id, change_qty, reason) VALUES (?,?,?,?)",
+            (sid, item_id, change_qty, reason)
+        )
+        conn.commit()
+
+    return redirect(url_for("main.inventory_dashboard"))
+
+
+@bp.route("/inventory/api/ai-analytics", methods=["POST"])
+@staff_or_admin_required
+def api_inventory_analytics():
+    sid = session["studio_id"]
+    service = AIService()
+    analysis = service.analyze_inventory_health(sid)
+
+    if "error" in analysis:
+        # Fallback: compute low‑stock items manually
+        conn = get_db()
+        items = conn.execute(
+            "SELECT * FROM inventory_items WHERE studio_id=? AND quantity <= reorder_level",
+            (sid,)
+        ).fetchall()
+        fallback = {
+            "health_score": "Attention Needed (fallback)",
+            "summary": f"{len(items)} items are below reorder level.",
+            "urgent_reorders": [
+                {"sku": i["sku"], "name": i["name"], "current_qty": i["quantity"],
+                 "reorder_level": i["reorder_level"],
+                 "suggested_order_qty": i["reorder_level"] * 2,
+                 "reason": "Manual fallback – check stock."}
+                for i in items
+            ],
+            "consumption_forecast": [],
+            "cost_optimizations": ["Review inventory levels manually."],
+            "_fallback": True
+        }
+        return jsonify(fallback), 200  # return 200 with fallback flag
+
+    return jsonify(analysis), 200
+
+
+@bp.route("/inventory/api/lookup-sku")
+@staff_or_admin_required
+def api_lookup_sku():
+    """
+    AJAX endpoint used by the barcode scanner.
+    Checks if a scanned SKU already exists in the studio's inventory.
+    """
+    sid = session["studio_id"]
+    sku = request.args.get("sku", "").strip()
+    
+    if not sku:
+        return jsonify({"error": "No SKU provided"}), 400
+
+    conn = get_db()
+    item = conn.execute(
+        "SELECT id, name FROM inventory_items WHERE studio_id=? AND sku=?", 
+        (sid, sku)
+    ).fetchone()
+
+    if item:
+        # Product exists! Return the ID and Name so the frontend can open the Adjust modal
+        return jsonify({"exists": True, "id": item["id"], "name": item["name"]})
+    else:
+        # Product doesn't exist. Tell the frontend to open the New Item modal.
+        return jsonify({"exists": False, "sku": sku})
+
 
 # ── Estimates ─────────────────────────────────────────────────────────────────
 
@@ -412,6 +566,28 @@ def new_estimate():
         **sidebar_context(), **auth_context(), active_page="estimates", services=services
     )
 
+@bp.route("/estimates/api/generate", methods=["POST"])
+@staff_or_admin_required
+def api_generate_estimate():
+    """
+    API endpoint for the frontend to hit when a user clicks 'Generate AI Estimate'.
+    Expects a JSON payload: {"notes": "Customer wants a ceramic coating on their Tesla..."}
+    """
+    sid = session["studio_id"]
+    data = request.get_json(silent=True) or {}
+    notes = data.get("notes", "").strip()
+
+    if not notes:
+        return jsonify({"error": "Customer notes are required to generate an estimate."}), 400
+
+    # Delegate the heavy lifting to the AI Service
+    ai_service = AIService()
+    estimate_result = ai_service.generate_json_estimate(sid, notes)
+    
+    if "error" in estimate_result:
+        return jsonify(estimate_result), 500
+
+    return jsonify(estimate_result), 200
 
 @bp.route("/estimates/<int:estimate_id>/lookup")
 @staff_or_admin_required
@@ -1688,3 +1864,81 @@ from . import inspection_routes  # noqa: E402,F401
 
 # ── Products catalog + AI sqft estimator ──
 from . import product_routes  # noqa: E402,F401
+
+
+
+
+
+@bp.route('/api/jobs/log-material', methods=['POST'])
+@staff_or_admin_required
+def log_job_material():
+    sid = session.get("studio_id")
+    username = session.get("username")
+    
+    data = request.json
+    sku = data.get('sku')
+    qty_used = float(data.get('quantity_used', 0))
+
+    if not sku or qty_used <= 0:
+        return jsonify({"error": "Valid SKU and quantity are required."}), 400
+
+    conn = get_db()
+    
+    # 1. Map the session username to the technician's full name 
+    # (Because your 'jobs' table tracks techs by their full name, e.g., 'Maria Lopez')
+    staff_member = conn.execute(
+        "SELECT name FROM staff WHERE username=? AND studio_id=?", 
+        (username, sid)
+    ).fetchone()
+    
+    if not staff_member:
+        return jsonify({"error": "Technician profile not found."}), 403
+        
+    tech_name = staff_member["name"]
+
+    # 2. Locate the Technician's Active Job
+    active_job = conn.execute(
+        "SELECT id FROM jobs WHERE studio_id=? AND technician=? AND status='In Progress'",
+        (sid, tech_name)
+    ).fetchone()
+
+    if not active_job:
+        return jsonify({"error": "You do not have an active 'In Progress' job."}), 400
+
+    # 3. Locate the Inventory Item
+    item = conn.execute(
+        "SELECT id, name, unit, quantity FROM inventory_items WHERE studio_id=? AND sku=?",
+        (sid, sku)
+    ).fetchone()
+    
+    if not item:
+        return jsonify({"error": "Product not found in inventory."}), 404
+
+    # 4. Deduct Stock & Record Usage
+    new_qty = item["quantity"] - qty_used
+    
+    # Subtract from global inventory
+    conn.execute(
+        "UPDATE inventory_items SET quantity=?, updated_at=datetime('now') WHERE id=? AND studio_id=?",
+        (new_qty, item["id"], sid)
+    )
+    
+    # Link material to the job
+    conn.execute(
+        "INSERT INTO job_materials (studio_id, job_id, inventory_id, technician, quantity_used) VALUES (?, ?, ?, ?, ?)",
+        (sid, active_job["id"], item["id"], tech_name, qty_used)
+    )
+    
+    # Keep your inventory_logs accurate!
+    conn.execute(
+        "INSERT INTO inventory_logs (studio_id, item_id, change_qty, reason) VALUES (?, ?, ?, ?)",
+        (sid, item["id"], -qty_used, f"Point of use scan for Job #{active_job['id']}")
+    )
+    
+    conn.commit()
+
+    return jsonify({
+        "success": True, 
+        "message": f"Logged {qty_used} {item['unit']} of {item['name']} to Job #{active_job['id']}",
+        "new_stock_level": new_qty
+    })

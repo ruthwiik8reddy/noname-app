@@ -20,7 +20,7 @@ class Config:
 
     # AI config
     OLLAMA_URL   = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434")
-    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
+    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
 
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
     GEMINI_MODEL   = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")

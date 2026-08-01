@@ -1,243 +1,18 @@
-# import sqlite3
-# from flask import g as request_context
-# from .config import Config
-
-
-# def get_db():
-#     if "db" not in request_context:
-#         request_context.db = sqlite3.connect(Config.DB_PATH, detect_types=sqlite3.PARSE_DECLTYPES)
-#         request_context.db.row_factory = sqlite3.Row
-#     return request_context.db
-
-
-# def close_db(e=None):
-#     db = request_context.pop("db", None)
-#     if db is not None:
-#         db.close()
-
-# def get_catalog_for_ai_context(studio_id: int):
-#     """
-#     Retrieves a lightweight, token-optimized list of services/products for the AI.
-#     Follows Single Responsibility Principle (SRP).
-#     """
-#     conn = get_db()
-#     # Fetching services. If you also have a separate 'products' table from product_routes, 
-#     # you can UNION or fetch those here as well.
-#     services = conn.execute(
-#         "SELECT id, name, price, duration_hr FROM services WHERE studio_id=?", 
-#         (studio_id,)
-#     ).fetchall()
-    
-#     return [dict(s) for s in services]
-
-# def init_db():
-#     conn = sqlite3.connect(Config.DB_PATH)
-#     conn.execute("""
-#         CREATE TABLE IF NOT EXISTS studios (
-#             id       INTEGER PRIMARY KEY AUTOINCREMENT,
-#             name     TEXT NOT NULL,
-#             city     TEXT NOT NULL,
-#             owner    TEXT NOT NULL,
-#             logo     TEXT NOT NULL,
-#             username TEXT UNIQUE NOT NULL,
-#             password TEXT NOT NULL
-#         )
-#     """)
-#     conn.execute("""
-#         CREATE TABLE IF NOT EXISTS staff (
-#             id         INTEGER PRIMARY KEY AUTOINCREMENT,
-#             studio_id  INTEGER NOT NULL,
-#             name       TEXT NOT NULL,
-#             role       TEXT NOT NULL,
-#             username   TEXT UNIQUE NOT NULL,
-#             password   TEXT NOT NULL,
-#             FOREIGN KEY (studio_id) REFERENCES studios(id)
-#         )
-#     """)
-#     conn.execute("""
-#         CREATE TABLE IF NOT EXISTS bays (
-#             id        INTEGER PRIMARY KEY AUTOINCREMENT,
-#             studio_id INTEGER NOT NULL,
-#             name      TEXT NOT NULL,
-#             FOREIGN KEY (studio_id) REFERENCES studios(id)
-#         )
-#     """)
-#     conn.execute("""
-#         CREATE TABLE IF NOT EXISTS services (
-#             id          INTEGER PRIMARY KEY AUTOINCREMENT,
-#             studio_id   INTEGER NOT NULL,
-#             name        TEXT NOT NULL,
-#             duration_hr REAL NOT NULL,
-#             price       INTEGER NOT NULL,
-#             FOREIGN KEY (studio_id) REFERENCES studios(id)
-#         )
-#     """)
-#     conn.execute("""
-#         CREATE TABLE IF NOT EXISTS bookings (
-#             id            INTEGER PRIMARY KEY AUTOINCREMENT,
-#             studio_id     INTEGER NOT NULL,
-#             customer_name TEXT NOT NULL,
-#             customer_phone TEXT NOT NULL,
-#             vehicle       TEXT NOT NULL,
-#             service_id    INTEGER NOT NULL,
-#             bay_id        INTEGER,
-#             staff_id      INTEGER,
-#             date          TEXT NOT NULL,
-#             time_slot     TEXT NOT NULL,
-#             status        TEXT NOT NULL DEFAULT 'Pending',
-#             notes         TEXT DEFAULT '',
-#             created_at    TEXT DEFAULT (datetime('now')),
-#             FOREIGN KEY (studio_id)  REFERENCES studios(id),
-#             FOREIGN KEY (service_id) REFERENCES services(id),
-#             FOREIGN KEY (bay_id)     REFERENCES bays(id),
-#             FOREIGN KEY (staff_id)   REFERENCES staff(id)
-#         )
-#     """)
-#     conn.execute("""
-#         CREATE TABLE IF NOT EXISTS jobs (
-#             id         INTEGER PRIMARY KEY AUTOINCREMENT,
-#             studio_id  INTEGER NOT NULL,
-#             car        TEXT NOT NULL,
-#             service    TEXT NOT NULL,
-#             status     TEXT NOT NULL DEFAULT 'Pending',
-#             technician TEXT NOT NULL DEFAULT 'Unassigned',
-#             price      INTEGER NOT NULL DEFAULT 0,
-#             FOREIGN KEY (studio_id) REFERENCES studios(id)
-#         )
-#     """)
-#     conn.execute("""
-#         CREATE TABLE IF NOT EXISTS estimates (
-#             id              INTEGER PRIMARY KEY AUTOINCREMENT,
-#             studio_id       INTEGER NOT NULL,
-#             customer_name   TEXT NOT NULL,
-#             customer_email  TEXT NOT NULL,
-#             customer_phone  TEXT NOT NULL,
-#             vehicle         TEXT NOT NULL,
-#             status          TEXT NOT NULL DEFAULT 'Draft',
-#             subtotal        INTEGER NOT NULL DEFAULT 0,
-#             tax_percent     REAL NOT NULL DEFAULT 8.5,
-#             tax_amount      INTEGER NOT NULL DEFAULT 0,
-#             total           INTEGER NOT NULL DEFAULT 0,
-#             notes           TEXT DEFAULT '',
-#             internal_notes  TEXT DEFAULT '',
-#             signature       TEXT DEFAULT '',
-#             approved_at     TEXT DEFAULT '',
-#             created_at      TEXT DEFAULT (datetime('now')),
-#             FOREIGN KEY (studio_id) REFERENCES studios(id)
-#         )
-#     """)
-#     conn.execute("""
-#         CREATE TABLE IF NOT EXISTS estimate_items (
-#             id          INTEGER PRIMARY KEY AUTOINCREMENT,
-#             estimate_id INTEGER NOT NULL,
-#             name        TEXT NOT NULL,
-#             description TEXT DEFAULT '',
-#             quantity    INTEGER NOT NULL DEFAULT 1,
-#             unit_price  INTEGER NOT NULL DEFAULT 0,
-#             total       INTEGER NOT NULL DEFAULT 0,
-#             FOREIGN KEY (estimate_id) REFERENCES estimates(id)
-#         )
-#     """)
-#     # Add this inside init_db() in db_manager.py:
-#     conn.execute("""
-#     CREATE TABLE IF NOT EXISTS inventory_items (
-#         id            INTEGER PRIMARY KEY AUTOINCREMENT,
-#         studio_id     INTEGER NOT NULL,
-#         sku           TEXT UNIQUE NOT NULL,
-#         name          TEXT NOT NULL,
-#         category      TEXT NOT NULL DEFAULT 'General',
-#         quantity      REAL NOT NULL DEFAULT 0,
-#         unit          TEXT NOT NULL DEFAULT 'units', -- e.g. ml, oz, bottles, pads
-#         reorder_level REAL NOT NULL DEFAULT 5,
-#         cost_per_unit INTEGER NOT NULL DEFAULT 0, -- in cents
-#         supplier      TEXT DEFAULT '',
-#         updated_at    TEXT DEFAULT (datetime('now')),
-#         FOREIGN KEY (studio_id) REFERENCES studios(id)
-#         )
-#     """)
-
-#     conn.execute("""
-#     CREATE TABLE IF NOT EXISTS inventory_logs (
-#         id         INTEGER PRIMARY KEY AUTOINCREMENT,
-#         studio_id  INTEGER NOT NULL,
-#         item_id    INTEGER NOT NULL,
-#         change_qty REAL NOT NULL,
-#         reason     TEXT NOT NULL, -- e.g. 'Restock', 'Job #12 Usage', 'Adjustment'
-#         created_at TEXT DEFAULT (datetime('now')),
-#         FOREIGN KEY (studio_id) REFERENCES studios(id),
-#         FOREIGN KEY (item_id) REFERENCES inventory_items(id)
-#         )
-#     """)    
-#     conn.commit()
-#     conn.close()
-
-
-
-
-# def get_studio_inventory(studio_id: int):
-#     conn = get_db()
-#     rows = conn.execute(
-#         "SELECT * FROM inventory_items WHERE studio_id=? ORDER BY name ASC", 
-#         (studio_id,)
-#     ).fetchall()
-#     return [dict(r) for r in rows]
-
-# def get_inventory_consumption(studio_id: int):
-#     """Returns dict {item_id: total_consumed_quantity} for the last 30 days."""
-#     conn = get_db()
-#     rows = conn.execute("""
-#         SELECT item_id, SUM(ABS(change_qty)) as consumed
-#         FROM inventory_logs
-#         WHERE studio_id = ? AND change_qty < 0 AND created_at >= date('now', '-30 days')
-#         GROUP BY item_id
-#     """, (studio_id,)).fetchall()
-#     return {r["item_id"]: r["consumed"] for r in rows}
-
-
-
-
-
-
-
-
-
-
-
-
+# fix_schema_standalone.py
 import sqlite3
-from flask import g as request_context
-from .config import Config
+import os
 
+DB_PATH = os.path.join(os.path.dirname(__file__), 'studios.db')
 
-def get_db():
-    if "db" not in request_context:
-        request_context.db = sqlite3.connect(Config.DB_PATH, detect_types=sqlite3.PARSE_DECLTYPES)
-        request_context.db.row_factory = sqlite3.Row
-    return request_context.db
+def run():
+    print(f"📂 Using database at: {DB_PATH}")
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
 
+    # ── Create all core tables if they don't exist ──
 
-def close_db(e=None):
-    db = request_context.pop("db", None)
-    if db is not None:
-        db.close()
-
-def get_catalog_for_ai_context(studio_id: int):
-    """
-    Retrieves a lightweight, token-optimized list of services/products for the AI.
-    Follows Single Responsibility Principle (SRP).
-    """
-    conn = get_db()
-    services = conn.execute(
-        "SELECT id, name, price, duration_hr FROM services WHERE studio_id=?", 
-        (studio_id,)
-    ).fetchall()
-    return [dict(s) for s in services]
-
-def init_db():
-    conn = sqlite3.connect(Config.DB_PATH)
-    
     # Studios
-    conn.execute("""
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS studios (
             id       INTEGER PRIMARY KEY AUTOINCREMENT,
             name     TEXT NOT NULL,
@@ -247,10 +22,10 @@ def init_db():
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL
         )
-    """)
-    
+    ''')
+
     # Staff
-    conn.execute("""
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS staff (
             id         INTEGER PRIMARY KEY AUTOINCREMENT,
             studio_id  INTEGER NOT NULL,
@@ -260,20 +35,20 @@ def init_db():
             password   TEXT NOT NULL,
             FOREIGN KEY (studio_id) REFERENCES studios(id)
         )
-    """)
-    
+    ''')
+
     # Bays
-    conn.execute("""
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS bays (
             id        INTEGER PRIMARY KEY AUTOINCREMENT,
             studio_id INTEGER NOT NULL,
             name      TEXT NOT NULL,
             FOREIGN KEY (studio_id) REFERENCES studios(id)
         )
-    """)
-    
+    ''')
+
     # Services
-    conn.execute("""
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS services (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             studio_id   INTEGER NOT NULL,
@@ -282,10 +57,10 @@ def init_db():
             price       INTEGER NOT NULL,
             FOREIGN KEY (studio_id) REFERENCES studios(id)
         )
-    """)
-    
-    # Bookings (with customer_id and estimate_id)
-    conn.execute("""
+    ''')
+
+    # Bookings (with estimate_id and customer_id)
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS bookings (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             studio_id     INTEGER NOT NULL,
@@ -307,10 +82,10 @@ def init_db():
             FOREIGN KEY (bay_id)     REFERENCES bays(id),
             FOREIGN KEY (staff_id)   REFERENCES staff(id)
         )
-    """)
-    
-    # ── UPDATED JOBS TABLE ── (with all new columns)
-    conn.execute("""
+    ''')
+
+    # Jobs (with all needed columns)
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS jobs (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
             studio_id        INTEGER NOT NULL,
@@ -328,12 +103,11 @@ def init_db():
             FOREIGN KEY (studio_id) REFERENCES studios(id),
             FOREIGN KEY (customer_id) REFERENCES customers(id)
         )
-    """)
-    # Create unique index for tracking_token (for speed)
-    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uix_jobs_tracking_token ON jobs(tracking_token)")
-    
+    ''')
+    cursor.execute('CREATE UNIQUE INDEX IF NOT EXISTS uix_jobs_tracking_token ON jobs(tracking_token)')
+
     # Estimates
-    conn.execute("""
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS estimates (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
             studio_id       INTEGER NOT NULL,
@@ -355,10 +129,10 @@ def init_db():
             services_summary TEXT DEFAULT '',
             FOREIGN KEY (studio_id) REFERENCES studios(id)
         )
-    """)
-    
-    # Estimate Items
-    conn.execute("""
+    ''')
+
+    # Estimate items
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS estimate_items (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             estimate_id INTEGER NOT NULL,
@@ -369,10 +143,10 @@ def init_db():
             total       INTEGER NOT NULL DEFAULT 0,
             FOREIGN KEY (estimate_id) REFERENCES estimates(id)
         )
-    """)
-    
+    ''')
+
     # Customers
-    conn.execute("""
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS customers (
             id         INTEGER PRIMARY KEY AUTOINCREMENT,
             studio_id  INTEGER NOT NULL,
@@ -385,10 +159,10 @@ def init_db():
             created_at TEXT DEFAULT (datetime('now')),
             FOREIGN KEY (studio_id) REFERENCES studios(id)
         )
-    """)
-    
+    ''')
+
     # Vehicles
-    conn.execute("""
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS vehicles (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             studio_id   INTEGER NOT NULL,
@@ -403,10 +177,10 @@ def init_db():
             FOREIGN KEY (studio_id)   REFERENCES studios(id),
             FOREIGN KEY (customer_id) REFERENCES customers(id)
         )
-    """)
-    
+    ''')
+
     # Media
-    conn.execute("""
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS media (
             id           INTEGER PRIMARY KEY AUTOINCREMENT,
             studio_id    INTEGER NOT NULL,
@@ -423,10 +197,10 @@ def init_db():
             FOREIGN KEY (job_id)     REFERENCES jobs(id),
             FOREIGN KEY (booking_id) REFERENCES bookings(id)
         )
-    """)
-    
+    ''')
+
     # Notes
-    conn.execute("""
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS notes (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             studio_id   INTEGER NOT NULL,
@@ -443,10 +217,10 @@ def init_db():
             FOREIGN KEY (estimate_id) REFERENCES estimates(id),
             FOREIGN KEY (booking_id)  REFERENCES bookings(id)
         )
-    """)
-    
+    ''')
+
     # Reminders
-    conn.execute("""
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS reminders (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             studio_id     INTEGER NOT NULL,
@@ -464,10 +238,10 @@ def init_db():
             FOREIGN KEY (job_id)      REFERENCES jobs(id),
             FOREIGN KEY (booking_id)  REFERENCES bookings(id)
         )
-    """)
-    
-    # Panel Inspections
-    conn.execute("""
+    ''')
+
+    # Panel inspections
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS panel_inspections (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             studio_id     INTEGER NOT NULL,
@@ -487,10 +261,10 @@ def init_db():
             FOREIGN KEY (job_id)    REFERENCES jobs(id),
             UNIQUE(job_id, panel_key)
         )
-    """)
-    
+    ''')
+
     # Products (for AI estimator)
-    conn.execute("""
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS products (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
             studio_id       INTEGER NOT NULL,
@@ -506,10 +280,10 @@ def init_db():
             created_at      TEXT DEFAULT (datetime('now')),
             FOREIGN KEY (studio_id) REFERENCES studios(id)
         )
-    """)
-    
+    ''')
+
     # Vehicle sqft cache
-    conn.execute("""
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS vehicle_sqft_cache (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             vehicle     TEXT NOT NULL UNIQUE,
@@ -518,10 +292,10 @@ def init_db():
             source      TEXT DEFAULT 'ai',
             created_at  TEXT DEFAULT (datetime('now'))
         )
-    """)
-    
-    # ── Inventory Tables ──
-    conn.execute("""
+    ''')
+
+    # ── Inventory tables ──
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS inventory_items (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             studio_id     INTEGER NOT NULL,
@@ -536,9 +310,9 @@ def init_db():
             updated_at    TEXT DEFAULT (datetime('now')),
             FOREIGN KEY (studio_id) REFERENCES studios(id)
         )
-    """)
+    ''')
 
-    conn.execute("""
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS inventory_logs (
             id         INTEGER PRIMARY KEY AUTOINCREMENT,
             studio_id  INTEGER NOT NULL,
@@ -549,27 +323,62 @@ def init_db():
             FOREIGN KEY (studio_id) REFERENCES studios(id),
             FOREIGN KEY (item_id) REFERENCES inventory_items(id)
         )
-    """)
-    
+    ''')
+    # Job Materials (Point of Use Tracking)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS job_materials (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            studio_id INTEGER NOT NULL,
+            job_id INTEGER NOT NULL,
+            inventory_id INTEGER NOT NULL,
+            technician TEXT NOT NULL,
+            quantity_used REAL NOT NULL,
+            logged_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (studio_id) REFERENCES studios(id),
+            FOREIGN KEY (job_id) REFERENCES jobs(id),
+            FOREIGN KEY (inventory_id) REFERENCES inventory_items(id)
+        )
+    ''')
+
+    # ── Seed default studio if no studios exist ──
+    if not cursor.execute("SELECT id FROM studios LIMIT 1").fetchone():
+        print("  🌱 Seeding default studio (shinepro)...")
+        cursor.execute("""
+            INSERT INTO studios (id, name, city, owner, logo, username, password)
+            VALUES (1, 'Shine Pro Detailing', 'Los Angeles, CA', 'James Carter', 'shinepro.svg', 'shinepro', 'shine123')
+        """)
+        # Insert default services for studio 1
+        cursor.executemany("""
+            INSERT INTO services (studio_id, name, duration_hr, price)
+            VALUES (1, ?, ?, ?)
+        """, [
+            ('Full Detail', 4.0, 250),
+            ('Ceramic Coating', 6.0, 850),
+            ('Paint Correction', 5.0, 620),
+            ('Full PPF', 8.0, 1400),
+            ('Interior Detail', 3.0, 320),
+        ])
+        # Insert some bays
+        cursor.executemany("INSERT INTO bays (studio_id, name) VALUES (1, ?)", [('Bay 1',), ('Bay 2',), ('Bay 3',)])
+        # Insert staff (for login)
+        cursor.execute("""
+            INSERT INTO staff (studio_id, name, role, username, password)
+            VALUES (1, 'James Carter', 'general_manager', 'shinepro', 'shine123')
+        """)
+        # Insert a couple of customers (for bookings)
+        cursor.execute("""
+            INSERT INTO customers (studio_id, name, phone, username, password)
+            VALUES (1, 'John Smith', '+1-555-0001', 'john', '')
+        """)
+        cursor.execute("""
+            INSERT INTO customers (studio_id, name, phone, username, password)
+            VALUES (1, 'Emma Wilson', '+1-555-0002', 'emma', '')
+        """)
+        conn.commit()
+
     conn.commit()
     conn.close()
+    print("✅ Schema and seed data ready!")
 
-
-def get_studio_inventory(studio_id: int):
-    conn = get_db()
-    rows = conn.execute(
-        "SELECT * FROM inventory_items WHERE studio_id=? ORDER BY name ASC", 
-        (studio_id,)
-    ).fetchall()
-    return [dict(r) for r in rows]
-
-def get_inventory_consumption(studio_id: int):
-    """Returns dict {item_id: total_consumed_quantity} for the last 30 days."""
-    conn = get_db()
-    rows = conn.execute("""
-        SELECT item_id, SUM(ABS(change_qty)) as consumed
-        FROM inventory_logs
-        WHERE studio_id = ? AND change_qty < 0 AND created_at >= date('now', '-30 days')
-        GROUP BY item_id
-    """, (studio_id,)).fetchall()
-    return {r["item_id"]: r["consumed"] for r in rows}
+if __name__ == "__main__":
+    run()
