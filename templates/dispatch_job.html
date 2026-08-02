@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Job #{{ job.id }} — {{ studio }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+  {% include "_theme.html" %}
+  <style>
+    .two-col { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; align-items: start; }
+    @media (max-width: 1000px) { .two-col { grid-template-columns: 1fr; } }
+    /* The audit trail reads as a real sequence, so a timeline rail is earned here. */
+    .trail { list-style: none; position: relative; padding-left: 20px; }
+    .trail::before { content: ""; position: absolute; left: 4px; top: 6px; bottom: 6px; width: 1px; background: var(--line); }
+    .trail li { position: relative; padding: 0 0 18px 4px; }
+    .trail li::before {
+      content: ""; position: absolute; left: -20px; top: 5px; width: 7px; height: 7px;
+      border-radius: 50%; background: var(--bg); border: 1.5px solid var(--gold);
+    }
+    .trail li:first-child::before { background: var(--gold); }
+    .trail-main { font-size: 13px; }
+    .trail-meta { font-size: 11px; color: var(--ink-faint); margin-top: 3px; }
+    .kv { display: grid; grid-template-columns: 120px 1fr; gap: 10px 16px; font-size: 13px; }
+    .kv dt { color: var(--ink-faint); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; padding-top: 2px; }
+  </style>
+</head>
+<body>
+{% include "_sidebar.html" %}
+<main class="main">
+  <div class="top-bar">
+    <div>
+      <h1 class="page-heading">{{ job.car }}</h1>
+      <p class="page-sub">{{ job.service }} · Job #{{ job.id }}</p>
+    </div>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <a class="btn btn-quiet" href="/dispatch/">Back to board</a>
+      <a class="btn" href="/dvi/job/{{ job.id }}">Open inspection</a>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <div class="card">
+        <dl class="kv">
+          <dt>Status</dt>
+          <dd><span class="badge badge-{{ 'progress' if job.status == 'In Progress' else 'completed' if job.status == 'Completed' else 'pending' }}"><span class="dot"></span>{{ job.status }}</span></dd>
+          <dt>Technician</dt><dd>{{ job.technician or 'Unassigned' }}</dd>
+          <dt>Price</dt><dd style="color:var(--gold)">${{ job.price }}</dd>
+          <dt>Assigned</dt><dd>{{ job.assigned_at or '—' }}</dd>
+          <dt>Started</dt><dd>{{ job.started_at or '—' }}</dd>
+          <dt>Completed</dt><dd>{{ job.completed_at or '—' }}</dd>
+        </dl>
+      </div>
+
+      {% if can_dispatch and allowed_next %}
+      <div class="section-label">Move this job</div>
+      <div class="card" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        {% for next in allowed_next %}
+        <form method="POST" action="/dispatch/job/{{ job.id }}/transition">
+          <input type="hidden" name="status" value="{{ next }}">
+          <input type="hidden" name="redirect_to" value="/dispatch/job/{{ job.id }}">
+          <button class="btn" type="submit">→ {{ next }}</button>
+        </form>
+        {% endfor %}
+        <form method="POST" action="/dispatch/job/{{ job.id }}/assign" style="display:flex;gap:8px;margin-left:auto;">
+          <input type="hidden" name="redirect_to" value="/dispatch/job/{{ job.id }}">
+          <select name="staff_id" aria-label="Reassign technician">
+            <option value="">Unassigned</option>
+            {% for t in technicians %}<option value="{{ t.id }}" {% if job.assigned_staff_id == t.id %}selected{% endif %}>{{ t.name }}</option>{% endfor %}
+          </select>
+          <button class="btn btn-quiet" type="submit">Reassign</button>
+        </form>
+      </div>
+      {% elif job.status == 'Completed' %}
+      <p class="hint">This job is complete. Completed jobs are terminal — reopening one is a deliberate override, not a board action.</p>
+      {% endif %}
+    </div>
+
+    <div>
+      <div class="section-label" style="margin-top:0;">Status history</div>
+      <ul class="trail">
+        {% for h in status_history %}
+        <li>
+          <div class="trail-main">{{ h.from_status or 'created' }} → <strong>{{ h.to_status }}</strong></div>
+          <div class="trail-meta">{{ h.actor }} · {{ h.created_at }}{% if h.note %} · {{ h.note }}{% endif %}</div>
+        </li>
+        {% else %}
+        <li><div class="trail-meta">No recorded transitions.</div></li>
+        {% endfor %}
+      </ul>
+
+      <div class="section-label">Assignment history</div>
+      <ul class="trail">
+        {% for a in assignment_history %}
+        <li>
+          <div class="trail-main">{{ a.staff_name or 'Unassigned' }}</div>
+          <div class="trail-meta">set by {{ a.assigned_by }} · {{ a.assigned_at }}</div>
+        </li>
+        {% else %}
+        <li><div class="trail-meta">Never reassigned.</div></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</main>
+</body>
+</html>

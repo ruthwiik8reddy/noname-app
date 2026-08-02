@@ -95,6 +95,10 @@ def attempt_login(username: str, password: str, conn) -> dict | None:
             return {
                 "logged_in": True,
                 "user_id":   staff["id"],
+                # Explicit alias: the dispatch board scopes a technician's queue
+                # by staff id, and "user_id" is ambiguous across the three login
+                # types (studio id for admins, customer id for customers).
+                "staff_id":  staff["id"],
                 "user_type": "staff",
                 "role":      staff["role"],   # general_manager / service_advisor / technician / photographer
                 "studio_id": staff["studio_id"],
@@ -228,22 +232,26 @@ def permission_required(permission: str):
 
 NAV_PERMISSIONS = {
     "admin": [
-        "dashboard", "bookings", "estimates", "jobs",
+        "dashboard", "bookings", "estimates", "jobs", "dispatch",
         "tracking", "customers", "staff", "media", "payments",
-        "products", "warranties", "settings",
+        "products", "inventory", "analytics", "dvi", "warranties", "settings",
     ],
     "general_manager": [
-        "dashboard", "bookings", "estimates", "jobs",
-        "tracking", "customers", "media", "payments", "warranties",
+        "dashboard", "bookings", "estimates", "jobs", "dispatch",
+        "tracking", "customers", "media", "payments",
+        "inventory", "analytics", "dvi", "warranties",
     ],
     "service_advisor": [
         "dashboard", "bookings", "estimates", "tracking", "customers", "payments",
+        "dispatch", "dvi",
     ],
+    # Technicians get the capture screen and their own queue, not the analytics
+    # dashboard — inventory cost data isn't theirs to see.
     "technician": [
-        "dashboard", "jobs", "tracking", "media",
+        "dashboard", "jobs", "dispatch", "tracking", "media", "dvi", "inventory",
     ],
     "photographer": [
-        "dashboard", "jobs", "tracking", "media",
+        "dashboard", "jobs", "tracking", "media", "dvi",
     ],
     "customer": [
         "my_estimates", "my_bookings",

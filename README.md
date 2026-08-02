@@ -156,8 +156,147 @@ Fine-grained permissions matrix (`PERMISSIONS` dict in `auth.py`):
 | **Follow-up reminders** | `/reminders`, `/reminders/new`, `/jobs/<id>/status` | Auto-scheduled on job completion (review + rebooking nudge), manual reminders |
 | **AI Assistant** | `/assistant`, `/assistant/query` | Ollama primary, Gemini for research/vision, OpenAI optional fallback |
 
+| **AI Estimator / Analytics** | `/analytics`, `/analytics/api/*` | Burn-rate forecasting, stockout dates, waste detection — Phase 1 |
+| **Digital Vehicle Inspection** | `/dvi`, `/dvi/job/<id>`, `/dvi/inspection/<id>` | Photo capture → local vision model → priced upcharges → estimate — Phase 2 |
+| **Dispatch Board** | `/dispatch`, `/dispatch/job/<id>` | Job/technician assignment, validated status transitions, audit trail — Phase 3 |
+
 ### Not yet built
 - **Payments & Invoices** (Stripe test mode — deposits, partial payments, balance due, downloadable invoice, receipts)
+
+---
+
+## Architecture: the Orchestrator Pattern
+
+Enforced layering. A violation of this is a bug, not a style preference:
+
+```
+routes / controllers  →  orchestrators  →  repositories  →  SQLite
+                                      ↘   llm providers  →  Ollama (127.0.0.1)
+```
+
+**Controllers must never call an LLM.** They may import from
+`services.orchestrators`. They may NOT import from `services.llm`,
+`services.prompts`, or `requests`. Verify with:
+
+```bash
+grep -rn "OllamaBackend\|GeminiBackend\|requests.post" --include=*.py src/ | grep -v "^src/services/"
+# must return nothing
+```
+
+```
+src/services/
+├── llm/                  Provider abstraction — the ONLY place that speaks HTTP to a model
+│   ├── base.py           LLMProvider / VisionLLMProvider contracts, NullProvider, RecordingProvider
+│   ├── ollama_provider.py  The single outbound call site in the whole AI stack
+│   └── factory.py        Composition root — ask for a capability, not a vendor
+├── repositories/         All SQL lives here, every query scoped by studio_id
+├── analytics/            Deterministic forecasting — pure functions, no LLM, no I/O
+├── pricing/              Deterministic defect → money mapping
+├── prompts/              Prompt templates, versionable and diffable
+└── orchestrators/        The only objects allowed to call a model
+```
+
+### The design rule that makes local models usable
+
+**Python decides what is true. The model decides how to say it.**
+
+A 3B/8B model on a laptop cannot reliably divide 4.5 litres by 0.31 litres/day —
+ask it to, and it will confidently invent a date. So burn rates, stockout dates,
+reorder quantities, condition scores and every price are computed in Python
+*before* the model is consulted. The model receives finished arithmetic and is
+explicitly forbidden from redoing it.
+
+The consequence: **when Ollama is down you lose the prose, not the numbers.**
+Every AI endpoint returns the same response shape either way, with
+`_status.degraded` telling the UI whether to show a badge. The frontend never
+branches on model availability.
+
+Run the whole app with AI off to see this for yourself:
+
+```bash
+AI_ENABLED=0 python run.py     # every AI feature falls back to deterministic output
+```
+
+---
+
+## Setup for Phases 1-3
+
+```bash
+# 1. Run the new migration (idempotent — safe to re-run)
+python -m src.migrate_phase2
+
+# 2. Optional: generate ~8 weeks of realistic inventory movement so the
+#    forecaster has something to learn from on a fresh database
+python -m src.migrate_phase2 --with-demo-data
+
+# 3. Install the vision model for DVI (Phase 2)
+ollama pull llava          # or llava:13b for noticeably better defect detection
+ollama pull llama3.1:8b    # text model, if you don't have one
+
+# 4. Run the tests — no Ollama required, the LLM is stubbed
+python -m unittest discover tests -v
+```
+
+New `.env` keys (all optional, sensible defaults):
+
+```
+OLLAMA_VISION_MODEL=llava     # multimodal model used by DVI
+OLLAMA_TEXT_TIMEOUT=90
+OLLAMA_VISION_TIMEOUT=180     # vision is slow locally — be generous
+AI_ENABLED=1                  # set to 0 to force every deterministic fallback
+```
+
+---
+
+## Phase notes
+
+### Phase 1 — AI Estimator / Analytics
+`DepletionForecaster` blends a 7-day and 30-day window (weighted 60/40 toward
+recent), adjusts for upcoming booking volume, and reports a confidence level
+based on how much history actually exists. A product stocked three days ago is
+divided by three days, not thirty. Today is excluded from the denominator until
+it has usage logged — counting a partial day understates burn, and understating
+burn tells a studio they have more time than they do.
+
+Waste detection compares each job against **that studio's own median** for that
+product, never an industry benchmark, and requires at least four jobs before it
+will say anything. A large SUV legitimately uses more product; the output is
+framed as "worth checking", never as an accusation, and never names a technician.
+
+### Phase 2 — Digital Vehicle Inspection
+One vision call per photo, not batched — local vision models bleed findings
+between images when given several at once, and panel attribution matters when a
+customer asks "where?".
+
+The model works from a **closed defect vocabulary** (`DEFECT_TYPES` in
+`services/prompts/dvi_prompts.py`). Anything outside it is dropped, not coerced:
+a defect we can't price is a defect we can't bill for, and silently mapping it to
+a neighbour would invent a charge. The prompt also states explicitly that an
+empty findings list is a correct answer, which measurably reduces hallucinated
+scratches on clean panels.
+
+**The model never sees a price.** It reports type, panel and severity;
+`UpchargeCalculator` prices it from the studio's own `services` table, falling
+back to a rate card only when there's no match. Findings below 45% confidence are
+recorded but never quoted.
+
+### Phase 3 — Job & Technician Assignment
+A validated state machine, not free-text status updates:
+
+```
+Pending ──→ In Progress ──→ Completed (terminal)
+   ↑             │
+   └─────────────┘
+```
+
+`In Progress` requires an assigned technician — which is exactly the assumption
+the inventory scanner already makes when attributing material usage to a job.
+Every transition and reassignment is appended to `job_status_history` /
+`job_assignments`, so "who had this car and when" stays answerable.
+
+Technician suggestions are deliberately **not** an LLM call: "who is free" is a
+counting problem, a wrong answer misroutes real work, and a dispatcher should be
+able to see the score and disagree with it.
 
 ---
 
@@ -197,6 +336,9 @@ automatically pulled from the DB and injected into every prompt.
 | `media` | Before/during/after photos & videos per job |
 | `notes` | Internal vs client-visible notes, attachable to job/estimate/booking |
 | `reminders` | Follow-up reminders — auto and manual, pending/sent/dismissed |
+| `inventory_items` / `inventory_logs` | Stock levels and every movement — the AI Estimator's raw signal |
+| `dvi_inspections` / `dvi_photos` / `dvi_findings` | Digital Vehicle Inspections; findings keep `raw_json` for dispute resolution |
+| `job_assignments` / `job_status_history` | Dispatch audit trail |
 
 ---
 

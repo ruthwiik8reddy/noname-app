@@ -54,7 +54,10 @@
     {% if "estimates" in nav_items %}<a href="/ai-estimate" {% if active_page == "ai_estimate" %}class="active"{% endif %}>AI Estimate</a>{% endif %}
     {% if "products" in nav_items %}<a href="/products" {% if active_page == "products" %}class="active"{% endif %}>Products</a>{% endif %}
     <a href="/inventory" {% if active_page == "inventory" %}class="active"{% endif %}>Inventory & AI</a>
+    {% if "analytics" in nav_items %}<a href="/analytics/" {% if active_page == "analytics" %}class="active"{% endif %}>AI Estimator</a>{% endif %}
     {% if "jobs" in nav_items %}<a href="/jobs" {% if active_page == "jobs" %}class="active"{% endif %}>Jobs</a>{% endif %}
+    {% if "dispatch" in nav_items %}<a href="/dispatch/" {% if active_page == "dispatch" %}class="active"{% endif %}>Dispatch Board</a>{% endif %}
+    {% if "dvi" in nav_items %}<a href="/dvi/" {% if active_page == "dvi" %}class="active"{% endif %}>Inspections (DVI)</a>{% endif %}
     {% if "tracking" in nav_items %}{% endif %}    {% if "customers" in nav_items %}<a href="/customers" {% if active_page == "customers" %}class="active"{% endif %}>Customers</a>{% endif %}
     {% if "media" in nav_items %}<a href="/media" {% if active_page == "media" %}class="active"{% endif %}>Media</a>{% endif %}
     {% if "staff" in nav_items %}<a href="/staff" {% if active_page == "staff" %}class="active"{% endif %}>Staff</a>{% endif %}

@@ -1,12 +1,23 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, abort, send_from_directory
 from datetime import datetime, timedelta
+import logging
 import os
 import uuid
 import secrets
 from werkzeug.utils import secure_filename
 
 from .db_manager import get_db
-from .ai_service import AIService
+# ── Orchestrator Pattern ──
+# Controllers never call an LLM directly. Every AI-backed feature is routed
+# through a service class in src/services/orchestrators/. If you find yourself
+# importing a model backend or writing a prompt in this file, it belongs there.
+from .services.orchestrators import (
+    AssistantOrchestrator,
+    EstimateOrchestrator,
+    InventoryIntelligenceOrchestrator,
+    OrchestratorError,
+)
+from .services.llm.base import LLMError
 from .reminder_service import ReminderService
 from .sms_service import send_tracking_sms, send_status_update_sms
 from .config import Config
@@ -18,6 +29,12 @@ from .auth import (
 )
 
 bp = Blueprint("main", __name__)
+
+# Shared orchestrator instances. One per process so their TTL caches actually
+# cache — a new instance per request would defeat the point.
+_inventory_ai = InventoryIntelligenceOrchestrator()
+_estimate_ai  = EstimateOrchestrator()
+_assistant_ai = AssistantOrchestrator()
 
 TIME_SLOTS = [
     "8:00 AM", "8:30 AM", "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM",
@@ -364,6 +381,7 @@ def new_inventory_item():
             VALUES (?,?,?, 'Initial Stock Entry')
         """, (sid, item_id, qty))
         conn.commit()
+        _inventory_ai.invalidate(sid)  # stock changed — next forecast recomputes
 
     return redirect(url_for("main.inventory_dashboard"))
 
@@ -393,6 +411,7 @@ def adjust_inventory_stock(item_id):
             (sid, item_id, change_qty, reason)
         )
         conn.commit()
+        _inventory_ai.invalidate(sid)  # stock changed — next forecast recomputes
 
     return redirect(url_for("main.inventory_dashboard"))
 
@@ -400,34 +419,53 @@ def adjust_inventory_stock(item_id):
 @bp.route("/inventory/api/ai-analytics", methods=["POST"])
 @staff_or_admin_required
 def api_inventory_analytics():
+    """
+    Legacy endpoint, now backed by the Phase 1 orchestrator.
+
+    The old implementation asked a local model to do the arithmetic and fell
+    back to a hand-written low-stock list when it failed. The orchestrator
+    computes burn rates and stockout dates in Python first, so this endpoint
+    now returns real forecasts whether or not Ollama is running.
+
+    The response is remapped to the original key names so the existing
+    inventory.html widget keeps working untouched.
+    """
     sid = session["studio_id"]
-    service = AIService()
-    analysis = service.analyze_inventory_health(sid)
+    try:
+        result = _inventory_ai.stock_forecast(sid, session.get("studio", ""))
+    except OrchestratorError as exc:
+        return jsonify({"error": str(exc)}), 400
 
-    if "error" in analysis:
-        # Fallback: compute low‑stock items manually
-        conn = get_db()
-        items = conn.execute(
-            "SELECT * FROM inventory_items WHERE studio_id=? AND quantity <= reorder_level",
-            (sid,)
-        ).fetchall()
-        fallback = {
-            "health_score": "Attention Needed (fallback)",
-            "summary": f"{len(items)} items are below reorder level.",
-            "urgent_reorders": [
-                {"sku": i["sku"], "name": i["name"], "current_qty": i["quantity"],
-                 "reorder_level": i["reorder_level"],
-                 "suggested_order_qty": i["reorder_level"] * 2,
-                 "reason": "Manual fallback – check stock."}
-                for i in items
-            ],
-            "consumption_forecast": [],
-            "cost_optimizations": ["Review inventory levels manually."],
-            "_fallback": True
-        }
-        return jsonify(fallback), 200  # return 200 with fallback flag
+    briefing = result.get("briefing", {})
+    health = result.get("health", {})
+    forecasts = result.get("forecasts", [])
 
-    return jsonify(analysis), 200
+    return jsonify({
+        "health_score": health.get("health_score", "Unknown"),
+        "summary": briefing.get("headline", "") + " " + briefing.get("narrative", ""),
+        "urgent_reorders": [
+            {
+                "sku": f["sku"],
+                "name": f["name"],
+                "current_qty": f["current_qty"],
+                "reorder_level": f["reorder_level"],
+                "suggested_order_qty": f["suggested_order_qty"],
+                "reason": f["rationale"],
+            }
+            for f in forecasts if f["urgency"] in ("critical", "warning")
+        ],
+        "consumption_forecast": [
+            {
+                "category": f["category"],
+                "trend": "High" if f["urgency"] == "critical" else "Stable",
+                "insight": f["rationale"],
+            }
+            for f in forecasts[:6]
+        ],
+        "cost_optimizations": briefing.get("cost_notes", []),
+        "_fallback": result.get("_status", {}).get("degraded", False),
+        "_detail_url": "/analytics/",
+    }), 200
 
 
 @bp.route("/inventory/api/lookup-sku")
@@ -580,14 +618,15 @@ def api_generate_estimate():
     if not notes:
         return jsonify({"error": "Customer notes are required to generate an estimate."}), 400
 
-    # Delegate the heavy lifting to the AI Service
-    ai_service = AIService()
-    estimate_result = ai_service.generate_json_estimate(sid, notes)
-    
-    if "error" in estimate_result:
-        return jsonify(estimate_result), 500
-
-    return jsonify(estimate_result), 200
+    # Delegate to the orchestrator. It re-prices every line from the studio's
+    # own catalog after generation, so a hallucinated price can't reach an invoice.
+    try:
+        return jsonify(_estimate_ai.draft_estimate(sid, notes)), 200
+    except OrchestratorError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except LLMError as exc:
+        # 503, not 500 — the app is healthy, the local model isn't running.
+        return jsonify({"error": str(exc), "ai_offline": True}), 503
 
 @bp.route("/estimates/<int:estimate_id>/lookup")
 @staff_or_admin_required
@@ -1247,50 +1286,22 @@ def assistant_query():
 
     studio_id = session["studio_id"]
 
-    # ── Pricing questions: ground the AI in the real product catalog ──
+    # ── Pricing questions: ground the answer in the real product catalog ──
     try:
         from .estimate_assistant import build_pricing_facts
         facts = build_pricing_facts(studio_id, question)
-    except Exception as _e:
-        print(f"[assistant] pricing hook failed: {_e}")
+    except Exception as exc:  # noqa: BLE001 - a broken hook must not break chat
+        logging.getLogger(__name__).warning("Pricing hook failed: %s", exc)
         facts = None
 
-    service = AIService()
-
     if facts:
-        # Force Gemini for quotes (the local model invents numbers), and hand it
-        # the exact computed prices so it can only report, not invent.
-        from .ai_service import GeminiBackend, OllamaBackend, AIAnswer
-        from .config import Config
+        # Hand the model the computed prices and let it only report them.
+        grounded = _assistant_ai.pricing_answer(question, facts)
+        if grounded:
+            return jsonify(grounded)
+        # Model unreachable — fall through to the general assistant.
 
-        prompt = (
-            "You are the AI assistant for a car detailing studio. "
-            "A staff member asked a pricing question.\n\n"
-            f"{facts}\n\n"
-            f"Staff question: {question}\n\n"
-            "Reply with the PRICE only — 1 or 2 short sentences. No cost breakdown, "
-            "no material/labour/markup figures, no calculation steps, no disclaimers, "
-            "no extra advice. Just the vehicle, the product, and the total."
-        )
-        text = None
-        if Config.GEMINI_API_KEY:
-            try:
-                text = GeminiBackend(Config).call(prompt)
-            except Exception as _e:
-                print(f"[assistant] Gemini failed: {_e}")
-        if not text:
-            try:
-                text = OllamaBackend(Config).call(prompt)
-            except Exception:
-                text = None
-        if text:
-            return jsonify(AIAnswer(
-                text, "Quoted from your product catalog.", ["catalog"], []
-            ).as_dict())
-        # else fall through to the normal assistant
-
-    answer = service.answer(studio_id, question, attachments)
-    return jsonify(answer.as_dict())
+    return jsonify(_assistant_ai.answer(studio_id, question, attachments))
 
 
 # ── Account ───────────────────────────────────────────────────────────────────

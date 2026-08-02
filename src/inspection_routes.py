@@ -115,15 +115,18 @@ def cust_chat(token):
     msg = (request.get_json(silent=True) or {}).get("message", "").strip()
     if not msg: return jsonify({"reply": "Please ask a question."})
     try:
-        from .ai_service import AIService
-        ctx = (f"You are Autofiera's AI concierge for the owner of a {job['car']} "
-               f"({job['service']}). Panel data: {json.dumps(_checklist(conn, job['id']))}. "
-               f"Answer warmly in 2-3 sentences.")
-        svc = AIService()
-        ans = svc.answer(job["studio_id"], f"{ctx}\n\nQuestion: {msg}", [])
-        reply = ans.as_dict().get("answer") if hasattr(ans, "as_dict") else str(ans)
-    except Exception:
-        reply = "Your vehicle is receiving our full detailing treatment. Please contact the studio for specifics."
+        from .services.orchestrators import AssistantOrchestrator
+
+        reply = AssistantOrchestrator().concierge_reply(
+            studio_id=job["studio_id"],
+            vehicle=job["car"] or "vehicle",
+            service=job["service"] or "detailing",
+            panel_data=_checklist(conn, job["id"]),
+            message=msg,
+        )
+    except Exception:  # noqa: BLE001 - a customer-facing page must never 500 here
+        reply = ("Your vehicle is receiving our full detailing treatment. "
+                 "Please contact the studio for specifics.")
     return jsonify({"reply": reply})
 
 

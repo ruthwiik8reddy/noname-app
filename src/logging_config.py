@@ -2,7 +2,7 @@ import logging
 import logging.handlers
 import os
 
-def configure_logging(log_dir="logs", log_file="app.log", level=logging.DEBUG,
+def configure_logging(log_dir="logs", log_file="app.log", level=logging.INFO,
                       max_bytes=10 * 1024 * 1024, backup_count=5):
     """
     Configures logging for the application.
@@ -30,3 +30,11 @@ def configure_logging(log_dir="logs", log_file="app.log", level=logging.DEBUG,
     logger.setLevel(level)
     logger.addHandler(handler)
     logger.addHandler(console_handler)
+    # Third-party libraries are extremely chatty at DEBUG. Watchdog in
+    # particular writes to logs/app.log, which lives inside the directory it
+    # is watching — so its own log lines trigger more filesystem events.
+    for noisy in ("watchdog", "fsevents", "urllib3", "PIL"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
+
+    # Don't stack duplicate handlers when Flask's reloader re-runs the factory.
+    logger.propagate = True

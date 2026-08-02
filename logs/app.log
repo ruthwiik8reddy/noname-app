@@ -1,0 +1,216 @@
+2026-08-02 11:40:54,787 - INFO - MainThread - werkzeug - _log - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5055
+2026-08-02 11:40:54,787 - INFO - MainThread - werkzeug - _log - [33mPress CTRL+C to quit[0m
+2026-08-02 11:40:54,792 - INFO - MainThread - werkzeug - _log -  * Restarting with watchdog (fsevents)
+2026-08-02 11:40:54,914 - WARNING - MainThread - werkzeug - _log -  * Debugger is active!
+2026-08-02 11:40:54,921 - INFO - MainThread - werkzeug - _log -  * Debugger PIN: 143-994-774
+2026-08-02 11:40:54,991 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/logs/app.log", inode=33515859, flags=10400, id=55316428): is_file, is_inode_meta_mod
+2026-08-02 11:40:54,991 - DEBUG - Thread-4 - fsevents - queue_event - queue_event FileModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/logs/app.log', dest_path='', event_type='modified', is_directory=False, is_synthetic=False)
+2026-08-02 11:40:55,133 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/logs/app.log", inode=33515859, flags=410400, id=55316482): is_cloned, is_file, is_inode_meta_mod
+2026-08-02 11:40:55,134 - DEBUG - Thread-4 - fsevents - queue_event - queue_event FileModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/logs/app.log', dest_path='', event_type='modified', is_directory=False, is_synthetic=False)
+2026-08-02 11:40:57,270 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/logs", inode=33515858, flags=20400, id=55316953): is_directory, is_inode_meta_mod
+2026-08-02 11:40:57,270 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app", inode=27417651, flags=20400, id=55316956): is_directory, is_inode_meta_mod
+2026-08-02 11:40:57,271 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/logs', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:40:57,271 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:41:01,170 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/logs", inode=33515858, flags=20400, id=55317252): is_directory, is_inode_meta_mod
+2026-08-02 11:41:01,170 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app", inode=27417651, flags=20400, id=55317255): is_directory, is_inode_meta_mod
+2026-08-02 11:41:01,170 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/logs', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:41:01,170 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:41:01,211 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/logs/app.log", inode=33515859, flags=410400, id=55317273): is_cloned, is_file, is_inode_meta_mod
+2026-08-02 11:41:01,213 - DEBUG - Thread-4 - fsevents - queue_event - queue_event FileModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/logs/app.log', dest_path='', event_type='modified', is_directory=False, is_synthetic=False)
+2026-08-02 11:41:01,991 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/logs/app.log", inode=33515859, flags=410400, id=55317533): is_cloned, is_file, is_inode_meta_mod
+2026-08-02 11:41:01,991 - DEBUG - Thread-4 - fsevents - queue_event - queue_event FileModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/logs/app.log', dest_path='', event_type='modified', is_directory=False, is_synthetic=False)
+2026-08-02 11:41:05,266 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app", inode=27417651, flags=20400, id=55317922): is_directory, is_inode_meta_mod
+2026-08-02 11:41:05,266 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/logs", inode=33515858, flags=20400, id=55317925): is_directory, is_inode_meta_mod
+2026-08-02 11:41:05,266 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:41:05,267 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/logs', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:41:07,555 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/logs/app.log", inode=33515859, flags=410400, id=55318212): is_cloned, is_file, is_inode_meta_mod
+2026-08-02 11:41:07,556 - DEBUG - Thread-4 - fsevents - queue_event - queue_event FileModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/logs/app.log', dest_path='', event_type='modified', is_directory=False, is_synthetic=False)
+2026-08-02 11:41:12,150 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app", inode=27417651, flags=20400, id=55318938): is_directory, is_inode_meta_mod
+2026-08-02 11:41:12,150 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/logs", inode=33515858, flags=20400, id=55318941): is_directory, is_inode_meta_mod
+2026-08-02 11:41:12,150 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:41:12,151 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/logs', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:41:17,537 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app", inode=27417651, flags=20400, id=55319579): is_directory, is_inode_meta_mod
+2026-08-02 11:41:17,538 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/logs", inode=33515858, flags=20400, id=55319582): is_directory, is_inode_meta_mod
+2026-08-02 11:41:17,539 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:41:17,539 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/logs', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:41:18,093 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/logs/app.log", inode=33515859, flags=410000, id=55319637): is_cloned, is_file
+2026-08-02 11:41:22,279 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app", inode=27417651, flags=20400, id=55320058): is_directory, is_inode_meta_mod
+2026-08-02 11:41:22,279 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/logs", inode=33515858, flags=20400, id=55320061): is_directory, is_inode_meta_mod
+2026-08-02 11:41:22,279 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:41:22,280 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/logs', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:41:39,280 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/logs/app.log", inode=33515859, flags=410000, id=55320697): is_cloned, is_file
+2026-08-02 11:41:43,711 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app", inode=27417651, flags=20400, id=55321280): is_directory, is_inode_meta_mod
+2026-08-02 11:41:43,712 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/logs", inode=33515858, flags=20400, id=55321283): is_directory, is_inode_meta_mod
+2026-08-02 11:41:43,712 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:41:43,712 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/logs', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:42:20,283 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/logs/app.log", inode=33515859, flags=410000, id=55322337): is_cloned, is_file
+2026-08-02 11:42:24,479 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app", inode=27417651, flags=20400, id=55322735): is_directory, is_inode_meta_mod
+2026-08-02 11:42:24,479 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/logs", inode=33515858, flags=20400, id=55322738): is_directory, is_inode_meta_mod
+2026-08-02 11:42:24,480 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:42:24,480 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/logs', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:43:40,449 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/logs/app.log", inode=33515859, flags=410000, id=55324208): is_cloned, is_file
+2026-08-02 11:43:46,810 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app", inode=27417651, flags=20400, id=55324669): is_directory, is_inode_meta_mod
+2026-08-02 11:43:46,810 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/logs", inode=33515858, flags=20400, id=55324672): is_directory, is_inode_meta_mod
+2026-08-02 11:43:46,811 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:43:46,811 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/logs', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:46:29,661 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/logs/app.log", inode=33515859, flags=410000, id=55327369): is_cloned, is_file
+2026-08-02 11:46:36,544 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app", inode=27417651, flags=20400, id=55328710): is_directory, is_inode_meta_mod
+2026-08-02 11:46:36,544 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/logs", inode=33515858, flags=20400, id=55328713): is_directory, is_inode_meta_mod
+2026-08-02 11:46:36,544 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:46:36,544 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/logs', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:50:50,697 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/.git/config.lock", inode=33517157, flags=15900, id=55339910): is_coalesced, is_created, is_file, is_modified, is_owner_change, is_renamed
+2026-08-02 11:50:50,699 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/.git/config", inode=33517157, flags=10800, id=55339911): is_file, is_renamed
+2026-08-02 11:50:50,699 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/.git/config", inode=28829815, flags=10800, id=55339912): is_file, is_renamed
+2026-08-02 11:50:50,700 - DEBUG - Thread-4 - fsevents - queue_event - queue_event FileCreatedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/.git/config.lock', dest_path='', event_type='created', is_directory=False, is_synthetic=False)
+2026-08-02 11:50:50,700 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/.git', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:50:50,701 - DEBUG - Thread-4 - fsevents - queue_event - queue_event FileModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/.git/config.lock', dest_path='', event_type='modified', is_directory=False, is_synthetic=False)
+2026-08-02 11:50:50,701 - DEBUG - Thread-4 - fsevents - queue_events - Destination event for rename is NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/.git/config", inode=33517157, flags=10800, id=55339911)
+2026-08-02 11:50:50,702 - DEBUG - Thread-4 - fsevents - queue_event - queue_event FileMovedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/.git/config.lock', dest_path='/Users/ruthwiikreddy/Desktop/noname-app/.git/config', event_type='moved', is_directory=False, is_synthetic=False)
+2026-08-02 11:50:50,702 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/.git', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:50:50,702 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/.git', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:50:50,703 - DEBUG - Thread-4 - fsevents - queue_event - queue_event FileDeletedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/.git/config', dest_path='', event_type='deleted', is_directory=False, is_synthetic=False)
+2026-08-02 11:50:50,703 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/.git', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:50:50,967 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/.git/config", inode=33517157, flags=410000, id=55339953): is_cloned, is_file
+2026-08-02 11:50:51,923 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/.git/config", inode=33517157, flags=410400, id=55340246): is_cloned, is_file, is_inode_meta_mod
+2026-08-02 11:50:51,923 - DEBUG - Thread-4 - fsevents - queue_event - queue_event FileModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/.git/config', dest_path='', event_type='modified', is_directory=False, is_synthetic=False)
+2026-08-02 11:51:00,405 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/.git", inode=27418271, flags=20400, id=55341330): is_directory, is_inode_meta_mod
+2026-08-02 11:51:00,405 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app", inode=27417651, flags=20400, id=55341336): is_directory, is_inode_meta_mod
+2026-08-02 11:51:00,405 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/.git/config", inode=33517157, flags=418400, id=55341339): is_cloned, is_file, is_inode_meta_mod, is_xattr_mod
+2026-08-02 11:51:00,405 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/.git', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:51:00,406 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:51:00,406 - DEBUG - Thread-4 - fsevents - queue_event - queue_event FileModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/.git/config', dest_path='', event_type='modified', is_directory=False, is_synthetic=False)
+2026-08-02 11:52:09,669 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/logs/app.log", inode=33515859, flags=410000, id=55344710): is_cloned, is_file
+2026-08-02 11:52:15,694 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app", inode=27417651, flags=20400, id=55345169): is_directory, is_inode_meta_mod
+2026-08-02 11:52:15,694 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/logs", inode=33515858, flags=20400, id=55345172): is_directory, is_inode_meta_mod
+2026-08-02 11:52:15,695 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:52:15,695 - DEBUG - Thread-4 - fsevents - queue_event - queue_event DirModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/logs', dest_path='', event_type='modified', is_directory=True, is_synthetic=False)
+2026-08-02 11:55:37,052 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/src/logging_config.py", inode=32937098, flags=11400, id=55353351): is_file, is_inode_meta_mod, is_modified
+2026-08-02 11:55:37,053 - DEBUG - Thread-4 - fsevents - queue_event - queue_event FileModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/src/logging_config.py', dest_path='', event_type='modified', is_directory=False, is_synthetic=False)
+2026-08-02 11:55:37,056 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/logging_config.py', reloading
+2026-08-02 11:55:37,206 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/src/logging_config.py", inode=32937098, flags=11400, id=55353369): is_file, is_inode_meta_mod, is_modified
+2026-08-02 11:55:37,206 - DEBUG - Thread-4 - fsevents - queue_event - queue_event FileModifiedEvent(src_path='/Users/ruthwiikreddy/Desktop/noname-app/src/logging_config.py', dest_path='', event_type='modified', is_directory=False, is_synthetic=False)
+2026-08-02 11:55:37,207 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/logging_config.py', reloading
+2026-08-02 11:55:37,367 - DEBUG - Thread-4 - fsevents - queue_events - NativeEvent(path="/Users/ruthwiikreddy/Desktop/noname-app/src/logging_config.py", inode=32937098, flags=410000, id=55353404): is_cloned, is_file
+2026-08-02 11:55:37,720 - INFO - MainThread - werkzeug - _log -  * Restarting with watchdog (fsevents)
+2026-08-02 11:55:38,034 - WARNING - MainThread - werkzeug - _log -  * Debugger is active!
+2026-08-02 11:55:38,039 - INFO - MainThread - werkzeug - _log -  * Debugger PIN: 143-994-774
+2026-08-02 11:55:46,796 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/logging_config.py', reloading
+2026-08-02 11:55:46,797 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/logging_config.py', reloading
+2026-08-02 11:55:46,798 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/logging_config.py', reloading
+2026-08-02 11:55:47,151 - INFO - MainThread - werkzeug - _log -  * Restarting with watchdog (fsevents)
+2026-08-02 11:55:47,381 - WARNING - MainThread - werkzeug - _log -  * Debugger is active!
+2026-08-02 11:55:47,389 - INFO - MainThread - werkzeug - _log -  * Debugger PIN: 143-994-774
+2026-08-02 11:56:05,434 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/logging_config.py', reloading
+2026-08-02 11:56:05,460 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/logging_config.py', reloading
+2026-08-02 11:56:05,463 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/logging_config.py', reloading
+2026-08-02 11:56:05,553 - INFO - MainThread - werkzeug - _log -  * Restarting with watchdog (fsevents)
+2026-08-02 11:56:05,689 - WARNING - MainThread - werkzeug - _log -  * Debugger is active!
+2026-08-02 11:56:05,693 - INFO - MainThread - werkzeug - _log -  * Debugger PIN: 143-994-774
+2026-08-02 11:56:09,753 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/logging_config.py', reloading
+2026-08-02 11:56:09,753 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/logging_config.py', reloading
+2026-08-02 11:56:10,783 - INFO - MainThread - werkzeug - _log -  * Restarting with watchdog (fsevents)
+2026-08-02 11:56:10,930 - WARNING - MainThread - werkzeug - _log -  * Debugger is active!
+2026-08-02 11:56:10,936 - INFO - MainThread - werkzeug - _log -  * Debugger PIN: 143-994-774
+2026-08-02 11:56:43,900 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/logging_config.py', reloading
+2026-08-02 11:56:44,190 - INFO - MainThread - werkzeug - _log -  * Restarting with watchdog (fsevents)
+2026-08-02 11:56:44,322 - WARNING - MainThread - werkzeug - _log -  * Debugger is active!
+2026-08-02 11:56:44,327 - INFO - MainThread - werkzeug - _log -  * Debugger PIN: 143-994-774
+2026-08-02 11:56:45,718 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/logging_config.py', reloading
+2026-08-02 11:56:46,398 - INFO - MainThread - werkzeug - _log -  * Restarting with watchdog (fsevents)
+2026-08-02 11:56:46,554 - WARNING - MainThread - werkzeug - _log -  * Debugger is active!
+2026-08-02 11:56:46,560 - INFO - MainThread - werkzeug - _log -  * Debugger PIN: 143-994-774
+2026-08-02 11:56:47,515 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/logging_config.py', reloading
+2026-08-02 11:56:47,629 - INFO - MainThread - werkzeug - _log -  * Restarting with watchdog (fsevents)
+2026-08-02 11:56:47,769 - WARNING - MainThread - werkzeug - _log -  * Debugger is active!
+2026-08-02 11:56:47,773 - INFO - MainThread - werkzeug - _log -  * Debugger PIN: 143-994-774
+2026-08-02 11:56:48,661 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/logging_config.py', reloading
+2026-08-02 11:56:48,845 - INFO - MainThread - werkzeug - _log -  * Restarting with watchdog (fsevents)
+2026-08-02 11:56:48,982 - WARNING - MainThread - werkzeug - _log -  * Debugger is active!
+2026-08-02 11:56:48,986 - INFO - MainThread - werkzeug - _log -  * Debugger PIN: 143-994-774
+2026-08-02 11:56:49,830 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/logging_config.py', reloading
+2026-08-02 11:56:50,045 - INFO - MainThread - werkzeug - _log -  * Restarting with watchdog (fsevents)
+2026-08-02 11:56:50,181 - WARNING - MainThread - werkzeug - _log -  * Debugger is active!
+2026-08-02 11:56:50,185 - INFO - MainThread - werkzeug - _log -  * Debugger PIN: 143-994-774
+2026-08-02 11:56:50,236 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/logging_config.py', reloading
+2026-08-02 11:56:50,495 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/logging_config.py', reloading
+2026-08-02 11:56:50,696 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/logging_config.py', reloading
+2026-08-02 11:56:50,982 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/logging_config.py', reloading
+2026-08-02 11:56:51,252 - INFO - MainThread - werkzeug - _log -  * Restarting with watchdog (fsevents)
+2026-08-02 11:56:51,392 - WARNING - MainThread - werkzeug - _log -  * Debugger is active!
+2026-08-02 11:56:51,400 - INFO - MainThread - werkzeug - _log -  * Debugger PIN: 143-994-774
+2026-08-02 11:56:51,877 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/logging_config.py', reloading
+2026-08-02 11:56:52,480 - INFO - MainThread - werkzeug - _log -  * Restarting with watchdog (fsevents)
+2026-08-02 11:56:52,612 - WARNING - MainThread - werkzeug - _log -  * Debugger is active!
+2026-08-02 11:56:52,617 - INFO - MainThread - werkzeug - _log -  * Debugger PIN: 143-994-774
+2026-08-02 11:56:57,864 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/logging_config.py', reloading
+2026-08-02 11:56:58,709 - INFO - MainThread - werkzeug - _log -  * Restarting with watchdog (fsevents)
+2026-08-02 11:56:58,843 - WARNING - MainThread - werkzeug - _log -  * Debugger is active!
+2026-08-02 11:56:58,847 - INFO - MainThread - werkzeug - _log -  * Debugger PIN: 143-994-774
+2026-08-02 11:57:26,237 - INFO - MainThread - werkzeug - _log - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5055
+2026-08-02 11:57:26,238 - INFO - MainThread - werkzeug - _log - [33mPress CTRL+C to quit[0m
+2026-08-02 11:57:26,241 - INFO - MainThread - werkzeug - _log -  * Restarting with watchdog (fsevents)
+2026-08-02 11:57:26,365 - WARNING - MainThread - werkzeug - _log -  * Debugger is active!
+2026-08-02 11:57:26,370 - INFO - MainThread - werkzeug - _log -  * Debugger PIN: 143-994-774
+2026-08-02 11:58:00,830 - INFO - Thread-6 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:00] "[32mGET / HTTP/1.1[0m" 302 -
+2026-08-02 11:58:00,926 - INFO - Thread-7 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:00] "GET /login HTTP/1.1" 200 -
+2026-08-02 11:58:00,936 - INFO - Thread-8 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:00] "GET /static/logos/bayq_logo.png HTTP/1.1" 200 -
+2026-08-02 11:58:01,132 - INFO - Thread-9 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:01] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2026-08-02 11:58:01,926 - INFO - Thread-10 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:01] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 11:58:07,625 - INFO - Thread-11 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:07] "[32mPOST /login HTTP/1.1[0m" 302 -
+2026-08-02 11:58:07,639 - INFO - Thread-12 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:07] "GET /dashboard HTTP/1.1" 200 -
+2026-08-02 11:58:08,548 - INFO - Thread-13 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:08] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 11:58:30,601 - INFO - Thread-14 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:30] "GET /bookings HTTP/1.1" 200 -
+2026-08-02 11:58:31,163 - INFO - Thread-15 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:31] "GET /estimates HTTP/1.1" 200 -
+2026-08-02 11:58:31,616 - INFO - Thread-16 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:31] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 11:58:31,667 - INFO - Thread-17 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:31] "GET /ai-estimate HTTP/1.1" 200 -
+2026-08-02 11:58:32,257 - INFO - Thread-18 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:32] "GET /inventory HTTP/1.1" 200 -
+2026-08-02 11:58:32,676 - INFO - Thread-19 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:32] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 11:58:33,324 - INFO - Thread-20 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:33] "GET /ai-estimate HTTP/1.1" 200 -
+2026-08-02 11:58:34,160 - INFO - Thread-21 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:34] "GET /products HTTP/1.1" 200 -
+2026-08-02 11:58:34,335 - INFO - Thread-22 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:34] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 11:58:34,690 - INFO - Thread-23 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:34] "GET /inventory HTTP/1.1" 200 -
+2026-08-02 11:58:35,271 - INFO - Thread-24 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:35] "GET /analytics/ HTTP/1.1" 200 -
+2026-08-02 11:58:35,436 - INFO - Thread-25 (process_request_thread) - src.services.orchestrators.inventory_orchestrator - stock_forecast - Stock briefing degraded to deterministic mode: AI is disabled (set AI_ENABLED=1 to turn it back on)
+2026-08-02 11:58:35,437 - INFO - Thread-25 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:35] "POST /analytics/api/stock-forecast HTTP/1.1" 200 -
+2026-08-02 11:58:35,700 - INFO - Thread-26 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:35] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 11:58:36,074 - INFO - Thread-27 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:36] "GET /ai-estimate HTTP/1.1" 200 -
+2026-08-02 11:58:37,083 - INFO - Thread-28 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:37] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 11:58:37,803 - INFO - Thread-29 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:37] "GET /analytics/ HTTP/1.1" 200 -
+2026-08-02 11:58:37,809 - INFO - Thread-30 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:37] "POST /analytics/api/stock-forecast HTTP/1.1" 200 -
+2026-08-02 11:58:38,817 - INFO - Thread-31 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:38] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 11:58:39,408 - INFO - Thread-32 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:39] "GET /assistant HTTP/1.1" 200 -
+2026-08-02 11:58:40,419 - INFO - Thread-33 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:40] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 11:58:43,233 - INFO - Thread-34 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:43] "GET /staff HTTP/1.1" 200 -
+2026-08-02 11:58:43,805 - INFO - Thread-35 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:43] "GET /media HTTP/1.1" 200 -
+2026-08-02 11:58:44,243 - INFO - Thread-36 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:44] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 11:58:44,482 - INFO - Thread-37 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:44] "GET /customers HTTP/1.1" 200 -
+2026-08-02 11:58:44,979 - INFO - Thread-38 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:44] "GET /dvi/ HTTP/1.1" 200 -
+2026-08-02 11:58:45,496 - INFO - Thread-39 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:45] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 11:58:45,592 - INFO - Thread-40 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:45] "GET /dispatch/ HTTP/1.1" 200 -
+2026-08-02 11:58:46,157 - INFO - Thread-41 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:46] "GET /jobs HTTP/1.1" 200 -
+2026-08-02 11:58:46,604 - INFO - Thread-42 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:46] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 11:58:47,531 - INFO - Thread-43 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:47] "GET /analytics/ HTTP/1.1" 200 -
+2026-08-02 11:58:47,537 - INFO - Thread-44 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:47] "POST /analytics/api/stock-forecast HTTP/1.1" 200 -
+2026-08-02 11:58:48,186 - INFO - Thread-45 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:48] "GET /jobs HTTP/1.1" 200 -
+2026-08-02 11:58:48,541 - INFO - Thread-46 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:48] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 11:58:50,578 - INFO - Thread-47 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:50] "[32mPOST /jobs/32/status HTTP/1.1[0m" 302 -
+2026-08-02 11:58:50,585 - INFO - Thread-48 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:50] "GET /jobs HTTP/1.1" 200 -
+2026-08-02 11:58:51,578 - INFO - Thread-49 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:51] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 11:58:55,290 - INFO - Thread-50 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:55] "GET /analytics/ HTTP/1.1" 200 -
+2026-08-02 11:58:55,295 - INFO - Thread-51 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:55] "POST /analytics/api/stock-forecast HTTP/1.1" 200 -
+2026-08-02 11:58:56,301 - INFO - Thread-52 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:56] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 11:58:57,899 - INFO - Thread-53 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:57] "GET /inventory HTTP/1.1" 200 -
+2026-08-02 11:58:58,690 - INFO - Thread-54 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:58] "GET /analytics/ HTTP/1.1" 200 -
+2026-08-02 11:58:58,697 - INFO - Thread-55 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:58] "POST /analytics/api/stock-forecast HTTP/1.1" 200 -
+2026-08-02 11:58:58,908 - INFO - Thread-56 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:58:58] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 11:59:15,451 - INFO - Thread-57 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:59:15] "GET /inventory HTTP/1.1" 200 -
+2026-08-02 11:59:16,463 - INFO - Thread-58 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:59:16] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 11:59:16,684 - INFO - Thread-59 (process_request_thread) - src.services.orchestrators.inventory_orchestrator - stock_forecast - Stock briefing degraded to deterministic mode: AI is disabled (set AI_ENABLED=1 to turn it back on)
+2026-08-02 11:59:16,686 - INFO - Thread-59 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 11:59:16] "POST /inventory/api/ai-analytics HTTP/1.1" 200 -
+2026-08-02 12:00:01,718 - INFO - Thread-60 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:00:01] "GET /dvi/ HTTP/1.1" 200 -
+2026-08-02 12:00:02,728 - INFO - Thread-61 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:00:02] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 12:01:36,117 - INFO - Thread-62 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:01:36] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 12:02:01,989 - INFO - Thread-63 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:02:01] "GET /dvi/job/30 HTTP/1.1" 200 -
+2026-08-02 12:02:02,998 - INFO - Thread-64 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:02:02] "[33mGET /sw.js HTTP/1.1[0m" 404 -

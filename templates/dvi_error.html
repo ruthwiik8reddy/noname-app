@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Not found — {{ studio }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  {% include "_theme.html" %}
+</head>
+<body>
+{% include "_sidebar.html" %}
+<main class="main">
+  <h1 class="page-heading">We couldn't open that</h1>
+  <p class="page-sub">{{ message }}</p>
+  <div style="margin-top:24px;display:flex;gap:8px;">
+    <a class="btn" href="/dispatch/">Back to the dispatch board</a>
+    <a class="btn btn-quiet" href="/dvi/">All inspections</a>
+  </div>
+</main>
+</body>
+</html>

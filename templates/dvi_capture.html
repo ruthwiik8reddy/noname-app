@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inspection — {{ job.car }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+  {% include "_theme.html" %}
+  <style>
+    .capture {
+      border: 1px dashed rgba(200,169,110,0.35); border-radius: 6px;
+      padding: 34px 24px; text-align: center; background: rgba(200,169,110,0.03);
+      transition: background .15s, border-color .15s;
+    }
+    .capture.dragover { background: rgba(200,169,110,0.09); border-color: var(--gold); }
+    .capture h2 { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: .08em; color: var(--gold); }
+    .capture p { font-size: 12px; color: var(--ink-dim); margin-top: 8px; line-height: 1.6; max-width: 52ch; margin-inline: auto; }
+    .capture-actions { display: flex; gap: 10px; justify-content: center; margin-top: 20px; flex-wrap: wrap; align-items: center; }
+    input[type=file] { display: none; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+    .shot { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+    .shot img { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; background: #111; }
+    .shot-meta { padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .shot-panel { font-size: 11px; color: var(--ink-dim); text-transform: capitalize; }
+    .shot-state { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
+    .shot-state.done { color: var(--green); }
+    .shot-state.wait { color: var(--ink-faint); }
+    .shot-state.err  { color: var(--red); }
+    .shot-del {
+      background: none; border: none; color: var(--ink-faint); cursor: pointer;
+      font-size: 15px; line-height: 1; padding: 2px 4px;
+    }
+    .shot-del:hover { color: var(--red); }
+
+    .progress-note {
+      display: flex; align-items: center; gap: 10px; font-size: 12px;
+      color: var(--ink-dim); margin-top: 14px; line-height: 1.5;
+    }
+    .offline-note {
+      background: rgba(224,164,88,0.08); border: 1px solid rgba(224,164,88,0.25);
+      border-radius: 5px; padding: 14px 16px; font-size: 12px; color: var(--ink-dim);
+      line-height: 1.65; margin-bottom: 20px;
+    }
+    .offline-note strong { color: var(--amber); display: block; margin-bottom: 5px; }
+    .offline-note code {
+      background: rgba(0,0,0,0.35); padding: 2px 6px; border-radius: 3px; color: var(--gold);
+    }
+  </style>
+</head>
+<body>
+{% include "_sidebar.html" %}
+
+<main class="main">
+  <div class="top-bar">
+    <div>
+      <h1 class="page-heading">{{ job.car }}</h1>
+      <p class="page-sub">
+        {{ job.service }} · Job #{{ job.id }} · Inspection #{{ inspection.id }}
+        <br>Photograph each panel in even light. The local vision model reads one photo at a time,
+        so a tagged panel gives you a finding you can point at later.
+      </p>
+    </div>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <a class="btn btn-quiet" href="/dispatch/job/{{ job.id }}">Job detail</a>
+      <a class="btn btn-quiet" href="/dvi/inspection/{{ inspection.id }}">View report</a>
+    </div>
+  </div>
+
+  {% if not ai_online %}
+  <div class="offline-note">
+    <strong>The local vision model isn't reachable</strong>
+    You can still capture and store photos — analysis needs Ollama running.
+    Start it with <code>ollama serve</code>, then install the model with <code>ollama pull llava</code>.
+  </div>
+  {% endif %}
+
+  <div class="capture" id="dropzone">
+    <h2>Add inspection photos</h2>
+    <p>Take them on your phone or drop files here. JPG, PNG, WebP or HEIC, up to 24 photos per inspection.</p>
+    <div class="capture-actions">
+      <label class="field" for="panel" style="margin:0;align-self:center;">Panel</label>
+      <select id="panel">
+        {% for p in panels %}<option value="{{ p }}" {% if p == 'unspecified' %}selected{% endif %}>{{ p.replace('_', ' ')|title }}</option>{% endfor %}
+      </select>
+      <button class="btn btn-solid" onclick="document.getElementById('camera').click()">Take a photo</button>
+      <button class="btn" onclick="document.getElementById('picker').click()">Choose files</button>
+    </div>
+    <input type="file" id="camera" accept="image/*" capture="environment" multiple onchange="upload(this.files)">
+    <input type="file" id="picker" accept="image/*" multiple onchange="upload(this.files)">
+    <div class="progress-note" id="uploadNote" hidden></div>
+  </div>
+
+  <div class="section-label">
+    Captured photos (<span id="photoCount">{{ photos|length }}</span>)
+  </div>
+
+  <div class="grid" id="shots">
+    {% for p in photos %}
+    <figure class="shot" id="shot-{{ p.id }}">
+      <img src="/dvi/photo/{{ p.studio_id }}/{{ p.filename }}" alt="Inspection photo of {{ p.panel.replace('_',' ') }}" loading="lazy">
+      <figcaption class="shot-meta">
+        <span class="shot-panel">{{ p.panel.replace('_', ' ') }}</span>
+        <span style="display:flex;align-items:center;gap:8px;">
+          <span class="shot-state {{ 'done' if p.analyzed else 'err' if p.analysis_error else 'wait' }}">
+            {{ 'read' if p.analyzed else 'failed' if p.analysis_error else 'queued' }}
+          </span>
+          <button class="shot-del" onclick="removePhoto({{ p.id }})" aria-label="Delete this photo" title="Delete">×</button>
+        </span>
+      </figcaption>
+    </figure>
+    {% endfor %}
+  </div>
+
+  <div id="emptyShots" class="empty" {% if photos %}hidden{% endif %}>
+    <strong>No photos yet</strong>Capture the panels you want assessed — start with the hood, roof and doors.
+  </div>
+
+  <div style="margin-top:28px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <button class="btn btn-solid" id="analyzeBtn" onclick="analyze(false)" {% if not photos %}disabled{% endif %}>
+      Run inspection analysis
+    </button>
+    <button class="btn btn-quiet" onclick="analyze(true)" id="reanalyzeBtn" {% if not photos %}disabled{% endif %}>
+      Re-read every photo
+    </button>
+    <span class="muted" style="font-size:11px;">Roughly 10–30 seconds per photo on a local model.</span>
+  </div>
+  <div class="progress-note" id="analyzeNote" hidden></div>
+</main>
+
+<script>
+  const INSPECTION_ID = {{ inspection.id }};
+  const STUDIO_ID = {{ inspection.studio_id }};
+  let photoCount = {{ photos|length }};
+
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const note = (el, html) => { const n = document.getElementById(el); n.hidden = false; n.innerHTML = html; };
+
+  // ── drag & drop ──
+  const zone = document.getElementById("dropzone");
+  ["dragenter", "dragover"].forEach(evt =>
+    zone.addEventListener(evt, e => { e.preventDefault(); zone.classList.add("dragover"); }));
+  ["dragleave", "drop"].forEach(evt =>
+    zone.addEventListener(evt, e => { e.preventDefault(); zone.classList.remove("dragover"); }));
+  zone.addEventListener("drop", e => upload(e.dataTransfer.files));
+
+  async function upload(files) {
+    if (!files || !files.length) return;
+    const form = new FormData();
+    for (const file of files) form.append("photos", file);
+    form.append("panel", document.getElementById("panel").value);
+
+    note("uploadNote", `<span class="spinner"></span> Uploading ${files.length} photo(s)…`);
+    try {
+      const res = await fetch(`/dvi/inspection/${INSPECTION_ID}/photos`, { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+
+      (data.saved || []).forEach(addShot);
+      photoCount = data.total;
+      document.getElementById("photoCount").textContent = photoCount;
+      document.getElementById("emptyShots").hidden = photoCount > 0;
+      document.getElementById("analyzeBtn").disabled = photoCount === 0;
+      document.getElementById("reanalyzeBtn").disabled = photoCount === 0;
+
+      const rejected = data.rejected || [];
+      note("uploadNote", rejected.length
+        ? `Saved ${data.saved.length}. Skipped ${rejected.length}: ${esc(rejected.map(r => r.filename + " (" + r.reason + ")").join(", "))}`
+        : `Saved ${data.saved.length} photo(s).`);
+    } catch (err) {
+      note("uploadNote", `<span style="color:var(--red)">${esc(err.message)}</span>`);
+    }
+  }
+
+  function addShot(photo) {
+    const fig = document.createElement("figure");
+    fig.className = "shot";
+    fig.id = "shot-" + photo.id;
+    fig.innerHTML = `
+      <img src="${esc(photo.url)}" alt="Inspection photo of ${esc(photo.panel.replace(/_/g, " "))}" loading="lazy">
+      <figcaption class="shot-meta">
+        <span class="shot-panel">${esc(photo.panel.replace(/_/g, " "))}</span>
+        <span style="display:flex;align-items:center;gap:8px;">
+          <span class="shot-state wait">queued</span>
+          <button class="shot-del" onclick="removePhoto(${photo.id})" aria-label="Delete this photo" title="Delete">×</button>
+        </span>
+      </figcaption>`;
+    document.getElementById("shots").appendChild(fig);
+  }
+
+  async function removePhoto(id) {
+    const res = await fetch(`/dvi/photo/${id}/delete`, { method: "POST" });
+    if (res.ok) {
+      document.getElementById("shot-" + id)?.remove();
+      photoCount = Math.max(0, photoCount - 1);
+      document.getElementById("photoCount").textContent = photoCount;
+      document.getElementById("emptyShots").hidden = photoCount > 0;
+      document.getElementById("analyzeBtn").disabled = photoCount === 0;
+    }
+  }
+
+  async function analyze(reanalyze) {
+    const btn = document.getElementById("analyzeBtn");
+    btn.disabled = true;
+    note("analyzeNote",
+      `<span class="spinner"></span> Reading ${photoCount} photo(s) locally. This runs on your machine — keep the tab open.`);
+    try {
+      const res = await fetch(`/dvi/inspection/${INSPECTION_ID}/analyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reanalyze })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Analysis failed");
+
+      const findings = (data.findings || []).length;
+      note("analyzeNote", `Found ${findings} item(s). Opening the report…`);
+      setTimeout(() => location.href = `/dvi/inspection/${INSPECTION_ID}`, 900);
+    } catch (err) {
+      note("analyzeNote", `<span style="color:var(--red)">${esc(err.message)}</span>`);
+      btn.disabled = false;
+    }
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inspections — {{ studio }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'DM Sans',sans-serif; background:#0D0D0D; color:#E8E6E0; min-height:100vh; display:flex; }
+    .main { flex:1; padding:44px 48px; overflow-y:auto; }
+    .top-bar { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:28px; gap:20px; }
+    .page-heading { font-family:'Bebas Neue',sans-serif; font-size:30px; letter-spacing:.1em; color:#C8A96E; }
+    .page-sub { font-size:12px; color:rgba(255,255,255,0.3); margin-top:4px; }
+    .ai-pill { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:20px; font-size:11px; white-space:nowrap; }
+    .ai-on  { background:rgba(74,222,128,0.12); color:#4ADE80; }
+    .ai-off { background:rgba(248,113,113,0.12); color:#F87171; }
+    .dot { width:5px; height:5px; border-radius:50%; background:currentColor; }
+    .section-label { font-size:11px; font-weight:600; letter-spacing:.12em; text-transform:uppercase;
+      color:rgba(255,255,255,0.3); margin:34px 0 12px; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.06); }
+    .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; }
+    .card { background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.07); border-radius:6px; padding:16px; }
+    .card h3 { font-size:14px; font-weight:500; margin-bottom:4px; }
+    .card .meta { font-size:11px; color:rgba(255,255,255,0.35); }
+    .btn { display:inline-block; margin-top:12px; background:rgba(200,169,110,0.12); border:1px solid rgba(200,169,110,0.3);
+      color:#C8A96E; padding:6px 14px; border-radius:5px; font-size:11px; text-decoration:none; }
+    .btn:hover { background:rgba(200,169,110,0.22); }
+    .table-wrap { background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.07); border-radius:6px; overflow:hidden; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    thead th { padding:12px 16px; text-align:left; font-size:11px; font-weight:500; letter-spacing:.07em;
+      text-transform:uppercase; color:rgba(255,255,255,0.3); border-bottom:1px solid rgba(255,255,255,0.07); }
+    tbody tr { border-bottom:1px solid rgba(255,255,255,0.04); }
+    tbody tr:last-child { border-bottom:none; }
+    td { padding:13px 16px; }
+    .badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; }
+    .b-draft     { background:rgba(255,255,255,0.07); color:rgba(255,255,255,0.45); }
+    .b-analyzing { background:rgba(200,169,110,0.15); color:#C8A96E; }
+    .b-analyzed  { background:rgba(74,222,128,0.12); color:#4ADE80; }
+    .b-converted { background:rgba(96,165,250,0.12); color:#60A5FA; }
+    .b-failed    { background:rgba(248,113,113,0.12); color:#F87171; }
+    .empty { padding:48px; text-align:center; color:rgba(255,255,255,0.2); font-size:13px; }
+    .money { color:#C8A96E; }
+    a.row-link { color:#E8E6E0; text-decoration:none; }
+    a.row-link:hover { color:#C8A96E; }
+  </style>
+</head>
+<body>
+{% include "_sidebar.html" %}
+<main class="main">
+  <div class="top-bar">
+    <div>
+      <h1 class="page-heading">Digital Vehicle Inspections</h1>
+      <p class="page-sub">Capture vehicle photos and let the local vision model flag defects and suggest upcharges</p>
+    </div>
+    <span class="ai-pill {{ 'ai-on' if ai_online else 'ai-off' }}">
+      <span class="dot"></span>{{ 'Vision model online' if ai_online else 'Vision model offline' }}
+    </span>
+  </div>
+
+  {% if not ai_online %}
+  <div class="card" style="border-color:rgba(248,113,113,0.25);">
+    <h3 style="color:#F87171;">Local vision model unreachable</h3>
+    <p class="meta" style="margin-top:6px;line-height:1.6;">
+      You can still capture and store photos — analysis will fail until Ollama is running.
+      Start it with <code>ollama serve</code>, then install the vision model with <code>ollama pull llava</code>.
+    </p>
+  </div>
+  {% endif %}
+
+  <div class="section-label">Start an inspection</div>
+  {% if open_jobs %}
+  <div class="grid">
+    {% for job in open_jobs %}
+    <div class="card">
+      <h3>{{ job.car }}</h3>
+      <div class="meta">{{ job.service }} · {{ job.status }} · {{ job.technician }}</div>
+      <a class="btn" href="/dvi/job/{{ job.id }}">Capture photos →</a>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="table-wrap"><div class="empty">
+    No open jobs. Create or start a job on the <a href="/dispatch/" style="color:#C8A96E;">Dispatch Board</a> first.
+  </div></div>
+  {% endif %}
+
+  <div class="section-label">Recent inspections</div>
+  <div class="table-wrap">
+    {% if inspections %}
+    <table>
+      <thead>
+        <tr><th>#</th><th>Vehicle</th><th>Service</th><th>Status</th><th>Photos</th>
+            <th>Findings</th><th>Condition</th><th>Suggested</th><th>Created</th></tr>
+      </thead>
+      <tbody>
+        {% for i in inspections %}
+        <tr>
+          <td style="color:rgba(255,255,255,0.25);font-size:11px;">{{ i.id }}</td>
+          <td><a class="row-link" href="/dvi/inspection/{{ i.id }}">{{ i.car or '—' }}</a></td>
+          <td style="color:rgba(255,255,255,0.5);">{{ i.service or '—' }}</td>
+          <td><span class="badge b-{{ i.status }}">{{ i.status }}</span></td>
+          <td>{{ i.photo_count }}</td>
+          <td>{{ i.finding_count }}</td>
+          <td>{% if i.condition_score is not none %}{{ i.condition_score }}/10{% else %}—{% endif %}</td>
+          <td class="money">
+            {% if i.total_upcharge_cents %}${{ '%.2f'|format(i.total_upcharge_cents / 100) }}{% else %}—{% endif %}
+          </td>
+          <td style="color:rgba(255,255,255,0.3);font-size:11px;">{{ i.created_at }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">No inspections yet — pick a job above to start one.</div>
+    {% endif %}
+  </div>
+</main>
+</body>
+</html>

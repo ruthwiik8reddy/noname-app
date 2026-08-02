@@ -554,6 +554,13 @@ def init_db():
     conn.commit()
     conn.close()
 
+    # ── Phase 2 (DVI) + Phase 3 (Dispatch) schema ──
+    # Delegated to the migration module so there is exactly one definition of
+    # these tables. Safe and idempotent on every startup.
+    from .migrate_phase2 import migrate as _migrate_phase2
+
+    _migrate_phase2(Config.DB_PATH)
+
 
 def get_studio_inventory(studio_id: int):
     conn = get_db()

@@ -18,7 +18,12 @@ from flask import request, redirect, url_for, session, jsonify, render_template
 
 from .db_manager import get_db
 from .auth import staff_or_admin_required, admin_required
-from .ai_service import AIService, GeminiBackend, OllamaBackend
+# Orchestrator Pattern: no model backends are imported here. Surface-area
+# estimation lives in EstimateOrchestrator, which owns the cache → model →
+# body-type-prior chain that used to be inlined in this module.
+from .services.orchestrators import EstimateOrchestrator
+
+_estimate_ai = EstimateOrchestrator()
 from .config import Config
 from . import controller as _c
 
@@ -129,71 +134,18 @@ def _parse_sqft(text: str):
 
 
 def _ai_estimate_sqft(vehicle: str, studio_id: int):
-    """Estimate a vehicle's wrappable surface area in sqft.
-
-    Goes DIRECTLY to Gemini (bypasses the local router, which would otherwise
-    send this to Ollama). Falls back: Gemini -> Ollama -> body-type guess.
-    Results are cached per vehicle.
-    Returns (sqft: float, source: str).
     """
-    conn = get_db()
-    vehicle = (vehicle or "").strip()
-    if not vehicle:
-        return float(FALLBACK_SQFT["default"]), "fallback"
+    Estimate a vehicle's wrappable surface area in square feet.
 
-    cached = conn.execute(
-        "SELECT total_sqft FROM vehicle_sqft_cache WHERE vehicle=?", (vehicle,)
-    ).fetchone()
-    if cached:
-        return float(cached["total_sqft"]), "cache"
+    Thin adapter kept for backwards compatibility — every caller in this module
+    and in estimate_assistant.py still expects the `(sqft, source)` tuple. The
+    logic itself (cache lookup, model call, plausibility check, body-type
+    fallback, cache write) now lives in EstimateOrchestrator.
 
-    prompt = (
-        "You are a paint protection film (PPF) estimator.\n"
-        f"Vehicle: {vehicle}\n\n"
-        "Estimate the total exterior paintable surface area of this vehicle in square feet "
-        "(body panels that would be covered in a full-body PPF wrap; exclude glass and wheels).\n\n"
-        "Typical ranges for reference: compact hatchback ~170, sedan ~200, coupe ~185, "
-        "midsize SUV ~240, large SUV ~260, pickup truck ~270.\n\n"
-        "Reply with ONLY the number. No units, no words, no explanation. Example reply: 245"
-    )
-
-    # ── 1. Gemini (forced, not routed) ──
-    if Config.GEMINI_API_KEY:
-        try:
-            text = GeminiBackend(Config).call(prompt)
-            sqft = _parse_sqft(text or "")
-            if sqft:
-                conn.execute(
-                    "INSERT OR REPLACE INTO vehicle_sqft_cache (vehicle,total_sqft,source) VALUES (?,?,?)",
-                    (vehicle, sqft, "gemini"))
-                conn.commit()
-                return sqft, "gemini"
-            print(f"[ai-estimate] Gemini returned unusable reply for {vehicle!r}: {text!r}")
-        except Exception as e:
-            print(f"[ai-estimate] Gemini error: {e}")
-    else:
-        print("[ai-estimate] No GEMINI_API_KEY set — skipping Gemini")
-
-    # ── 2. Ollama (local) as a backup ──
-    try:
-        text = OllamaBackend(Config).call(prompt)
-        sqft = _parse_sqft(text or "")
-        if sqft:
-            conn.execute(
-                "INSERT OR REPLACE INTO vehicle_sqft_cache (vehicle,total_sqft,source) VALUES (?,?,?)",
-                (vehicle, sqft, "ollama"))
-            conn.commit()
-            return sqft, "ollama"
-        print(f"[ai-estimate] Ollama returned unusable reply for {vehicle!r}: {text!r}")
-    except Exception as e:
-        print(f"[ai-estimate] Ollama error: {e}")
-
-    # ── 3. Body-type fallback ──
-    v = vehicle.lower()
-    for k, val in FALLBACK_SQFT.items():
-        if k != "default" and k in v:
-            return float(val), "fallback"
-    return float(FALLBACK_SQFT["default"]), "fallback"
+    `source` is one of: "cache" | "ai" | "fallback".
+    """
+    result = _estimate_ai.vehicle_sqft(vehicle, studio_id)
+    return float(result["sqft"]), result["source"]
 
 
 def _price(product, sqft, coverage=1.0):
@@ -303,16 +255,16 @@ def ai_estimate_debug():
         "gemini_model": Config.GEMINI_MODEL,
         "ollama_model": getattr(Config, "OLLAMA_MODEL", None),
     }
-    # live test call to Gemini
-    if Config.GEMINI_API_KEY:
-        try:
-            reply = GeminiBackend(Config).call(
-                "Reply with only the number 250. No words.")
-            info["gemini_live_test"] = {"raw_reply": reply, "parsed": _parse_sqft(reply or "")}
-        except Exception as e:
-            info["gemini_live_test"] = {"error": str(e)}
-    else:
-        info["gemini_live_test"] = "skipped — no GEMINI_API_KEY in .env"
+    # Live health check against the actual configured backend.
+    from .services.llm.factory import LLMProviderFactory
+
+    provider = LLMProviderFactory.text_provider()
+    info["provider"] = provider.describe()
+    try:
+        probe = _estimate_ai.vehicle_sqft("2022 Toyota Camry", session["studio_id"])
+        info["live_test"] = probe
+    except Exception as e:  # noqa: BLE001
+        info["live_test"] = {"error": str(e)}
 
     # what products exist (an empty catalog = no quotes shown!)
     sid = session["studio_id"]

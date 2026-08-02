@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inspection #{{ inspection.id }} — {{ studio }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+  {% include "_theme.html" %}
+  <style>
+    .summary-card {
+      display: grid; grid-template-columns: auto 1fr; gap: 28px; align-items: center;
+      background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 24px 26px;
+    }
+    @media (max-width: 760px) { .summary-card { grid-template-columns: 1fr; gap: 18px; } }
+
+    /* Signature: the condition score reads as a dial, not another metric tile. */
+    .score { position: relative; width: 108px; height: 108px; }
+    .score svg { transform: rotate(-90deg); }
+    .score-track { fill: none; stroke: rgba(255,255,255,0.07); stroke-width: 7; }
+    .score-arc { fill: none; stroke: var(--gold); stroke-width: 7; stroke-linecap: round; transition: stroke-dashoffset .8s ease; }
+    .score-arc.low { stroke: var(--red); }
+    .score-arc.mid { stroke: var(--amber); }
+    .score-num {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+    }
+    .score-num b { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: .03em; line-height: 1; color: var(--ink); }
+    .score-num span { font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-faint); margin-top: 4px; }
+
+    .summary-text h2 { font-size: 17px; font-weight: 500; line-height: 1.45; }
+    .summary-text p { font-size: 13px; color: var(--ink-dim); margin-top: 10px; line-height: 1.65; max-width: 72ch; }
+
+    .finding {
+      display: grid; grid-template-columns: 120px 1fr auto; gap: 16px; align-items: start;
+      background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
+      padding: 14px; margin-bottom: 10px;
+    }
+    @media (max-width: 820px) { .finding { grid-template-columns: 1fr; } }
+    .finding.accepted { border-color: rgba(74,222,128,0.3); }
+    .finding.declined { opacity: .45; }
+    .finding img { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 4px; background: #111; }
+
+    .finding-title { font-size: 14px; font-weight: 500; text-transform: capitalize; }
+    .finding-panel { font-size: 11px; color: var(--gold); margin-top: 3px; text-transform: capitalize; }
+    .finding-desc { font-size: 12px; color: var(--ink-dim); margin-top: 8px; line-height: 1.6; max-width: 66ch; }
+    .finding-basis { font-size: 11px; color: var(--ink-faint); margin-top: 7px; }
+
+    /* Severity as five pips — a glance is enough, no legend needed. */
+    .sev { display: inline-flex; gap: 3px; align-items: center; margin-top: 8px; }
+    .sev i { width: 14px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.12); display: block; }
+    .sev i.on { background: var(--amber); }
+    .sev i.on.high { background: var(--red); }
+    .sev span { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint); margin-left: 6px; }
+
+    .finding-price { text-align: right; min-width: 130px; }
+    .price-amount { font-family: 'Bebas Neue', sans-serif; font-size: 24px; color: var(--gold); letter-spacing: .03em; }
+    .price-service { font-size: 11px; color: var(--ink-faint); margin-top: 3px; }
+    .decide { display: flex; gap: 6px; justify-content: flex-end; margin-top: 10px; }
+
+    .totals {
+      display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap;
+      background: rgba(200,169,110,0.06); border: 1px solid rgba(200,169,110,0.25);
+      border-radius: 6px; padding: 18px 22px; margin-top: 20px;
+    }
+    .totals-num { font-family: 'Bebas Neue', sans-serif; font-size: 28px; color: var(--gold); letter-spacing: .04em; }
+    .totals-label { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint); }
+
+    .rec { font-size: 12px; color: var(--ink-dim); line-height: 1.65; padding: 10px 0; border-bottom: 1px solid var(--line-soft); }
+    .rec:last-child { border-bottom: none; }
+    .rec strong { color: var(--ink); font-weight: 500; }
+    .rec .pri { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; margin-left: 8px; }
+    .pri.high { color: var(--red); } .pri.medium { color: var(--amber); } .pri.low { color: var(--ink-faint); }
+  </style>
+</head>
+<body>
+{% include "_sidebar.html" %}
+
+<main class="main">
+  <div class="top-bar">
+    <div>
+      <h1 class="page-heading">Inspection #{{ inspection.id }}</h1>
+      <p class="page-sub">
+        {{ job.car }} · {{ job.service }} · {{ photos|length }} photo{{ 's' if photos|length != 1 }} read
+        {% if inspection.analyzed_at %}· {{ inspection.analyzed_at }}{% endif %}
+      </p>
+      {% if inspection.degraded %}
+      <div class="ai-strip"><span class="ai-dot off"></span>
+        Summary written from the calculated findings — the local model was unreachable during analysis.
+      </div>
+      {% elif inspection.model_used %}
+      <div class="ai-strip"><span class="ai-dot"></span>Analyzed locally with {{ inspection.model_used }}</div>
+      {% endif %}
+    </div>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <a class="btn btn-quiet" href="/dvi/job/{{ job.id }}">Add more photos</a>
+      <a class="btn btn-quiet" href="/dispatch/job/{{ job.id }}">Job detail</a>
+    </div>
+  </div>
+
+  {% if findings %}
+  <div class="summary-card">
+    {% set score = inspection.condition_score or 0 %}
+    <div class="score">
+      <svg width="108" height="108" viewBox="0 0 108 108" aria-hidden="true">
+        <circle class="score-track" cx="54" cy="54" r="46"></circle>
+        <circle class="score-arc {{ 'low' if score < 5 else 'mid' if score < 7.5 else '' }}"
+                cx="54" cy="54" r="46"
+                stroke-dasharray="289"
+                stroke-dashoffset="{{ 289 - (289 * score / 10) }}"></circle>
+      </svg>
+      <div class="score-num">
+        <b>{{ score }}</b><span>of 10</span>
+      </div>
+    </div>
+    <div class="summary-text">
+      <h2>{{ inspection.summary or 'Inspection complete.' }}</h2>
+      <p class="muted" style="font-size:12px;">
+        Condition is severity-weighted across every finding. Prices below come from your own service
+        catalog where a match exists — the vision model reports what it sees and never sets a price.
+      </p>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="section-label">
+    Findings ({{ findings|length }}) · accepted {{ accepted_count }}
+  </div>
+
+  {% for f in findings %}
+  <article class="finding {{ f.decision }}" id="finding-{{ f.id }}">
+    <div>
+      {% if f.filename %}
+      <img src="/dvi/photo/{{ f.studio_id }}/{{ f.filename }}" alt="Photo showing {{ f.defect_type.replace('_',' ') }}" loading="lazy">
+      {% endif %}
+    </div>
+    <div>
+      <div class="finding-title">{{ f.defect_type.replace('_', ' ') }}</div>
+      <div class="finding-panel">{{ f.panel.replace('_', ' ') }}</div>
+      <div class="sev" title="Severity {{ f.severity }} of 5">
+        {% for i in range(1, 6) %}<i class="{{ 'on' if i <= f.severity }} {{ 'high' if f.severity >= 4 }}"></i>{% endfor %}
+        <span>severity {{ f.severity }}/5 · {{ (f.confidence * 100)|round|int }}% confident</span>
+      </div>
+      <p class="finding-desc">{{ f.description }}</p>
+      {% if f.pricing_basis == 'studio_catalog' %}
+        <div class="finding-basis">Priced from your service catalog.</div>
+      {% elif f.pricing_basis == 'default_rate_card' %}
+        <div class="finding-basis">No matching catalog service — priced from the standard rate card.</div>
+      {% else %}
+        <div class="finding-basis">Not priced: confidence too low to quote. Logged for a human to confirm.</div>
+      {% endif %}
+    </div>
+    <div class="finding-price">
+      {% if f.suggested_upcharge_cents > 0 %}
+      <div class="price-amount">${{ '%.2f'|format(f.suggested_upcharge_cents / 100) }}</div>
+      <div class="price-service">{{ f.suggested_service }}</div>
+      {% else %}
+      <div class="price-service">Not quoted</div>
+      {% endif %}
+      {% if can_view_payments %}
+      <div class="decide">
+        <button class="btn btn-sm {{ 'btn-solid' if f.decision == 'accepted' }}" onclick="decide({{ f.id }}, 'accepted')">Accept</button>
+        <button class="btn btn-sm btn-quiet" onclick="decide({{ f.id }}, 'declined')">Decline</button>
+      </div>
+      {% endif %}
+    </div>
+  </article>
+  {% else %}
+  <div class="empty">
+    <strong>No defects found</strong>
+    {% if photos %}The vision model read {{ photos|length }} photo(s) and reported a clean vehicle.{% else %}No photos have been analyzed yet.{% endif %}
+  </div>
+  {% endfor %}
+
+  {% if findings %}
+  <div class="totals">
+    <div>
+      <div class="totals-label">Recommended additional work</div>
+      <div class="totals-num">{{ total_upcharge_display }}</div>
+    </div>
+    <div>
+      <div class="totals-label">Accepted so far</div>
+      <div class="totals-num">{{ accepted_total_display }}</div>
+    </div>
+    {% if can_view_payments %}
+    <button class="btn btn-solid" id="convertBtn" onclick="convert()" {% if not accepted_count %}disabled{% endif %}>
+      Create estimate from accepted items
+    </button>
+    {% endif %}
+  </div>
+  <p class="hint" id="convertNote">
+    Accepting an item marks it for the estimate. Line items are consolidated by defect type —
+    swirl marks across four panels bill as one correction job, not four charges.
+  </p>
+  {% endif %}
+</main>
+
+<script>
+  const INSPECTION_ID = {{ inspection.id }};
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+  async function decide(findingId, decision) {
+    const res = await fetch(`/dvi/finding/${findingId}/decision`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decision })
+    });
+    if (res.ok) location.reload();
+  }
+
+  async function convert() {
+    const btn = document.getElementById("convertBtn");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Creating…';
+    try {
+      const res = await fetch(`/dvi/inspection/${INSPECTION_ID}/to-estimate`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not create the estimate");
+      location.href = data.redirect;
+    } catch (err) {
+      document.getElementById("convertNote").innerHTML =
+        `<span style="color:var(--red)">${esc(err.message)}</span>`;
+      btn.disabled = false;
+      btn.textContent = "Create estimate from accepted items";
+    }
+  }
+</script>
+</body>
+</html>
