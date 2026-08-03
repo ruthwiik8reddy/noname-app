@@ -214,3 +214,324 @@
 2026-08-02 12:01:36,117 - INFO - Thread-62 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:01:36] "[33mGET /sw.js HTTP/1.1[0m" 404 -
 2026-08-02 12:02:01,989 - INFO - Thread-63 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:02:01] "GET /dvi/job/30 HTTP/1.1" 200 -
 2026-08-02 12:02:02,998 - INFO - Thread-64 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:02:02] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 12:22:17,242 - INFO - MainThread - werkzeug - _log - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5055
+2026-08-02 12:22:17,242 - INFO - MainThread - werkzeug - _log - [33mPress CTRL+C to quit[0m
+2026-08-02 12:22:17,251 - INFO - MainThread - werkzeug - _log -  * Restarting with watchdog (fsevents)
+2026-08-02 12:22:17,411 - WARNING - MainThread - werkzeug - _log -  * Debugger is active!
+2026-08-02 12:22:17,418 - INFO - MainThread - werkzeug - _log -  * Debugger PIN: 143-994-774
+2026-08-02 12:22:31,857 - INFO - Thread-6 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:22:31] "GET /analytics/api/health HTTP/1.1" 200 -
+2026-08-02 12:22:32,869 - INFO - Thread-7 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:22:32] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 12:43:32,457 - INFO - Thread-8 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:43:32] "[32mGET / HTTP/1.1[0m" 302 -
+2026-08-02 12:43:32,488 - INFO - Thread-9 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:43:32] "GET /dashboard HTTP/1.1" 200 -
+2026-08-02 12:43:33,470 - INFO - Thread-10 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:43:33] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 12:43:38,001 - INFO - Thread-11 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:43:38] "GET /dvi/ HTTP/1.1" 200 -
+2026-08-02 12:43:39,011 - INFO - Thread-12 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:43:39] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 12:46:31,423 - INFO - Thread-13 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:46:31] "GET /dvi/job/30 HTTP/1.1" 200 -
+2026-08-02 12:46:32,439 - INFO - Thread-14 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:46:32] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 12:48:27,872 - INFO - Thread-15 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:48:27] "POST /dvi/inspection/1/photos HTTP/1.1" 200 -
+2026-08-02 12:48:27,884 - INFO - Thread-16 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:48:27] "GET /dvi/photo/1/dvi_1_hood_efc9997cb4.jpeg HTTP/1.1" 200 -
+2026-08-02 12:49:44,857 - INFO - Thread-17 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:49:44] "POST /dvi/inspection/1/photos HTTP/1.1" 200 -
+2026-08-02 12:49:44,867 - INFO - Thread-18 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:49:44] "GET /dvi/photo/1/dvi_1_trunk_45b13f4268.jpeg HTTP/1.1" 200 -
+2026-08-02 12:50:16,223 - INFO - Thread-19 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:50:16] "POST /dvi/inspection/1/photos HTTP/1.1" 200 -
+2026-08-02 12:50:16,238 - INFO - Thread-20 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:50:16] "GET /dvi/photo/1/dvi_1_front_fender_right_fa467671ef.jpeg HTTP/1.1" 200 -
+2026-08-02 12:50:49,008 - INFO - Thread-21 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:50:49] "POST /dvi/inspection/1/photos HTTP/1.1" 200 -
+2026-08-02 12:50:49,012 - INFO - Thread-22 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:50:49] "GET /dvi/photo/1/dvi_1_front_bumper_e30963b631.jpeg HTTP/1.1" 200 -
+2026-08-02 12:51:17,889 - INFO - Thread-23 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:51:17] "POST /dvi/inspection/1/analyze HTTP/1.1" 200 -
+2026-08-02 12:51:18,839 - INFO - Thread-24 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:51:18] "[35m[1mGET /dvi/inspection/1 HTTP/1.1[0m" 500 -
+2026-08-02 12:51:18,858 - INFO - Thread-26 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:51:18] "GET /dvi/inspection/1?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1" 200 -
+2026-08-02 12:51:18,858 - INFO - Thread-25 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:51:18] "GET /dvi/inspection/1?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1" 200 -
+2026-08-02 12:51:18,863 - INFO - Thread-27 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:51:18] "GET /dvi/inspection/1?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1" 200 -
+2026-08-02 12:51:18,978 - INFO - Thread-28 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:51:18] "GET /dvi/inspection/1?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1" 200 -
+2026-08-02 12:51:19,857 - INFO - Thread-29 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 12:51:19] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 13:03:47,850 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/routes/dvi_routes.py', reloading
+2026-08-02 13:03:48,233 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/routes/dvi_routes.py', reloading
+2026-08-02 13:03:48,386 - INFO - MainThread - werkzeug - _log -  * Restarting with watchdog (fsevents)
+2026-08-02 13:04:42,344 - INFO - MainThread - werkzeug - _log - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5055
+2026-08-02 13:04:42,345 - INFO - MainThread - werkzeug - _log - [33mPress CTRL+C to quit[0m
+2026-08-02 13:04:42,351 - INFO - MainThread - werkzeug - _log -  * Restarting with watchdog (fsevents)
+2026-08-02 13:04:42,474 - WARNING - MainThread - werkzeug - _log -  * Debugger is active!
+2026-08-02 13:04:42,482 - INFO - MainThread - werkzeug - _log -  * Debugger PIN: 143-994-774
+2026-08-02 13:04:49,252 - INFO - Thread-6 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 13:04:49] "GET /dvi/inspection/1 HTTP/1.1" 200 -
+2026-08-02 13:04:50,264 - INFO - Thread-7 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 13:04:50] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 13:04:56,611 - INFO - Thread-8 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 13:04:56] "GET /dvi/ HTTP/1.1" 200 -
+2026-08-02 13:04:57,619 - INFO - Thread-9 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 13:04:57] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 13:05:04,240 - INFO - Thread-11 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 13:05:04] "GET /dvi/inspection/1 HTTP/1.1" 200 -
+2026-08-02 13:05:05,248 - INFO - Thread-10 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 13:05:05] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 13:05:10,441 - INFO - Thread-12 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 13:05:10] "GET /dispatch/job/30 HTTP/1.1" 200 -
+2026-08-02 13:05:11,455 - INFO - Thread-13 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 13:05:11] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 13:05:13,549 - INFO - Thread-14 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 13:05:13] "GET /dispatch/ HTTP/1.1" 200 -
+2026-08-02 13:05:14,559 - INFO - Thread-15 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 13:05:14] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 13:05:17,861 - INFO - Thread-16 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 13:05:17] "GET /dvi/ HTTP/1.1" 200 -
+2026-08-02 13:05:18,876 - INFO - Thread-17 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 13:05:18] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 19:24:33,845 - INFO - Thread-18 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:24:33] "GET /dvi/job/30 HTTP/1.1" 200 -
+2026-08-02 19:24:34,149 - INFO - Thread-19 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:24:34] "GET /dvi/photo/1/dvi_1_hood_efc9997cb4.jpeg HTTP/1.1" 200 -
+2026-08-02 19:24:34,149 - INFO - Thread-20 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:24:34] "GET /dvi/photo/1/dvi_1_trunk_45b13f4268.jpeg HTTP/1.1" 200 -
+2026-08-02 19:24:34,150 - INFO - Thread-21 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:24:34] "GET /dvi/photo/1/dvi_1_front_fender_right_fa467671ef.jpeg HTTP/1.1" 200 -
+2026-08-02 19:24:34,150 - INFO - Thread-22 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:24:34] "GET /dvi/photo/1/dvi_1_front_bumper_e30963b631.jpeg HTTP/1.1" 200 -
+2026-08-02 19:24:34,856 - INFO - Thread-23 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:24:34] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 19:25:02,258 - INFO - Thread-24 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:25:02] "POST /dvi/inspection/1/analyze HTTP/1.1" 200 -
+2026-08-02 19:25:03,191 - INFO - Thread-25 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:25:03] "GET /dvi/inspection/1 HTTP/1.1" 200 -
+2026-08-02 19:25:04,202 - INFO - Thread-26 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:25:04] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 19:25:13,450 - INFO - Thread-27 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:25:13] "GET /dispatch/job/30 HTTP/1.1" 200 -
+2026-08-02 19:25:14,462 - INFO - Thread-28 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:25:14] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 19:25:19,198 - INFO - Thread-29 (process_request_thread) - src.services.orchestrators.assignment_orchestrator - assign - Job 30 assigned to Maria Lopez by James Carter
+2026-08-02 19:25:19,199 - INFO - Thread-29 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:25:19] "[32mPOST /dispatch/job/30/assign HTTP/1.1[0m" 302 -
+2026-08-02 19:25:19,209 - INFO - Thread-30 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:25:19] "GET /dispatch/job/30 HTTP/1.1" 200 -
+2026-08-02 19:25:20,193 - INFO - Thread-31 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:25:20] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 19:25:32,743 - INFO - Thread-32 (process_request_thread) - src.services.orchestrators.assignment_orchestrator - transition - Job 30: In Progress → Pending by James Carter
+2026-08-02 19:25:32,745 - INFO - Thread-32 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:25:32] "[32mPOST /dispatch/job/30/transition HTTP/1.1[0m" 302 -
+2026-08-02 19:25:32,754 - INFO - Thread-33 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:25:32] "GET /dispatch/job/30 HTTP/1.1" 200 -
+2026-08-02 19:25:33,745 - INFO - Thread-34 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:25:33] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 19:25:37,987 - INFO - Thread-35 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:25:37] "GET /dvi/job/30 HTTP/1.1" 200 -
+2026-08-02 19:25:37,999 - INFO - Thread-36 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:25:37] "GET /dvi/photo/1/dvi_1_hood_efc9997cb4.jpeg HTTP/1.1" 200 -
+2026-08-02 19:25:37,999 - INFO - Thread-37 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:25:37] "GET /dvi/photo/1/dvi_1_trunk_45b13f4268.jpeg HTTP/1.1" 200 -
+2026-08-02 19:25:38,002 - INFO - Thread-39 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:25:38] "GET /dvi/photo/1/dvi_1_front_bumper_e30963b631.jpeg HTTP/1.1" 200 -
+2026-08-02 19:25:38,002 - INFO - Thread-38 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:25:38] "GET /dvi/photo/1/dvi_1_front_fender_right_fa467671ef.jpeg HTTP/1.1" 200 -
+2026-08-02 19:25:39,000 - INFO - Thread-40 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:25:39] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 19:25:39,972 - INFO - Thread-41 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:25:39] "GET /customers HTTP/1.1" 200 -
+2026-08-02 19:25:40,980 - INFO - Thread-42 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:25:40] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 19:25:43,123 - INFO - Thread-43 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:25:43] "GET /media HTTP/1.1" 200 -
+2026-08-02 19:25:44,018 - INFO - Thread-44 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:25:44] "GET /staff HTTP/1.1" 200 -
+2026-08-02 19:25:44,131 - INFO - Thread-45 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:25:44] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-02 19:25:44,762 - INFO - Thread-46 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:25:44] "GET /staff HTTP/1.1" 200 -
+2026-08-02 19:25:45,774 - INFO - Thread-47 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [02/Aug/2026 19:25:45] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:26:09,312 - INFO - MainThread - werkzeug - _log - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5055
+2026-08-03 10:26:09,313 - INFO - MainThread - werkzeug - _log - [33mPress CTRL+C to quit[0m
+2026-08-03 10:26:09,319 - INFO - MainThread - werkzeug - _log -  * Restarting with watchdog (fsevents)
+2026-08-03 10:26:09,437 - WARNING - MainThread - werkzeug - _log -  * Debugger is active!
+2026-08-03 10:26:09,446 - INFO - MainThread - werkzeug - _log -  * Debugger PIN: 143-994-774
+2026-08-03 10:26:14,082 - INFO - Thread-6 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:26:14] "[32mGET / HTTP/1.1[0m" 302 -
+2026-08-03 10:26:14,124 - INFO - Thread-7 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:26:14] "GET /dashboard HTTP/1.1" 200 -
+2026-08-03 10:26:14,132 - INFO - Thread-8 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:26:14] "GET /static/css/bayq.css HTTP/1.1" 200 -
+2026-08-03 10:26:15,093 - INFO - Thread-9 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:26:15] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:26:22,429 - INFO - Thread-10 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:26:22] "GET /dispatch/ HTTP/1.1" 200 -
+2026-08-03 10:26:22,434 - INFO - Thread-11 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:26:22] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:26:23,439 - INFO - Thread-12 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:26:23] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:26:23,539 - INFO - Thread-13 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:26:23] "GET /jobs HTTP/1.1" 200 -
+2026-08-03 10:26:23,547 - INFO - Thread-14 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:26:23] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:26:24,235 - INFO - Thread-15 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:26:24] "GET /dvi/ HTTP/1.1" 200 -
+2026-08-03 10:26:24,244 - INFO - Thread-16 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:26:24] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:26:24,550 - INFO - Thread-17 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:26:24] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:26:24,769 - INFO - Thread-18 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:26:24] "GET /bookings HTTP/1.1" 200 -
+2026-08-03 10:26:25,776 - INFO - Thread-19 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:26:25] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:26:33,423 - INFO - Thread-20 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:26:33] "GET /bookings HTTP/1.1" 200 -
+2026-08-03 10:26:34,432 - INFO - Thread-21 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:26:34] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:26:35,835 - INFO - Thread-22 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:26:35] "[33mGET /tracking HTTP/1.1[0m" 404 -
+2026-08-03 10:26:36,846 - INFO - Thread-23 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:26:36] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:26:38,535 - INFO - Thread-24 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:26:38] "[33mGET /tracking HTTP/1.1[0m" 404 -
+2026-08-03 10:26:39,545 - INFO - Thread-25 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:26:39] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:26:45,370 - INFO - Thread-26 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:26:45] "GET /bookings HTTP/1.1" 200 -
+2026-08-03 10:26:46,380 - INFO - Thread-27 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:26:46] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:26:49,128 - INFO - Thread-28 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:26:49] "GET /bookings HTTP/1.1" 200 -
+2026-08-03 10:26:50,139 - INFO - Thread-29 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:26:50] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:26:56,819 - INFO - Thread-30 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:26:56] "[33mGET /tracking HTTP/1.1[0m" 404 -
+2026-08-03 10:26:57,829 - INFO - Thread-31 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:26:57] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:27:06,880 - INFO - Thread-32 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:06] "GET /estimates HTTP/1.1" 200 -
+2026-08-03 10:27:07,895 - INFO - Thread-33 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:07] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:27:15,421 - INFO - Thread-34 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:15] "GET /ai-estimate HTTP/1.1" 200 -
+2026-08-03 10:27:16,428 - INFO - Thread-35 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:16] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:27:18,007 - INFO - Thread-36 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:18] "GET /customers HTTP/1.1" 200 -
+2026-08-03 10:27:19,015 - INFO - Thread-37 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:19] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:27:20,822 - INFO - Thread-38 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:20] "GET /inventory HTTP/1.1" 200 -
+2026-08-03 10:27:21,834 - INFO - Thread-39 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:21] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:27:23,597 - INFO - Thread-40 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:23] "GET /analytics/ HTTP/1.1" 200 -
+2026-08-03 10:27:23,606 - INFO - Thread-41 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:23] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:27:24,609 - INFO - Thread-43 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:24] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:27:26,520 - INFO - Thread-44 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:26] "GET /inventory HTTP/1.1" 200 -
+2026-08-03 10:27:27,529 - INFO - Thread-45 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:27] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:27:29,888 - INFO - Thread-46 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:29] "GET /products HTTP/1.1" 200 -
+2026-08-03 10:27:30,896 - INFO - Thread-47 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:30] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:27:32,521 - INFO - Thread-48 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:32] "GET /media HTTP/1.1" 200 -
+2026-08-03 10:27:32,548 - INFO - Thread-42 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:32] "POST /analytics/api/stock-forecast HTTP/1.1" 200 -
+2026-08-03 10:27:33,532 - INFO - Thread-49 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:33] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:27:35,132 - INFO - Thread-50 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:35] "GET /staff HTTP/1.1" 200 -
+2026-08-03 10:27:36,141 - INFO - Thread-51 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:36] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:27:37,214 - INFO - Thread-52 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:37] "[33mGET /warranties HTTP/1.1[0m" 404 -
+2026-08-03 10:27:38,223 - INFO - Thread-53 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:38] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:27:40,609 - INFO - Thread-54 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:40] "[35m[1mGET /account HTTP/1.1[0m" 500 -
+2026-08-03 10:27:40,617 - INFO - Thread-55 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:40] "GET /account?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1" 200 -
+2026-08-03 10:27:40,617 - INFO - Thread-56 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:40] "GET /account?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1" 200 -
+2026-08-03 10:27:40,622 - INFO - Thread-57 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:40] "GET /account?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1" 200 -
+2026-08-03 10:27:40,643 - INFO - Thread-58 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:40] "GET /account?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1" 200 -
+2026-08-03 10:27:41,617 - INFO - Thread-59 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:27:41] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:29:12,000 - INFO - Thread-60 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:29:12] "[35m[1mGET /account HTTP/1.1[0m" 500 -
+2026-08-03 10:29:12,008 - INFO - Thread-61 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:29:12] "GET /account?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1" 200 -
+2026-08-03 10:29:12,008 - INFO - Thread-62 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:29:12] "GET /account?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1" 200 -
+2026-08-03 10:29:12,013 - INFO - Thread-63 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:29:12] "GET /account?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1" 200 -
+2026-08-03 10:29:13,013 - INFO - Thread-64 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:29:13] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:36:46,055 - INFO - MainThread - werkzeug - _log - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5055
+2026-08-03 10:36:46,056 - INFO - MainThread - werkzeug - _log - [33mPress CTRL+C to quit[0m
+2026-08-03 10:36:46,061 - INFO - MainThread - werkzeug - _log -  * Restarting with watchdog (fsevents)
+2026-08-03 10:36:46,203 - WARNING - MainThread - werkzeug - _log -  * Debugger is active!
+2026-08-03 10:36:46,208 - INFO - MainThread - werkzeug - _log -  * Debugger PIN: 143-994-774
+2026-08-03 10:37:04,970 - INFO - Thread-6 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:04] "GET /account HTTP/1.1" 200 -
+2026-08-03 10:37:04,977 - INFO - Thread-7 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:04] "GET /static/css/bayq.css HTTP/1.1" 200 -
+2026-08-03 10:37:05,985 - INFO - Thread-8 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:05] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:37:07,132 - INFO - Thread-9 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:07] "GET /dashboard HTTP/1.1" 200 -
+2026-08-03 10:37:07,140 - INFO - Thread-10 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:07] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:37:08,143 - INFO - Thread-11 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:08] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:37:09,945 - INFO - Thread-12 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:09] "GET /dispatch/ HTTP/1.1" 200 -
+2026-08-03 10:37:09,953 - INFO - Thread-13 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:09] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:37:10,955 - INFO - Thread-14 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:10] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:37:11,217 - INFO - Thread-15 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:11] "GET /dashboard HTTP/1.1" 200 -
+2026-08-03 10:37:11,225 - INFO - Thread-16 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:11] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:37:12,228 - INFO - Thread-17 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:12] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:37:14,144 - INFO - Thread-18 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:14] "GET /dispatch/ HTTP/1.1" 200 -
+2026-08-03 10:37:14,153 - INFO - Thread-19 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:14] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:37:15,156 - INFO - Thread-20 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:15] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:37:16,546 - INFO - Thread-21 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:16] "GET /jobs HTTP/1.1" 200 -
+2026-08-03 10:37:16,553 - INFO - Thread-22 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:16] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:37:17,558 - INFO - Thread-23 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:17] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:37:18,173 - INFO - Thread-24 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:18] "GET /dvi/ HTTP/1.1" 200 -
+2026-08-03 10:37:18,182 - INFO - Thread-25 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:18] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:37:19,188 - INFO - Thread-26 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:19] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:37:19,985 - INFO - Thread-27 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:19] "GET /bookings HTTP/1.1" 200 -
+2026-08-03 10:37:19,991 - INFO - Thread-28 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:19] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:37:20,993 - INFO - Thread-29 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:20] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:37:22,029 - INFO - Thread-30 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:22] "GET /dvi/ HTTP/1.1" 200 -
+2026-08-03 10:37:22,035 - INFO - Thread-31 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:22] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:37:22,798 - INFO - Thread-32 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:22] "GET /bookings HTTP/1.1" 200 -
+2026-08-03 10:37:22,806 - INFO - Thread-33 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:22] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:37:23,041 - INFO - Thread-34 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:23] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:37:36,370 - INFO - Thread-35 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:36] "GET /estimates HTTP/1.1" 200 -
+2026-08-03 10:37:36,378 - INFO - Thread-36 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:36] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:37:37,383 - INFO - Thread-37 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:37] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:37:38,182 - INFO - Thread-38 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:38] "GET /ai-estimate HTTP/1.1" 200 -
+2026-08-03 10:37:38,188 - INFO - Thread-39 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:38] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:37:39,191 - INFO - Thread-40 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:39] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:37:53,180 - INFO - Thread-41 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:53] "GET /bookings HTTP/1.1" 200 -
+2026-08-03 10:37:53,187 - INFO - Thread-42 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:53] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:37:54,189 - INFO - Thread-43 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:54] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:37:56,581 - INFO - Thread-44 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:56] "GET /estimates HTTP/1.1" 200 -
+2026-08-03 10:37:56,588 - INFO - Thread-45 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:56] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:37:57,593 - INFO - Thread-46 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:57] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:37:57,691 - INFO - Thread-47 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:57] "GET /ai-estimate HTTP/1.1" 200 -
+2026-08-03 10:37:57,698 - INFO - Thread-48 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:57] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:37:58,577 - INFO - Thread-49 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:58] "GET /customers HTTP/1.1" 200 -
+2026-08-03 10:37:58,585 - INFO - Thread-50 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:58] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:37:58,700 - INFO - Thread-51 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:58] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:37:59,351 - INFO - Thread-52 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:59] "GET /ai-estimate HTTP/1.1" 200 -
+2026-08-03 10:37:59,358 - INFO - Thread-53 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:37:59] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:38:00,360 - INFO - Thread-54 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:38:00] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:38:13,014 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/auth.py', reloading
+2026-08-03 10:38:13,014 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/inspection_routes.py', reloading
+2026-08-03 10:38:13,015 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/services/llm/ollama_provider.py', reloading
+2026-08-03 10:38:13,025 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/services/pricing/upcharge_calculator.py', reloading
+2026-08-03 10:38:13,037 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/services/repositories/dvi_repository.py', reloading
+2026-08-03 10:38:13,050 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/services/__init__.py', reloading
+2026-08-03 10:38:13,050 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/services/pricing/__init__.py', reloading
+2026-08-03 10:38:13,078 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/config.py', reloading
+2026-08-03 10:38:13,079 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/db_manager.py', reloading
+2026-08-03 10:38:13,079 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/routes/dispatch_routes.py', reloading
+2026-08-03 10:38:13,094 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/services/repositories/staff_repository.py', reloading
+2026-08-03 10:38:13,107 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/routes/analytics_routes.py', reloading
+2026-08-03 10:38:13,330 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/routes/dvi_routes.py', reloading
+2026-08-03 10:38:13,354 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/services/prompts/__init__.py', reloading
+2026-08-03 10:38:13,371 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/services/repositories/__init__.py', reloading
+2026-08-03 10:38:13,507 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/controller.py', reloading
+2026-08-03 10:38:13,530 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/services/llm/factory.py', reloading
+2026-08-03 10:38:13,530 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/services/repositories/inventory_repository.py', reloading
+2026-08-03 10:38:13,530 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/services/orchestrators/assignment_orchestrator.py', reloading
+2026-08-03 10:38:13,620 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/routes/__init__.py', reloading
+2026-08-03 10:38:13,620 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/app.py', reloading
+2026-08-03 10:38:13,625 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/services/orchestrators/assistant_orchestrator.py', reloading
+2026-08-03 10:38:13,626 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/services/llm/__init__.py', reloading
+2026-08-03 10:38:13,626 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/services/analytics/depletion_forecaster.py', reloading
+2026-08-03 10:38:13,626 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/migrate_phase2.py', reloading
+2026-08-03 10:38:13,626 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/services/orchestrators/inventory_orchestrator.py', reloading
+2026-08-03 10:38:13,803 - INFO - MainThread - werkzeug - _log -  * Restarting with watchdog (fsevents)
+2026-08-03 10:38:14,007 - WARNING - MainThread - werkzeug - _log -  * Debugger is active!
+2026-08-03 10:38:14,012 - INFO - MainThread - werkzeug - _log -  * Debugger PIN: 143-994-774
+2026-08-03 10:38:14,144 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/services/orchestrators/dvi_orchestrator.py', reloading
+2026-08-03 10:38:14,145 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/services/prompts/dvi_prompts.py', reloading
+2026-08-03 10:38:14,145 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/services/prompts/inventory_prompts.py', reloading
+2026-08-03 10:38:14,162 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/services/orchestrators/base.py', reloading
+2026-08-03 10:38:14,201 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/services/repositories/base.py', reloading
+2026-08-03 10:38:14,201 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/services/repositories/job_repository.py', reloading
+2026-08-03 10:38:14,202 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/services/orchestrators/estimate_orchestrator.py', reloading
+2026-08-03 10:38:14,214 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/services/llm/base.py', reloading
+2026-08-03 10:38:14,215 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/product_routes.py', reloading
+2026-08-03 10:38:14,224 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/services/orchestrators/__init__.py', reloading
+2026-08-03 10:38:14,246 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/src/services/analytics/__init__.py', reloading
+2026-08-03 10:38:15,065 - INFO - MainThread - werkzeug - _log -  * Restarting with watchdog (fsevents)
+2026-08-03 10:38:15,205 - WARNING - MainThread - werkzeug - _log -  * Debugger is active!
+2026-08-03 10:38:15,210 - INFO - MainThread - werkzeug - _log -  * Debugger PIN: 143-994-774
+2026-08-03 10:38:15,714 - INFO - Thread-1 - werkzeug - _log -  * Detected change in '/Users/ruthwiikreddy/Desktop/noname-app/tools/convert_templates.py', reloading
+2026-08-03 10:38:16,265 - INFO - MainThread - werkzeug - _log -  * Restarting with watchdog (fsevents)
+2026-08-03 10:38:16,403 - WARNING - MainThread - werkzeug - _log -  * Debugger is active!
+2026-08-03 10:38:16,407 - INFO - MainThread - werkzeug - _log -  * Debugger PIN: 143-994-774
+2026-08-03 10:38:36,167 - INFO - Thread-6 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:38:36] "[33mPOST /ai-estimate/query HTTP/1.1[0m" 404 -
+2026-08-03 10:38:49,713 - INFO - Thread-7 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:38:49] "GET /estimates/new HTTP/1.1" 200 -
+2026-08-03 10:38:49,730 - INFO - Thread-8 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:38:49] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:38:50,721 - INFO - Thread-9 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:38:50] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:38:59,449 - INFO - Thread-10 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:38:59] "GET /estimates HTTP/1.1" 200 -
+2026-08-03 10:38:59,457 - INFO - Thread-11 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:38:59] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:39:00,458 - INFO - Thread-12 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:00] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:39:00,541 - INFO - Thread-13 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:00] "GET /ai-estimate HTTP/1.1" 200 -
+2026-08-03 10:39:00,550 - INFO - Thread-14 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:00] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:39:01,255 - INFO - Thread-15 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:01] "GET /customers HTTP/1.1" 200 -
+2026-08-03 10:39:01,260 - INFO - Thread-16 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:01] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:39:01,553 - INFO - Thread-17 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:01] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:39:02,675 - INFO - Thread-18 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:02] "GET /inventory HTTP/1.1" 200 -
+2026-08-03 10:39:02,685 - INFO - Thread-19 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:02] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:39:03,685 - INFO - Thread-20 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:03] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:39:15,902 - INFO - Thread-21 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:15] "POST /inventory/api/ai-analytics HTTP/1.1" 200 -
+2026-08-03 10:39:19,626 - INFO - Thread-22 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:19] "GET /analytics/ HTTP/1.1" 200 -
+2026-08-03 10:39:19,635 - INFO - Thread-23 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:19] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:39:20,634 - INFO - Thread-25 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:20] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:39:24,032 - INFO - Thread-24 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:24] "POST /analytics/api/stock-forecast HTTP/1.1" 200 -
+2026-08-03 10:39:31,267 - INFO - Thread-26 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:31] "POST /analytics/api/waste HTTP/1.1" 200 -
+2026-08-03 10:39:35,888 - INFO - Thread-27 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:35] "GET /products HTTP/1.1" 200 -
+2026-08-03 10:39:35,897 - INFO - Thread-28 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:35] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:39:36,901 - INFO - Thread-29 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:36] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:39:44,944 - INFO - Thread-30 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:44] "GET /media HTTP/1.1" 200 -
+2026-08-03 10:39:44,952 - INFO - Thread-31 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:44] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:39:45,956 - INFO - Thread-32 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:45] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:39:46,527 - INFO - Thread-33 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:46] "GET /staff HTTP/1.1" 200 -
+2026-08-03 10:39:46,534 - INFO - Thread-34 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:46] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:39:47,538 - INFO - Thread-35 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:47] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:39:49,679 - INFO - Thread-36 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:49] "GET /account HTTP/1.1" 200 -
+2026-08-03 10:39:49,687 - INFO - Thread-37 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:49] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:39:50,689 - INFO - Thread-38 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:39:50] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:40:00,060 - INFO - Thread-39 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:00] "GET /analytics/ HTTP/1.1" 200 -
+2026-08-03 10:40:00,066 - INFO - Thread-40 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:00] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:40:00,072 - INFO - Thread-41 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:00] "POST /analytics/api/stock-forecast HTTP/1.1" 200 -
+2026-08-03 10:40:01,073 - INFO - Thread-42 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:01] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:40:05,580 - INFO - Thread-43 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:05] "GET /dashboard HTTP/1.1" 200 -
+2026-08-03 10:40:05,589 - INFO - Thread-44 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:05] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:40:06,592 - INFO - Thread-45 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:06] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:40:07,707 - INFO - Thread-46 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:07] "GET /dvi/ HTTP/1.1" 200 -
+2026-08-03 10:40:07,716 - INFO - Thread-47 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:07] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:40:08,720 - INFO - Thread-48 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:08] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:40:13,215 - INFO - Thread-49 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:13] "GET /dvi/inspection/1 HTTP/1.1" 200 -
+2026-08-03 10:40:13,222 - INFO - Thread-50 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:13] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:40:13,240 - INFO - Thread-51 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:13] "GET /dvi/photo/1/dvi_1_hood_efc9997cb4.jpeg HTTP/1.1" 200 -
+2026-08-03 10:40:13,240 - INFO - Thread-52 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:13] "GET /dvi/photo/1/dvi_1_trunk_45b13f4268.jpeg HTTP/1.1" 200 -
+2026-08-03 10:40:13,241 - INFO - Thread-53 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:13] "GET /dvi/photo/1/dvi_1_front_fender_right_fa467671ef.jpeg HTTP/1.1" 200 -
+2026-08-03 10:40:13,241 - INFO - Thread-54 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:13] "GET /dvi/photo/1/dvi_1_front_bumper_e30963b631.jpeg HTTP/1.1" 200 -
+2026-08-03 10:40:14,229 - INFO - Thread-55 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:14] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:40:27,232 - INFO - Thread-56 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:27] "GET /bookings HTTP/1.1" 200 -
+2026-08-03 10:40:27,239 - INFO - Thread-57 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:27] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:40:27,864 - INFO - Thread-58 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:27] "GET /dvi/ HTTP/1.1" 200 -
+2026-08-03 10:40:27,870 - INFO - Thread-59 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:27] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:40:28,241 - INFO - Thread-60 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:28] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:40:28,422 - INFO - Thread-61 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:28] "GET /jobs HTTP/1.1" 200 -
+2026-08-03 10:40:28,431 - INFO - Thread-62 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:28] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:40:29,052 - INFO - Thread-63 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:29] "GET /dispatch/ HTTP/1.1" 200 -
+2026-08-03 10:40:29,063 - INFO - Thread-64 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:29] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:40:29,432 - INFO - Thread-65 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:29] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:40:30,549 - INFO - Thread-66 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:30] "GET /dashboard HTTP/1.1" 200 -
+2026-08-03 10:40:30,557 - INFO - Thread-67 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:30] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:40:31,560 - INFO - Thread-68 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:31] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:40:32,620 - INFO - Thread-69 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:32] "GET /dispatch/ HTTP/1.1" 200 -
+2026-08-03 10:40:32,630 - INFO - Thread-70 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:32] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:40:33,631 - INFO - Thread-71 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:33] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 10:40:37,786 - INFO - Thread-72 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:37] "GET /dashboard HTTP/1.1" 200 -
+2026-08-03 10:40:37,794 - INFO - Thread-73 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:37] "[36mGET /static/css/bayq.css HTTP/1.1[0m" 304 -
+2026-08-03 10:40:38,799 - INFO - Thread-74 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 10:40:38] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 14:58:20,481 - INFO - Thread-75 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 14:58:20] "[33mGET /sw.js HTTP/1.1[0m" 404 -
+2026-08-03 14:58:48,863 - INFO - Thread-76 (process_request_thread) - werkzeug - _log - 127.0.0.1 - - [03/Aug/2026 14:58:48] "[33mGET /sw.js HTTP/1.1[0m" 404 -

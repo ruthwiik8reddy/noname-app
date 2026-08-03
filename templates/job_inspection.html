@@ -1,47 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Paint Inspection — {{ job.car }}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-  <style>
-    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
-    body { font-family:'DM Sans',sans-serif; background:#0D0D0D; color:#E8E6E0; min-height:100vh; display:flex; }
-    .main { flex:1; padding:44px 48px; overflow-y:auto; }
-    .top-bar { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:8px; }
-    .page-heading { font-family:'Bebas Neue',sans-serif; font-size:30px; letter-spacing:.1em; color:#C8A96E; }
-    .page-sub { font-size:13px; color:rgba(255,255,255,0.3); margin-bottom:28px; }
-    .back-link { font-size:12px; color:rgba(255,255,255,0.3); text-decoration:none; }
-    .preview-link { font-size:12px; color:#C8A96E; text-decoration:none; border:1px solid rgba(200,169,110,0.3); padding:8px 14px; border-radius:6px; }
-    .preview-link:hover { background:rgba(200,169,110,0.08); }
+{% extends "_base.html" %}
+{% block title %}Paint Inspection — {{ job.car }}{% endblock %}
 
-    .panel-card { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:10px; padding:16px 18px; margin-bottom:12px; }
-    .panel-card-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
-    .panel-title { font-size:14px; font-weight:500; color:#E8E6E0; }
-    .panel-grid { display:grid; grid-template-columns: 160px 1fr; gap:12px; margin-bottom:10px; }
-    @media (max-width:700px){ .panel-grid { grid-template-columns:1fr; } }
-    label { font-size:10px; font-weight:500; letter-spacing:.07em; text-transform:uppercase; color:rgba(255,255,255,0.4); display:block; margin-bottom:5px; }
-    select, input[type=text] { width:100%; padding:9px 12px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#E8E6E0; font-family:'DM Sans',sans-serif; font-size:13px; }
-    select option { background:#1A1A1A; }
-    .photo-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:4px; }
-
-    .health-excellent { border-left:3px solid #4ADE80; }
-    .health-good      { border-left:3px solid #A3E635; }
-    .health-fair      { border-left:3px solid #FBBF24; }
-    .health-poor      { border-left:3px solid #F87171; }
-    .health-none      { border-left:3px solid #3a3a40; }
-
-    .save-bar { position:sticky; bottom:0; background:linear-gradient(transparent, #0D0D0D 40%); padding:20px 0 8px; margin-top:8px; }
-    .btn-save { padding:13px 36px; background:#C8A96E; color:#0D0D0D; border:none; border-radius:6px; font-family:'Bebas Neue',sans-serif; font-size:17px; letter-spacing:.08em; cursor:pointer; }
-  </style>
-</head>
-<body>
-{% include "_sidebar.html" %}
-<main class="main">
-  <a href="/jobs" class="back-link">← Back to Jobs</a>
-  <div class="top-bar">
+{% block content %}
+<a href="/jobs" class="back-link">← Back to Jobs</a>
+  <div class="page-head">
     <div>
-      <h1 class="page-heading">Paint Inspection</h1>
+      <h1 class="page-title">Paint Inspection</h1>
       <p class="page-sub">{{ job.car }} — {{ job.service }} · Enter health &amp; treatment per panel</p>
     </div>
     {% if job.tracking_token %}
@@ -106,6 +70,4 @@
       <button type="submit" class="btn-save">Save Inspection</button>
     </div>
   </form>
-</main>
-</body>
-</html>
+{% endblock %}

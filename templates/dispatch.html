@@ -1,287 +1,225 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dispatch — {{ studio }}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
-  {% include "_theme.html" %}
-  <style>
-    .board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-items: start; }
-    @media (max-width: 1100px) { .board { grid-template-columns: 1fr; } }
+{% extends "_base.html" %}
+{% block title %}Dispatch — {{ studio }}{% endblock %}
 
-    .column { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
-    .column-head {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 16px; border-bottom: 1px solid var(--line);
-    }
-    .column-title { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-dim); }
-    .column-count {
-      font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: .05em; color: var(--gold);
-    }
-    .column-body { padding: 12px; display: grid; gap: 10px; min-height: 90px; }
-
-    /* Left edge encodes status without needing a second badge. */
-    .job-card {
-      background: rgba(255,255,255,0.025); border: 1px solid var(--line-soft);
-      border-left: 2px solid var(--line); border-radius: 5px; padding: 13px 14px;
-    }
-    .job-card.pending  { border-left-color: rgba(255,255,255,0.2); }
-    .job-card.progress { border-left-color: var(--gold); }
-    .job-card.done     { border-left-color: var(--green); opacity: .68; }
-    .job-card.done:hover { opacity: 1; transition: opacity .15s; }
-    .job-card.unowned  { border-left-color: var(--red); }
-
-    .job-vehicle { font-size: 13px; font-weight: 500; }
-    .job-vehicle a { color: inherit; text-decoration: none; }
-    .job-vehicle a:hover { color: var(--gold); }
-    .job-service { font-size: 11px; color: var(--ink-faint); margin-top: 3px; }
-    .job-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 11px; }
-    .job-tech { font-size: 11px; color: var(--ink-dim); }
-    .job-tech.none { color: var(--red); }
-    .job-price { font-size: 12px; color: var(--gold); }
-
-    .job-controls { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
-    .job-controls select { flex: 1; min-width: 110px; font-size: 11px; padding: 6px 8px; }
-
-    .roster { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
-    .tech {
-      background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
-      padding: 14px 16px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;
-    }
-    .tech-name { font-size: 13px; font-weight: 500; }
-    .tech-role { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); margin-top: 3px; }
-    .tech-load { text-align: right; }
-    .tech-load .n { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--gold); line-height: 1; }
-    .tech-load .l { font-size: 10px; color: var(--ink-faint); margin-top: 3px; }
-    .tech.free .n { color: var(--green); }
-
-    .new-job { display: grid; grid-template-columns: 2fr 2fr 1fr 1.5fr auto; gap: 10px; align-items: end; }
-    @media (max-width: 900px) { .new-job { grid-template-columns: 1fr; } }
-    .new-job select, .new-job input { width: 100%; }
-
-    .toast {
-      position: fixed; right: 24px; bottom: 24px; z-index: 50;
-      background: #17170F; border: 1px solid rgba(200,169,110,0.35); border-left: 3px solid var(--gold);
-      color: var(--ink); padding: 13px 18px; border-radius: 5px; font-size: 12px;
-      max-width: 380px; line-height: 1.5; box-shadow: 0 8px 28px rgba(0,0,0,0.5);
-    }
-    .toast.error { border-color: rgba(229,72,77,0.4); border-left-color: var(--red); }
-
-    .suggest-box {
-      margin-top: 10px; padding: 10px 12px; border: 1px dashed rgba(200,169,110,0.3);
-      border-radius: 4px; font-size: 11px; color: var(--ink-dim); line-height: 1.6;
-    }
-    .suggest-box strong { color: var(--gold); font-weight: 500; }
-  </style>
-</head>
-<body>
-{% include "_sidebar.html" %}
-
-<main class="main">
-  <div class="top-bar">
-    <div>
-      <h1 class="page-heading">Dispatch Board</h1>
-      <p class="page-sub">
-        Assign vehicles to technicians and move them through the workflow.
-        A job can't start without an owner — material usage is logged against whoever holds it.
-      </p>
-    </div>
-    <div style="display:flex;gap:8px;flex-shrink:0;">
-      <a class="btn btn-quiet" href="/jobs">Classic jobs list</a>
-      {% if can_dispatch %}<button class="btn btn-solid" onclick="document.getElementById('newJob').hidden = !document.getElementById('newJob').hidden">Add a job</button>{% endif %}
-    </div>
-  </div>
-
-  {% if can_dispatch %}
-  <div class="card" id="newJob" hidden style="margin-bottom:24px;">
-    <form method="POST" action="/dispatch/job/new" class="new-job">
-      <div>
-        <label class="field" for="car">Vehicle</label>
-        <input type="text" id="car" name="car" placeholder="2024 Porsche Cayenne" required>
-      </div>
-      <div>
-        <label class="field" for="service">Service</label>
-        <select id="service" name="service" required onchange="fillPrice(this)">
-          <option value="">Choose a service…</option>
-          {% for s in services %}<option value="{{ s.name }}" data-price="{{ s.price }}">{{ s.name }} — ${{ s.price }}</option>{% endfor %}
-        </select>
-      </div>
-      <div>
-        <label class="field" for="price">Price ($)</label>
-        <input type="number" id="price" name="price" min="0" step="1" value="0">
-      </div>
-      <div>
-        <label class="field" for="newStaff">Assign to</label>
-        <select id="newStaff" name="staff_id">
-          <option value="">Leave unassigned</option>
-          {% for t in board.technicians %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
-        </select>
-      </div>
-      <button type="submit" class="btn btn-solid">Create job</button>
-    </form>
-  </div>
-  {% endif %}
-
-  {% if board.unassigned_count %}
-  <div class="card" style="margin-bottom:20px;border-color:rgba(229,72,77,0.25);">
-    <strong style="font-size:13px;color:var(--red);">{{ board.unassigned_count }} pending job{{ 's' if board.unassigned_count != 1 }} with no technician</strong>
-    <p style="font-size:12px;color:var(--ink-dim);margin-top:6px;line-height:1.6;">
-      These can't be started until someone owns them. Use "Suggest" on a card to see who has capacity.
+{% block page_head %}
+<div class="page-head rise">
+  <div>
+    <h1 class="page-title">Dispatch</h1>
+    <p class="page-sub">
+      {{ board.counts.get('Pending', 0) }} pending ·
+      {{ board.counts.get('In Progress', 0) }} in progress
+      {% if board.unassigned_count %} · <span style="color:var(--amber); font-weight:600">{{ board.unassigned_count }} unassigned</span>{% endif %}
     </p>
   </div>
+  {% if can_dispatch %}
+  <div class="page-actions">
+    <button class="btn btn-primary" onclick="newJob()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      New job
+    </button>
+  </div>
   {% endif %}
+</div>
+{% endblock %}
 
-  <div class="board">
-    {% for status in board.column_order %}
-    {% set jobs = board.columns[status] %}
-    <div class="column">
-      <div class="column-head">
-        <span class="column-title">{{ status }}</span>
-        <span class="column-count">{{ jobs|length }}</span>
+{% block content %}
+
+<!-- ── Technician load ─────────────────────────────────────────────────── -->
+{% if board.technicians %}
+<div class="grid grid-4 stagger" style="margin-bottom:24px;">
+  {% for t in board.technicians %}
+  <div class="card card-pad card-hover">
+    <div style="display:flex; align-items:center; gap:11px;">
+      <span class="avatar lg">{{ t.name[0]|upper }}</span>
+      <div style="min-width:0; flex:1;">
+        <div style="font-size:13.5px; font-weight:650; color:var(--gray-900); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ t.name }}</div>
+        <div style="font-size:11.5px; color:var(--gray-400);">{{ t.role|replace('_', ' ')|title }}</div>
       </div>
-      <div class="column-body">
-        {% for job in jobs %}
-        {% set owned = job.staff_name or (job.technician and job.technician != 'Unassigned') %}
-        <article class="job-card {{ 'progress' if status == 'In Progress' else 'done' if status == 'Completed' else 'unowned' if not owned else 'pending' }}"
-                 id="job-{{ job.id }}">
-          <div class="job-vehicle"><a href="/dispatch/job/{{ job.id }}">{{ job.car }}</a></div>
-          <div class="job-service">{{ job.service }} · #{{ job.id }}</div>
+      {% if t.in_progress %}
+        <span class="badge badge-blue">Busy</span>
+      {% elif t.open_jobs %}
+        <span class="badge badge-amber">{{ t.open_jobs }} queued</span>
+      {% else %}
+        <span class="badge badge-green">Free</span>
+      {% endif %}
+    </div>
+    <div class="bar" style="margin-top:13px;">
+      {% set pct = [(t.committed_hours / 40 * 100)|round|int, 100]|min %}
+      <i class="{% if pct > 85 %}red{% elif pct > 55 %}amber{% else %}green{% endif %}" style="width:{{ pct }}%"></i>
+    </div>
+    <div style="font-size:11.5px; color:var(--gray-500); margin-top:7px;">
+      {{ t.committed_hours }}h committed · {{ t.open_jobs }} open
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
 
-          <div class="job-row">
-            <span class="job-tech {{ '' if owned else 'none' }}">
-              {{ job.staff_name or job.technician or 'Unassigned' }}
+<!-- ── Board ───────────────────────────────────────────────────────────── -->
+<div class="board rise">
+  {% for status in board.column_order %}
+  {% set jobs = board.columns.get(status, []) %}
+  <div class="column" data-status="{{ status }}">
+    <div class="column-head">
+      <span class="t">{{ status }}</span>
+      <span class="n">{{ jobs|length }}</span>
+    </div>
+    <div class="column-body" data-dropzone="{{ status }}">
+      {% for job in jobs %}
+      <div class="job-card" draggable="{{ 'true' if can_dispatch else 'false' }}"
+           data-job="{{ job.id }}" data-status="{{ status }}"
+           onclick="if(!window.__drag) location.href='/dispatch/job/{{ job.id }}'">
+        <div class="veh">{{ job.car }}</div>
+        <div class="svc">{{ job.service }}</div>
+        <div class="row">
+          <span class="who-row">
+            <span class="avatar {% if not job.staff_name %}unassigned{% endif %}">
+              {% if job.staff_name %}{{ job.staff_name[0]|upper }}{% else %}?{% endif %}
             </span>
-            <span class="job-price">${{ job.price }}</span>
-          </div>
-
-          {% if can_dispatch and status != 'Completed' %}
-          <div class="job-controls">
-            <select onchange="assign({{ job.id }}, this.value)" aria-label="Assign technician for job {{ job.id }}">
-              <option value="">Unassigned</option>
-              {% for t in board.technicians %}
-              <option value="{{ t.id }}" {% if job.assigned_staff_id == t.id %}selected{% endif %}>{{ t.name }}</option>
-              {% endfor %}
-            </select>
-            {% for next in board.allowed_transitions.get(status, []) %}
-            <button class="btn btn-sm" onclick="move({{ job.id }}, '{{ next }}')">→ {{ next }}</button>
-            {% endfor %}
-            {% if not owned %}
-            <button class="btn btn-sm btn-quiet" onclick="suggest({{ job.id }})">Suggest</button>
-            {% endif %}
-          </div>
-          <div class="suggest-box" id="suggest-{{ job.id }}" hidden></div>
-          {% elif status == 'Completed' %}
-          <div class="job-controls">
-            <a class="btn btn-sm btn-quiet" href="/dvi/job/{{ job.id }}">Inspection</a>
-            {% if job.tracking_token %}
-            <a class="btn btn-sm btn-quiet" href="/customer/tracking/{{ job.tracking_token }}/warranty.pdf">Warranty</a>
-            {% endif %}
-          </div>
-          {% endif %}
-        </article>
-        {% else %}
-        <div class="empty" style="padding:28px 12px;">
-          {% if status == 'Pending' %}Nothing waiting.{% elif status == 'In Progress' %}No work on the floor.{% else %}Nothing finished yet.{% endif %}
+            <span class="nm">{{ job.staff_name or job.technician or 'Unassigned' }}</span>
+          </span>
+          {% if job.price %}<span style="font-size:12.5px; font-weight:650; color:var(--gray-800)">${{ '{:,.0f}'.format(job.price) }}</span>{% endif %}
         </div>
-        {% endfor %}
       </div>
+      {% else %}
+      <div style="padding:22px 12px; text-align:center; color:var(--gray-400); font-size:12.5px;">
+        Nothing {{ status|lower }}
+      </div>
+      {% endfor %}
     </div>
-    {% endfor %}
   </div>
+  {% endfor %}
+</div>
 
-  <div class="section-label">Technician load</div>
-  <div class="roster">
-    {% for t in board.technicians %}
-    <div class="tech {{ 'free' if t.in_progress == 0 }}">
-      <div>
-        <div class="tech-name">{{ t.name }}</div>
-        <div class="tech-role">{{ t.role|replace('_',' ') }}</div>
-        <div class="job-service" style="margin-top:7px;">{{ t.committed_hours }}h committed</div>
-      </div>
-      <div class="tech-load">
-        <div class="n">{{ t.in_progress }}</div>
-        <div class="l">in progress</div>
-        <div class="l" style="margin-top:6px;">{{ t.open_jobs }} open</div>
-      </div>
-    </div>
-    {% else %}
-    <div class="empty"><strong>No dispatchable staff</strong>Add technicians on the Staff page before assigning work.</div>
-    {% endfor %}
-  </div>
+{% if my_queue %}
+<div class="section-head"><span class="section-title">My queue</span></div>
+<div class="table-wrap rise">
+  <table class="data">
+    <thead><tr><th>Vehicle</th><th>Service</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for job in my_queue %}
+      <tr>
+        <td class="strong">{{ job.car }}</td>
+        <td>{{ job.service }}</td>
+        <td><span class="badge status-{{ job.status|lower|replace(' ', '-') }}"><span class="dot"></span>{{ job.status }}</span></td>
+        <td style="text-align:right"><a class="btn btn-ghost btn-sm" href="/dispatch/job/{{ job.id }}">Open</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
 
-  {% if my_queue %}
-  <div class="section-label">My queue</div>
-  <div class="card card-flush">
-    <table>
-      <thead><tr><th>Vehicle</th><th>Service</th><th>Status</th><th>Inspection</th></tr></thead>
-      <tbody>
-        {% for job in my_queue %}
-        <tr>
-          <td>{{ job.car }}</td>
-          <td>{{ job.service }}</td>
-          <td><span class="badge badge-{{ 'progress' if job.status == 'In Progress' else 'completed' if job.status == 'Completed' else 'pending' }}"><span class="dot"></span>{{ job.status }}</span></td>
-          <td><a class="btn btn-sm" href="/dvi/job/{{ job.id }}">Capture photos</a></td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% endif %}
-</main>
+{% endblock %}
 
+{% block scripts %}
 <script>
-  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const CAN_DISPATCH = {{ 'true' if can_dispatch else 'false' }};
+  const TECHS   = {{ board.technicians | tojson }};
+  const SERVICES = {{ services | tojson }};
 
-  function toast(message, isError) {
-    document.querySelectorAll(".toast").forEach(t => t.remove());
-    const el = document.createElement("div");
-    el.className = "toast" + (isError ? " error" : "");
-    el.setAttribute("role", "status");
-    el.textContent = message;
-    document.body.appendChild(el);
-    setTimeout(() => el.remove(), 5000);
-  }
+  /* ── Drag to transition ──────────────────────────────────────────────
+     The board is the honest surface for the state machine: an illegal move
+     is rejected by the server and the card snaps back with the reason. We
+     deliberately do NOT hide illegal drop targets — seeing the rejection
+     teaches the workflow better than a disabled affordance. */
+  (function () {
+    if (!CAN_DISPATCH) return;
+    let dragged = null;
 
-  async function post(url, body) {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
-      body: JSON.stringify(body || {})
+    document.querySelectorAll('.job-card').forEach(card => {
+      card.addEventListener('dragstart', e => {
+        dragged = card; window.__drag = true;
+        card.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      card.addEventListener('dragend', () => {
+        card.classList.remove('dragging');
+        setTimeout(() => { window.__drag = false; }, 60);
+      });
     });
-    return { ok: res.ok, data: await res.json() };
-  }
 
-  async function assign(jobId, staffId) {
-    const { data } = await post(`/dispatch/job/${jobId}/assign`, { staff_id: staffId });
-    toast(data.message || "Updated", !data.ok);
-    if (data.ok) setTimeout(() => location.reload(), 700);
-  }
+    document.querySelectorAll('[data-dropzone]').forEach(zone => {
+      zone.addEventListener('dragover', e => {
+        e.preventDefault();
+        zone.closest('.column').classList.add('drop-active');
+      });
+      zone.addEventListener('dragleave', () => zone.closest('.column').classList.remove('drop-active'));
+      zone.addEventListener('drop', async e => {
+        e.preventDefault();
+        zone.closest('.column').classList.remove('drop-active');
+        if (!dragged) return;
 
-  async function move(jobId, status) {
-    const { data } = await post(`/dispatch/job/${jobId}/transition`, { status });
-    toast(data.message || "Updated", !data.ok);
-    if (data.ok && !data.unchanged) setTimeout(() => location.reload(), 700);
-  }
+        const target = zone.dataset.dropzone;
+        const from   = dragged.dataset.status;
+        if (target === from) return;
 
-  async function suggest(jobId) {
-    const box = document.getElementById("suggest-" + jobId);
-    box.hidden = false;
-    box.innerHTML = '<span class="spinner"></span> Checking who has capacity…';
-    const res = await fetch(`/dispatch/api/job/${jobId}/suggest`);
-    const data = await res.json();
-    if (!res.ok) { box.textContent = data.error || "Couldn't build a suggestion."; return; }
+        const jobId = dragged.dataset.job;
+        const card  = dragged;
+        card.style.opacity = '.5';
 
-    const top = (data.suggestions || []).slice(0, 3);
-    box.innerHTML = top.length
-      ? top.map((s, i) => `${i === 0 ? "<strong>" + esc(s.name) + "</strong>" : esc(s.name)} — ${esc(s.reason)}`).join("<br>")
-      : "No dispatchable staff available.";
-  }
+        try {
+          const res = await api(`/dispatch/job/${jobId}/transition`, {
+            method: 'POST', body: JSON.stringify({ status: target })
+          });
+          toast(res.message || 'Updated', 'ok');
+          setTimeout(() => location.reload(), 480);
+        } catch (err) {
+          card.style.opacity = '';
+          toast(err.message, 'err');
+        }
+      });
+    });
+  })();
 
-  function fillPrice(select) {
-    const price = select.selectedOptions[0]?.dataset.price;
-    if (price) document.getElementById("price").value = price;
+  /* ── New job ─────────────────────────────────────────────────────────── */
+  function newJob() {
+    const svcOptions = SERVICES.map(s =>
+      `<option value="${s.name}" data-price="${s.price}">${s.name} — $${s.price}</option>`).join('');
+    const techOptions = TECHS.map(t =>
+      `<option value="${t.id}">${t.name}${t.in_progress ? ' (busy)' : ''}</option>`).join('');
+
+    modal.open(`
+      <form method="POST" action="/dispatch/job/new">
+        <div class="modal-head"><div class="t">New job</div></div>
+        <div class="modal-body">
+          <div class="field">
+            <label>Vehicle</label>
+            <input name="car" placeholder="2023 BMW M4" required autofocus>
+          </div>
+          <div class="field">
+            <label>Service</label>
+            <select name="service" id="svcSel" required>
+              <option value="">Choose a service…</option>${svcOptions}
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label>Price ($)</label>
+              <input name="price" id="priceIn" type="number" min="0" step="1" value="0">
+            </div>
+            <div class="field">
+              <label>Assign to</label>
+              <select name="staff_id">
+                <option value="">Leave unassigned</option>${techOptions}
+              </select>
+            </div>
+          </div>
+          <p class="help">A job must have a technician before it can start — material usage is logged against whoever owns it.</p>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn btn-secondary" onclick="modal.close()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create job</button>
+        </div>
+      </form>
+    `);
+
+    // Prefill price from the catalog when a service is chosen.
+    const sel = document.getElementById('svcSel');
+    sel.addEventListener('change', () => {
+      const price = sel.selectedOptions[0]?.dataset.price;
+      if (price) document.getElementById('priceIn').value = price;
+    });
   }
 </script>
-</body>
-</html>
+{% endblock %}

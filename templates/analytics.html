@@ -1,337 +1,249 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Estimator — {{ studio }}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
-  {% include "_theme.html" %}
-  <style>
-    /* ── The runway: the one element this page is remembered by. ──
-       Each bar is a 30-day horizon. The filled portion is how long the
-       current stock lasts at the measured burn rate; the notch is the
-       reorder point. Reading left to right tells you what to buy first
-       without reading a single number. */
-    .runway {
-      position: relative; height: 24px; border-radius: 3px;
-      background: repeating-linear-gradient(
-        90deg, rgba(255,255,255,0.05) 0 1px, transparent 1px calc(100% / 30)
-      );
-      border: 1px solid var(--line-soft); overflow: hidden; min-width: 160px;
-    }
-    .runway-fill { position: absolute; inset: 0 auto 0 0; border-radius: 2px 0 0 2px; }
-    .runway-fill.critical { background: linear-gradient(90deg, rgba(229,72,77,0.55), rgba(229,72,77,0.22)); }
-    .runway-fill.warning  { background: linear-gradient(90deg, rgba(224,164,88,0.5), rgba(224,164,88,0.18)); }
-    .runway-fill.ok       { background: linear-gradient(90deg, rgba(74,222,128,0.4), rgba(74,222,128,0.14)); }
-    .runway-fill.idle     { background: rgba(255,255,255,0.06); }
-    .runway-notch { position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(255,255,255,0.45); }
-    .runway-label {
-      position: absolute; inset: 0; display: flex; align-items: center;
-      padding-left: 9px; font-size: 11px; font-weight: 500; color: var(--ink);
-      text-shadow: 0 1px 2px rgba(0,0,0,0.6); pointer-events: none;
-    }
-    .runway-scale {
-      display: flex; justify-content: space-between;
-      font-size: 10px; color: rgba(255,255,255,0.2); margin-top: 4px; letter-spacing: .04em;
-    }
+{% extends "_base.html" %}
+{% block title %}AI Estimator — {{ studio }}{% endblock %}
 
-    .briefing { border-left: 2px solid var(--gold); padding: 4px 0 4px 18px; margin-bottom: 8px; }
-    .briefing h2 { font-size: 17px; font-weight: 500; line-height: 1.45; color: var(--ink); }
-    .briefing p { font-size: 13px; color: var(--ink-dim); margin-top: 10px; line-height: 1.65; max-width: 74ch; }
+{% block page_head %}
+<div class="page-head rise">
+  <div>
+    <h1 class="page-title">AI Estimator</h1>
+    <p class="page-sub">Stock forecasting and material-usage analysis, computed locally</p>
+  </div>
+  <div class="page-actions">
+    <span class="ai-pill {{ 'ai-on' if ai_online else 'ai-off' }}">
+      <span class="dot"></span>{{ 'Local AI online' if ai_online else 'Local AI offline' }}
+    </span>
+    <button class="btn btn-secondary" id="refreshBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5v6h-6"/></svg>
+      Refresh
+    </button>
+  </div>
+</div>
+{% endblock %}
 
-    .action-list { list-style: none; display: grid; gap: 10px; margin-top: 6px; }
-    .action-item {
-      display: flex; gap: 14px; align-items: flex-start;
-      background: var(--surface); border: 1px solid var(--line); border-radius: 5px; padding: 13px 16px;
-    }
-    .action-sku {
-      font-size: 10px; letter-spacing: .08em; color: var(--gold);
-      background: rgba(200,169,110,0.12); padding: 4px 8px; border-radius: 3px;
-      white-space: nowrap; flex-shrink: 0; font-weight: 500;
-    }
-    .action-body strong { display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; }
-    .action-body span { font-size: 12px; color: var(--ink-faint); line-height: 1.55; }
+{% block content %}
 
-    .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 34px 0 0; }
-    .tab {
-      background: none; border: none; border-bottom: 2px solid transparent;
-      color: var(--ink-dim); padding: 10px 16px; font-size: 12px; font-family: inherit;
-      cursor: pointer; letter-spacing: .04em;
-    }
-    .tab:hover { color: var(--ink); }
-    .tab[aria-selected="true"] { color: var(--gold); border-bottom-color: var(--gold); }
-    .panel[hidden] { display: none; }
+<div class="tabs">
+  <button class="on" data-tab="stock">Stock forecast</button>
+  <button data-tab="waste">Material usage</button>
+</div>
 
-    .conf { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint); }
-    .conf.low::after { content: " · early estimate"; }
-    .item-name { font-weight: 500; }
-    .item-meta { font-size: 11px; color: var(--ink-faint); margin-top: 3px; }
-    .outlier { font-size: 12px; color: var(--ink-dim); line-height: 1.6; }
-    .outlier code { color: var(--gold); font-family: 'DM Sans', sans-serif; }
-  </style>
-</head>
-<body>
-{% include "_sidebar.html" %}
+<!-- ════════════ STOCK ════════════ -->
+<section id="tab-stock">
 
-<main class="main">
-  <div class="top-bar">
-    <div>
-      <h1 class="page-heading">AI Estimator</h1>
-      <p class="page-sub">
-        Burn rates, stockout dates and material-waste signals, computed from your inventory
-        movement logs. Every figure below is calculated locally — the model writes the summary,
-        it never does the arithmetic.
-      </p>
-      <div class="ai-strip">
-        <span class="ai-dot {% if not ai_online %}off{% endif %}" id="aiDot"></span>
-        <span id="aiStatus">{% if ai_online %}Local model online{% else %}Local model offline — forecasts still run{% endif %}</span>
-      </div>
-    </div>
-    <div style="display:flex;gap:8px;flex-shrink:0;">
-      <a class="btn btn-quiet" href="/inventory">Manage stock</a>
-      <button class="btn btn-solid" id="refreshBtn" onclick="loadAll(true)">Recalculate</button>
-    </div>
+  <div class="grid grid-4 stagger" id="stockStats">
+    {% for i in range(4) %}
+    <div class="card card-pad"><div class="skeleton" style="height:13px;width:60%"></div>
+      <div class="skeleton" style="height:29px;width:45%;margin-top:12px"></div></div>
+    {% endfor %}
   </div>
 
-  <div class="metric-row" id="metrics">
-    <div class="metric"><div class="metric-label">Portfolio health</div><div class="metric-value" id="mHealth">—</div></div>
-    <div class="metric"><div class="metric-label">Out within 7 days</div><div class="metric-value red" id="m7">—</div><div class="metric-note" id="m7note">&nbsp;</div></div>
-    <div class="metric"><div class="metric-label">Out within 30 days</div><div class="metric-value gold" id="m30">—</div></div>
-    <div class="metric"><div class="metric-label">Restock cost</div><div class="metric-value" id="mCost">—</div><div class="metric-note">To bring every flagged item back up</div></div>
+  <div id="briefing" style="margin-top:20px"></div>
+
+  <div class="section-head">
+    <span class="section-title">Depletion forecast</span>
+    <span class="faint" style="font-size:12.5px" id="forecastMeta"></span>
   </div>
 
-  <div class="tabs" role="tablist">
-    <button class="tab" role="tab" aria-selected="true" data-panel="forecast">Depletion forecast</button>
-    <button class="tab" role="tab" aria-selected="false" data-panel="waste">Material waste</button>
-  </div>
-
-  <!-- ── Forecast ─────────────────────────────────────────────────── -->
-  <section class="panel" id="panel-forecast">
-    <div id="forecastBriefing" style="margin:28px 0 20px;">
-      <div class="briefing"><h2><span class="spinner"></span> Reading your movement logs…</h2></div>
-    </div>
-
-    <div id="actionsBlock" hidden>
-      <div class="section-label">Order these first</div>
-      <ul class="action-list" id="actions"></ul>
-    </div>
-
-    <div class="section-label">Every tracked item</div>
-    <div class="card card-flush">
-      <table>
+  <div class="table-wrap rise">
+    <div class="table-scroll">
+      <table class="data">
         <thead>
           <tr>
-            <th>Item</th><th>On hand</th><th>Burn rate</th>
-            <th style="width:34%">Runway to empty</th><th>Suggested order</th>
+            <th>Item</th><th>Urgency</th><th class="right">On hand</th>
+            <th class="right">Burn / week</th><th class="right">Days left</th>
+            <th>Runs out</th><th>Confidence</th><th class="right">Order</th>
           </tr>
         </thead>
-        <tbody id="forecastRows">
-          <tr><td colspan="5" class="empty">Loading…</td></tr>
+        <tbody id="forecastBody">
+          <tr><td colspan="8" style="padding:0">
+            <div style="padding:20px"><div class="skeleton" style="height:15px"></div></div>
+          </td></tr>
         </tbody>
       </table>
     </div>
-    <p class="hint" id="forecastFootnote"></p>
-  </section>
+  </div>
+</section>
 
-  <!-- ── Waste ────────────────────────────────────────────────────── -->
-  <section class="panel" id="panel-waste" hidden>
-    <div id="wasteBriefing" style="margin:28px 0 20px;">
-      <div class="briefing"><h2>Open this tab to run the waste analysis.</h2></div>
-    </div>
-    <div class="card card-flush">
-      <table>
-        <thead>
-          <tr><th>Product</th><th>Typical per job</th><th>Jobs worth checking</th><th>Excess value</th></tr>
-        </thead>
-        <tbody id="wasteRows">
-          <tr><td colspan="4" class="empty">Not run yet.</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p class="hint">
-      Outliers are measured against <em>this studio's own median</em> for each product, never an
-      industry benchmark. A large SUV or a correction-heavy job legitimately uses more — treat
-      these as questions worth asking, not findings.
-    </p>
-  </section>
-</main>
+<!-- ════════════ WASTE ════════════ -->
+<section id="tab-waste" class="hidden">
+  <div id="wasteContent">
+    <div class="card card-pad"><div class="skeleton" style="height:60px"></div></div>
+  </div>
+</section>
 
+{% endblock %}
+
+{% block scripts %}
 <script>
-  const HORIZON = 30; // days shown across the full runway width
-  let wasteLoaded = false;
+  const SEV = { critical: 'urgency-critical', warning: 'urgency-warning', ok: 'urgency-ok', idle: 'urgency-idle' };
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => (
-    {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]
-  ));
-
-  // ── tabs ──
-  document.querySelectorAll(".tab").forEach(tab => {
-    tab.addEventListener("click", () => {
-      document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t === tab));
-      document.querySelectorAll(".panel").forEach(p => p.hidden = true);
-      document.getElementById("panel-" + tab.dataset.panel).hidden = false;
-      if (tab.dataset.panel === "waste" && !wasteLoaded) loadWaste();
-    });
+  /* ── Tabs ─────────────────────────────────────────────────────────────── */
+  document.querySelector('.tabs').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    document.querySelectorAll('.tabs button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    const tab = b.dataset.tab;
+    document.getElementById('tab-stock').classList.toggle('hidden', tab !== 'stock');
+    document.getElementById('tab-waste').classList.toggle('hidden', tab !== 'waste');
+    if (tab === 'waste' && !window.__wasteLoaded) loadWaste();
   });
 
-  function setStatus(payload) {
-    const st = payload._status || {};
-    const dot = document.getElementById("aiDot");
-    const label = document.getElementById("aiStatus");
-    if (st.degraded) {
-      dot.classList.add("off");
-      label.textContent = "Local model offline — figures below are calculated, summary is not AI-written";
-    } else if (st.source === "cache") {
-      dot.classList.remove("off");
-      label.textContent = "Showing cached analysis — press Recalculate for a fresh run";
-    } else {
-      dot.classList.remove("off");
-      label.textContent = "Local model online";
+  /* ── Degraded banner ──────────────────────────────────────────────────
+     Shown whenever the model was unreachable. The numbers below it are
+     unaffected — they're computed in Python before the model is consulted. */
+  function degradedBanner(status) {
+    if (!status || !status.degraded) return '';
+    return `<div class="alert alert-warn" style="margin-bottom:16px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+      <div><strong>Written summary unavailable.</strong> The local model didn't respond, so the briefing below was generated from the same figures without it.
+      <span class="faint" style="display:block;margin-top:3px;font-size:12.5px">${esc(status.degraded_reason)}</span></div>
+    </div>`;
+  }
+
+  /* ── Stock ────────────────────────────────────────────────────────────── */
+  async function loadStock(refresh) {
+    try {
+      const d = await api('/analytics/api/stock-forecast' + (refresh ? '?refresh=1' : ''), { method: 'POST', body: '{}' });
+      renderStats(d.health);
+      renderBriefing(d);
+      renderForecast(d.forecasts);
+      document.getElementById('forecastMeta').textContent =
+        `${d.forecasts.length} items · ${d.job_volume.completed_jobs} jobs completed in ${d.job_volume.window_days}d`;
+    } catch (e) {
+      document.getElementById('briefing').innerHTML =
+        `<div class="alert alert-danger">${esc(e.message)}</div>`;
+      document.getElementById('stockStats').innerHTML = '';
+      document.getElementById('forecastBody').innerHTML = '';
     }
   }
 
-  function renderBriefing(target, briefing, degraded) {
-    const actions = briefing.priority_actions || [];
-    document.getElementById(target).innerHTML = `
-      <div class="briefing">
-        <h2>${esc(briefing.headline)}</h2>
-        <p>${esc(briefing.narrative)}</p>
-        ${degraded ? '<p class="muted" style="font-size:11px;margin-top:8px;">Written from the calculated figures — the local model was unreachable.</p>' : ""}
+  function renderStats(h) {
+    const tone = h.health_score === 'Good' ? 'green' : h.health_score === 'Critical' ? 'red' : 'amber';
+    document.getElementById('stockStats').innerHTML = `
+      <div class="card stat accent">
+        <div class="label">Portfolio health</div>
+        <div class="value sm">${esc(h.health_score)}</div>
+        <div class="foot">${h.total_items} items tracked</div>
+      </div>
+      <div class="card stat">
+        <div class="label">Out within 7 days</div>
+        <div class="value" style="color:${h.stockouts_next_7d ? 'var(--red)' : 'var(--gray-900)'}">${h.stockouts_next_7d}</div>
+        <div class="foot">${h.stockouts_next_30d} within 30 days</div>
+      </div>
+      <div class="card stat">
+        <div class="label">Need attention</div>
+        <div class="value">${h.critical_count + h.warning_count}</div>
+        <div class="foot"><span class="${h.critical_count ? 'down' : ''}">${h.critical_count} critical</span> · ${h.warning_count} warning</div>
+      </div>
+      <div class="card stat">
+        <div class="label">Restock cost</div>
+        <div class="value sm">${esc(h.reorder_cost_display)}</div>
+        <div class="foot">To cover 30 days of burn</div>
       </div>`;
-    return actions;
   }
 
-  // ── forecast ──
-  async function loadForecast(force) {
-    const res = await fetch("/analytics/api/stock-forecast" + (force ? "?refresh=1" : ""), { method: "POST" });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Forecast failed");
-    setStatus(data);
-
-    const h = data.health || {};
-    document.getElementById("mHealth").textContent = h.health_score || "—";
-    document.getElementById("mHealth").className = "metric-value " +
-      (h.health_score === "Critical" ? "red" : h.health_score === "Good" ? "green" : "gold");
-    document.getElementById("m7").textContent = h.stockouts_next_7d ?? 0;
-    document.getElementById("m7note").textContent = `${h.critical_count ?? 0} item(s) flagged critical`;
-    document.getElementById("m30").textContent = h.stockouts_next_30d ?? 0;
-    document.getElementById("mCost").textContent = h.reorder_cost_display || "$0.00";
-
-    const actions = renderBriefing("forecastBriefing", data.briefing || {}, (data._status || {}).degraded);
-    const block = document.getElementById("actionsBlock");
-    block.hidden = actions.length === 0;
-    document.getElementById("actions").innerHTML = actions.map(a => `
-      <li class="action-item">
-        <span class="action-sku">${esc(a.sku || "—")}</span>
-        <div class="action-body">
-          <strong>${esc(a.action)}</strong>
-          <span>${esc(a.why || "")}</span>
+  function renderBriefing(d) {
+    const b = d.briefing || {};
+    const acts = (b.priority_actions || []).map(a => `
+      <div style="display:flex;gap:11px;padding:11px 0;border-bottom:1px solid var(--line-soft)">
+        <span class="badge badge-violet" style="align-self:flex-start">${esc(a.sku || '—')}</span>
+        <div>
+          <div style="font-weight:600;color:var(--gray-900);font-size:13.5px">${esc(a.action)}</div>
+          <div class="muted" style="font-size:12.5px;margin-top:2px">${esc(a.why)}</div>
         </div>
-      </li>`).join("");
+      </div>`).join('');
 
-    const rows = data.forecasts || [];
-    document.getElementById("forecastRows").innerHTML = rows.length
-      ? rows.map(renderRow).join("")
-      : `<tr><td colspan="5" class="empty"><strong>No inventory yet</strong>Add products on the Inventory page and log usage — forecasts appear once there's movement to learn from.</td></tr>`;
+    const watch = (b.watch_list || []).map(w =>
+      `<li style="margin-bottom:6px"><strong>${esc(w.sku)}</strong> — ${esc(w.note)}</li>`).join('');
 
-    const vol = data.job_volume || {};
-    document.getElementById("forecastFootnote").textContent =
-      `Burn rates blend the last 7 days (weighted 60%) with the last 30 (40%), then adjust for upcoming bookings. ` +
-      `Based on ${vol.completed_jobs ?? 0} completed job(s) in the last ${vol.window_days ?? 30} days ` +
-      `and ${vol.bookings_next_14d ?? 0} booking(s) in the next 14. The runway is a ${HORIZON}-day horizon; the white notch marks the reorder point.`;
+    document.getElementById('briefing').innerHTML = degradedBanner(d._status) + `
+      <div class="card rise">
+        <div class="card-body">
+          <div style="font-size:17px;font-weight:650;color:var(--gray-900);letter-spacing:-.02em">${esc(b.headline)}</div>
+          <p class="muted" style="margin-top:8px;line-height:1.7">${esc(b.narrative)}</p>
+          ${acts ? `<div style="margin-top:18px"><div class="section-title" style="margin-bottom:4px">Priority actions</div>${acts}</div>` : ''}
+          ${watch ? `<div style="margin-top:18px"><div class="section-title" style="margin-bottom:8px">Watch list</div>
+            <ul class="muted" style="font-size:13px;padding-left:18px">${watch}</ul></div>` : ''}
+        </div>
+      </div>`;
   }
 
-  function renderRow(f) {
-    const pct = f.days_to_empty === null || f.days_to_empty === undefined
-      ? (f.urgency === "idle" ? 100 : 0)
-      : Math.max(2, Math.min(100, (f.days_to_empty / HORIZON) * 100));
-
-    // Reorder notch: where stock crosses the reorder level on the same scale.
-    const notch = (f.days_to_reorder !== null && f.days_to_reorder !== undefined && f.days_to_reorder > 0)
-      ? Math.min(99, (f.days_to_reorder / HORIZON) * 100) : null;
-
-    const label = f.days_to_empty === null || f.days_to_empty === undefined
-      ? (f.below_reorder ? "Below reorder — no recent usage" : "No recent usage")
-      : `${f.days_to_empty} days · ${f.stockout_date}`;
-
-    return `
+  function renderForecast(rows) {
+    if (!rows.length) {
+      document.getElementById('forecastBody').innerHTML =
+        `<tr><td colspan="8"><div class="empty"><div class="title">No inventory yet</div>
+         <div class="desc">Add products on the Inventory page — forecasts appear once there's usage to learn from.</div></div></td></tr>`;
+      return;
+    }
+    document.getElementById('forecastBody').innerHTML = rows.map(f => `
       <tr>
         <td>
-          <div class="item-name">${esc(f.name)}</div>
-          <div class="item-meta">${esc(f.sku)} · ${esc(f.category)}</div>
+          <div class="strong">${esc(f.name)}</div>
+          <div class="dim" style="font-size:11.5px">${esc(f.sku)} · ${esc(f.category)}</div>
         </td>
-        <td>
-          ${f.current_qty} <span class="muted">${esc(f.unit)}</span>
-          ${f.below_reorder ? '<div class="item-meta" style="color:var(--red)">below reorder level</div>' : ""}
-        </td>
-        <td>
-          ${f.weekly_burn ? `${f.weekly_burn} <span class="muted">${esc(f.unit)}/wk</span>` : '<span class="muted">—</span>'}
-          <div class="conf ${esc(f.confidence)}">${esc(f.confidence)} confidence</div>
-        </td>
-        <td>
-          <div class="runway" title="${esc(f.rationale)}">
-            <div class="runway-fill ${esc(f.urgency)}" style="width:${pct}%"></div>
-            ${notch !== null ? `<div class="runway-notch" style="left:${notch}%"></div>` : ""}
-            <div class="runway-label">${esc(label)}</div>
+        <td><span class="badge ${SEV[f.urgency] || 'badge-gray'}"><span class="dot"></span>${esc(f.urgency)}</span></td>
+        <td class="num ${f.below_reorder ? '' : 'strong'}"
+            style="${f.below_reorder ? 'color:var(--red);font-weight:650' : ''}">${f.current_qty} ${esc(f.unit)}</td>
+        <td class="num">${f.weekly_burn || '—'}</td>
+        <td class="num strong">${f.days_to_empty == null ? '—' : f.days_to_empty}</td>
+        <td class="dim nowrap">${f.stockout_date || '—'}</td>
+        <td><span class="badge badge-gray">${esc(f.confidence)}</span></td>
+        <td class="num">${f.suggested_order_qty ? `${f.suggested_order_qty} ${esc(f.unit)}<div class="dim" style="font-size:11.5px">${esc(f.suggested_order_cost_display)}</div>` : '—'}</td>
+      </tr>`).join('');
+  }
+
+  /* ── Waste ────────────────────────────────────────────────────────────── */
+  async function loadWaste(refresh) {
+    window.__wasteLoaded = true;
+    const host = document.getElementById('wasteContent');
+    host.innerHTML = `<div class="card card-pad"><div class="skeleton" style="height:60px"></div></div>`;
+    try {
+      const d = await api('/analytics/api/waste' + (refresh ? '?refresh=1' : ''), { method: 'POST', body: '{}' });
+      const b = d.briefing || {};
+
+      const cards = (d.signals || []).map(s => `
+        <div class="card card-pad card-hover">
+          <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+            <div>
+              <div class="strong" style="font-size:14px">${esc(s.name)}</div>
+              <div class="dim" style="font-size:11.5px">${esc(s.sku)} · ${s.sample_size} jobs sampled</div>
+            </div>
+            <span class="badge badge-amber">${esc(s.excess_cost_display)}</span>
           </div>
-          <div class="runway-scale"><span>today</span><span>+15d</span><span>+30d</span></div>
-        </td>
-        <td>
-          ${f.suggested_order_qty > 0
-            ? `${f.suggested_order_qty} <span class="muted">${esc(f.unit)}</span><div class="item-meta">${esc(f.suggested_order_cost_display)}</div>`
-            : '<span class="muted">—</span>'}
-        </td>
-      </tr>`;
-  }
+          <div class="divider" style="margin:13px 0"></div>
+          <div class="muted" style="font-size:12.5px">
+            Typical use: <strong>${s.median_per_job} ${esc(s.unit)}</strong> per job
+          </div>
+          ${(s.outlier_jobs || []).slice(0, 3).map(o => `
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-top:7px">
+              <a href="/dispatch/job/${o.job_id}" class="violet-text" style="font-weight:600">Job #${o.job_id}</a>
+              <span class="muted">${o.used} ${esc(s.unit)} · <strong>${o.multiple}×</strong> typical</span>
+            </div>`).join('')}
+        </div>`).join('');
 
-  // ── waste ──
-  async function loadWaste(force) {
-    document.getElementById("wasteBriefing").innerHTML =
-      '<div class="briefing"><h2><span class="spinner"></span> Comparing each job against your own medians…</h2></div>';
-    try {
-      const res = await fetch("/analytics/api/waste" + (force ? "?refresh=1" : ""), { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Waste analysis failed");
-      wasteLoaded = true;
-
-      renderBriefing("wasteBriefing", data.briefing || {}, (data._status || {}).degraded);
-
-      const signals = data.signals || [];
-      document.getElementById("wasteRows").innerHTML = signals.length
-        ? signals.map(s => `
-          <tr>
-            <td><div class="item-name">${esc(s.name)}</div><div class="item-meta">${esc(s.sku)} · ${s.sample_size} jobs sampled</div></td>
-            <td>${s.median_per_job} <span class="muted">${esc(s.unit)}</span></td>
-            <td class="outlier">${(s.outlier_jobs || []).slice(0, 3).map(o =>
-                `<code>Job #${o.job_id}</code> used ${o.used} (${o.multiple}× typical)`).join("<br>")}</td>
-            <td style="color:var(--amber)">${esc(s.excess_cost_display)}</td>
-          </tr>`).join("")
-        : `<tr><td colspan="4" class="empty"><strong>Nothing unusual found</strong>Every product with enough job history sits within a normal range. At least four jobs per product are needed before this becomes meaningful.</td></tr>`;
-    } catch (err) {
-      document.getElementById("wasteBriefing").innerHTML =
-        `<div class="briefing"><h2>Couldn't run the waste analysis</h2><p>${esc(err.message)}</p></div>`;
+      host.innerHTML = degradedBanner(d._status) + `
+        <div class="card rise"><div class="card-body">
+          <div style="font-size:17px;font-weight:650;color:var(--gray-900);letter-spacing:-.02em">${esc(b.headline)}</div>
+          <p class="muted" style="margin-top:8px;line-height:1.7">${esc(b.narrative)}</p>
+          ${(b.process_tips || []).length ? `<ul class="muted" style="font-size:13px;margin-top:14px;padding-left:18px">
+            ${b.process_tips.map(t => `<li style="margin-bottom:5px">${esc(t)}</li>`).join('')}</ul>` : ''}
+        </div></div>
+        ${cards ? `<div class="section-head"><span class="section-title">Flagged for review</span>
+          <span class="faint" style="font-size:12.5px">Compared against this studio's own median</span></div>
+          <div class="grid grid-3 stagger">${cards}</div>` : ''}`;
+    } catch (e) {
+      host.innerHTML = `<div class="alert alert-danger">${esc(e.message)}</div>`;
     }
   }
 
-  async function loadAll(force) {
-    const btn = document.getElementById("refreshBtn");
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> Working…';
-    try {
-      await loadForecast(force);
-      if (wasteLoaded || force) await loadWaste(force);
-    } catch (err) {
-      document.getElementById("forecastBriefing").innerHTML =
-        `<div class="briefing"><h2>Couldn't build the forecast</h2><p>${esc(err.message)}</p></div>`;
-      document.getElementById("forecastRows").innerHTML =
-        `<tr><td colspan="5" class="empty">${esc(err.message)}</td></tr>`;
-    } finally {
-      btn.disabled = false;
-      btn.textContent = "Recalculate";
-    }
-  }
+  document.getElementById('refreshBtn').addEventListener('click', async function () {
+    this.disabled = true;
+    await loadStock(true);
+    if (window.__wasteLoaded) await loadWaste(true);
+    this.disabled = false;
+    toast('Forecast refreshed', 'ok');
+  });
 
-  loadAll(false);
+  loadStock(false);
 </script>
-</body>
-</html>
+{% endblock %}

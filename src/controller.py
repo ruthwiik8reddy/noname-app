@@ -1263,50 +1263,6 @@ def dismiss_reminder(reminder_id):
 
 # ── AI Assistant ──────────────────────────────────────────────────────────────
 
-@bp.route("/assistant")
-@login_required
-def assistant():
-    return render_template("assistant.html",
-        **sidebar_context(), **auth_context()
-    )
-
-
-@bp.route("/assistant/query", methods=["POST"])
-@login_required
-def assistant_query():
-    data        = request.get_json(silent=True) or {}
-    question    = (data.get("question") or request.form.get("question", "")).strip()
-    attachments = data.get("attachments") or []
-
-    if isinstance(attachments, str):
-        attachments = [a.strip() for a in attachments.split(",") if a.strip()]
-
-    if not question:
-        return jsonify({"error": "Question is required."}), 400
-
-    studio_id = session["studio_id"]
-
-    # ── Pricing questions: ground the answer in the real product catalog ──
-    try:
-        from .estimate_assistant import build_pricing_facts
-        facts = build_pricing_facts(studio_id, question)
-    except Exception as exc:  # noqa: BLE001 - a broken hook must not break chat
-        logging.getLogger(__name__).warning("Pricing hook failed: %s", exc)
-        facts = None
-
-    if facts:
-        # Hand the model the computed prices and let it only report them.
-        grounded = _assistant_ai.pricing_answer(question, facts)
-        if grounded:
-            return jsonify(grounded)
-        # Model unreachable — fall through to the general assistant.
-
-    return jsonify(_assistant_ai.answer(studio_id, question, attachments))
-
-
-# ── Account ───────────────────────────────────────────────────────────────────
-
-# Subscription plan definitions — extend these when you add paid tiers
 PLANS = {
     "free": {
         "name":        "Free",
@@ -1318,7 +1274,7 @@ PLANS = {
             "Customer CRM",
             "Estimates & approvals",
             "Before/after media gallery",
-            "AI Assistant",
+            "AI stock forecasting",
             "Live customer tracking link",
             "Warranty card PDF",
             "SMS (bring your own Twilio)",

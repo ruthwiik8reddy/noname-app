@@ -1,0 +1,114 @@
+{# ============================================================================
+   _base.html — the one page shell.
+
+   Every screen extends this. Pages supply content; the shell supplies the
+   stylesheet, sidebar, mobile chrome, toasts and modal host. Previously each
+   template carried its own <head>, its own 200-line <style> block and its own
+   copy of the sidebar — which is exactly how a design drifts apart.
+
+   Blocks:
+     title      — browser tab text
+     head       — extra <link>/<style> for one page only
+     page_head  — the title row (use .page-title / .page-sub / .page-actions)
+     content    — the body
+     scripts    — page JS
+   ========================================================================= #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#7c3aed">
+  <title>{% block title %}BayQ{% endblock %}</title>
+  <link rel="icon" href="/static/logos/bayq_logo.png">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/bayq.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+  {% include "_sidebar.html" %}
+
+  <div class="scrim hidden" id="navScrim"></div>
+
+  <div style="flex:1; min-width:0; display:flex; flex-direction:column;">
+
+    {# Mobile-only top bar; the sidebar is off-canvas below 900px. #}
+    <div class="mobile-bar">
+      <button class="btn btn-ghost btn-sm" id="navToggle" aria-label="Open navigation">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round">
+          <path d="M3 6h18M3 12h18M3 18h18"/>
+        </svg>
+      </button>
+      <span style="font-weight:700; color:var(--violet-600); font-size:16px;">Bay<span style="color:var(--ink)">Q</span></span>
+    </div>
+
+    <main class="main">
+      {% block page_head %}{% endblock %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <div class="toast-host" id="toastHost"></div>
+  <div id="modalHost"></div>
+
+  <script>
+    /* ── Off-canvas navigation ─────────────────────────────────────────── */
+    (function () {
+      const bar = document.getElementById('navToggle');
+      const nav = document.querySelector('.sidebar');
+      const scrim = document.getElementById('navScrim');
+      if (!bar || !nav) return;
+      const close = () => { nav.classList.remove('open'); scrim.classList.add('hidden'); };
+      bar.addEventListener('click', () => { nav.classList.add('open'); scrim.classList.remove('hidden'); });
+      scrim.addEventListener('click', close);
+      document.addEventListener('keydown', e => e.key === 'Escape' && close());
+    })();
+
+    /* ── Toasts ────────────────────────────────────────────────────────── */
+    window.toast = function (message, kind) {
+      const host = document.getElementById('toastHost');
+      const el = document.createElement('div');
+      el.className = 'toast' + (kind ? ' ' + kind : '');
+      el.textContent = message;
+      host.appendChild(el);
+      setTimeout(() => {
+        el.classList.add('out');
+        setTimeout(() => el.remove(), 240);
+      }, 3600);
+    };
+
+    /* ── Modal ─────────────────────────────────────────────────────────── */
+    window.modal = {
+      open(html) {
+        const host = document.getElementById('modalHost');
+        host.innerHTML = `<div class="modal-host" id="mHost"><div class="modal">${html}</div></div>`;
+        host.querySelector('#mHost').addEventListener('click', e => {
+          if (e.target.id === 'mHost') window.modal.close();
+        });
+        document.addEventListener('keydown', window.modal._esc);
+      },
+      close() {
+        document.getElementById('modalHost').innerHTML = '';
+        document.removeEventListener('keydown', window.modal._esc);
+      },
+      _esc(e) { if (e.key === 'Escape') window.modal.close(); }
+    };
+
+    /* ── Fetch helper: consistent error surfacing across every page ────── */
+    window.api = async function (url, options) {
+      const res = await fetch(url, Object.assign({
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+      }, options || {}));
+      let data = {};
+      try { data = await res.json(); } catch (_) {}
+      if (!res.ok) throw Object.assign(new Error(data.error || data.message || `Request failed (${res.status})`), { status: res.status, data });
+      return data;
+    };
+
+    /* Money formatting, used wherever cents cross the wire. */
+    window.money = c => '$' + (Number(c || 0) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  </script>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

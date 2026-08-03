@@ -1,52 +1,14 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Staff — {{ studio }}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-  <style>
-    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
-    body { font-family:'DM Sans',sans-serif; background:#0D0D0D; color:#E8E6E0; min-height:100vh; display:flex; }
-    .sidebar { width:220px; flex-shrink:0; border-right:1px solid rgba(255,255,255,0.07); display:flex; flex-direction:column; }
-    .logo-area { padding:28px 24px; border-bottom:1px solid rgba(255,255,255,0.07); }
-    .studio-logo { width:140px; height:52px; object-fit:contain; object-position:left; display:block; margin-bottom:8px; }
-    .studio-name-fallback { font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:.1em; color:#C8A96E; display:none; margin-bottom:6px; }
-    .studio-city { font-size:11px; color:rgba(255,255,255,0.3); }
-    .studio-owner { font-size:11px; color:rgba(255,255,255,0.2); margin-top:3px; }
-    .role-tag { display:inline-block; margin-top:8px; font-size:10px; padding:2px 8px; background:rgba(200,169,110,0.15); color:#C8A96E; border-radius:10px; }
-    nav { flex:1; padding:20px 12px; }
-    nav a { display:block; padding:10px 12px; font-size:13px; color:rgba(255,255,255,0.4); text-decoration:none; border-radius:4px; margin-bottom:2px; }
-    nav a:hover  { color:#E8E6E0; background:rgba(255,255,255,0.05); }
-    nav a.active { color:#C8A96E; background:rgba(200,169,110,0.1); }
-    .logout-area { padding:16px 24px; border-top:1px solid rgba(255,255,255,0.07); }
-    .logout-area a { font-size:12px; color:rgba(255,255,255,0.25); text-decoration:none; }
-    .main { flex:1; padding:44px 48px; overflow-y:auto; }
-    .top-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:32px; }
-    .page-heading { font-family:'Bebas Neue',sans-serif; font-size:30px; letter-spacing:.1em; color:#C8A96E; }
-    .btn { padding:10px 20px; background:#C8A96E; color:#0D0D0D; border:none; border-radius:4px; font-family:'Bebas Neue',sans-serif; font-size:15px; letter-spacing:.08em; cursor:pointer; text-decoration:none; display:inline-block; }
-    .table-wrap { background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.07); border-radius:6px; overflow:hidden; }
-    table { width:100%; border-collapse:collapse; font-size:13px; }
-    thead th { padding:12px 16px; text-align:left; font-size:11px; font-weight:500; letter-spacing:.07em; text-transform:uppercase; color:rgba(255,255,255,0.3); border-bottom:1px solid rgba(255,255,255,0.07); }
-    tbody tr { border-bottom:1px solid rgba(255,255,255,0.04); }
-    tbody tr:last-child { border-bottom:none; }
-    td { padding:13px 16px; vertical-align:middle; }
-    .role-badge { display:inline-flex; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:500; background:rgba(96,165,250,0.15); color:#60A5FA; }
-    .deactivate-btn { background:none; border:1px solid rgba(248,113,113,0.3); color:#F87171; font-size:11px; padding:5px 12px; border-radius:4px; cursor:pointer; }
-    .deactivate-btn:hover { background:rgba(248,113,113,0.08); }
-    .empty { padding:60px; text-align:center; color:rgba(255,255,255,0.2); font-size:13px; }
-    .empty a { color:#C8A96E; text-decoration:none; }
-  </style>
-</head>
-<body>
-{% include "_sidebar.html" %}
-<main class="main">
-  <div class="top-bar">
-    <h1 class="page-heading">Staff</h1>
-    <a href="/staff/new" class="btn">+ Add Staff</a>
+{% extends "_base.html" %}
+{% block title %}Staff — {{ studio }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <h1 class="page-title">Staff</h1>
+    <a href="/staff/new" class="btn btn-primary">+ Add Staff</a>
   </div>
   <div class="table-wrap">
     {% if staff %}
-    <table>
+    <table class="data">
       <thead><tr><th>Name</th><th>Role</th><th>Username</th><th></th></tr></thead>
       <tbody>
         {% for s in staff %}
@@ -68,6 +30,4 @@
     <div class="empty">No staff yet — <a href="/staff/new">add your first team member</a></div>
     {% endif %}
   </div>
-</main>
-</body>
-</html>
+{% endblock %}

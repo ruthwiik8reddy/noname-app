@@ -1,64 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ customer.name }} — {{ studio }}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-  <style>
-    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
-    body { font-family:'DM Sans',sans-serif; background:#0D0D0D; color:#E8E6E0; min-height:100vh; display:flex; }
-    .sidebar { width:220px; flex-shrink:0; border-right:1px solid rgba(255,255,255,0.07); display:flex; flex-direction:column; }
-    .logo-area { padding:28px 24px; border-bottom:1px solid rgba(255,255,255,0.07); }
-    .studio-logo { width:140px; height:52px; object-fit:contain; object-position:left; display:block; margin-bottom:8px; }
-    .studio-name-fallback { font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:.1em; color:#C8A96E; display:none; margin-bottom:6px; }
-    .studio-city { font-size:11px; color:rgba(255,255,255,0.3); }
-    nav { flex:1; padding:20px 12px; }
-    nav a { display:block; padding:10px 12px; font-size:13px; color:rgba(255,255,255,0.4); text-decoration:none; border-radius:4px; margin-bottom:2px; }
-    nav a:hover  { color:#E8E6E0; background:rgba(255,255,255,0.05); }
-    nav a.active { color:#C8A96E; background:rgba(200,169,110,0.1); }
-    .logout-area { padding:16px 24px; border-top:1px solid rgba(255,255,255,0.07); }
-    .logout-area a { font-size:12px; color:rgba(255,255,255,0.25); text-decoration:none; }
-    .main { flex:1; padding:44px 48px; overflow-y:auto; }
-    .back-link { font-size:12px; color:rgba(255,255,255,0.3); text-decoration:none; margin-bottom:16px; display:inline-block; }
-    .top-bar { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:32px; }
-    .cust-name { font-family:'Bebas Neue',sans-serif; font-size:30px; letter-spacing:.08em; color:#C8A96E; }
-    .cust-meta { font-size:13px; color:rgba(255,255,255,0.4); margin-top:4px; }
+{% extends "_base.html" %}
+{% block title %}{{ customer.name }} — {{ studio }}{% endblock %}
 
-    .two-col { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:28px; }
-    .card { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:6px; padding:18px 20px; }
-    .card-title { font-size:11px; font-weight:500; letter-spacing:.07em; text-transform:uppercase; color:rgba(255,255,255,0.3); margin-bottom:14px; }
-
-    .vehicle-item { padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
-    .vehicle-item:last-child { border-bottom:none; }
-    .vehicle-name { font-size:14px; font-weight:500; }
-    .vehicle-sub { font-size:11px; color:rgba(255,255,255,0.3); margin-top:2px; }
-
-    .add-vehicle-form { display:flex; gap:8px; margin-top:14px; }
-    .add-vehicle-form input { flex:1; padding:8px 12px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#E8E6E0; font-size:12px; }
-    .add-vehicle-form button { padding:8px 16px; background:#C8A96E; color:#0D0D0D; border:none; border-radius:4px; font-size:12px; cursor:pointer; }
-
-    .notes-text { font-size:13px; color:rgba(255,255,255,0.5); line-height:1.7; }
-
-    .section-title { font-size:11px; font-weight:500; letter-spacing:.07em; text-transform:uppercase; color:rgba(255,255,255,0.3); margin-bottom:14px; }
-    .table-wrap { background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.07); border-radius:6px; overflow:hidden; margin-bottom:28px; }
-    table { width:100%; border-collapse:collapse; font-size:13px; }
-    thead th { padding:11px 16px; text-align:left; font-size:11px; font-weight:500; letter-spacing:.07em; text-transform:uppercase; color:rgba(255,255,255,0.3); border-bottom:1px solid rgba(255,255,255,0.07); }
-    tbody tr { border-bottom:1px solid rgba(255,255,255,0.04); }
-    tbody tr:last-child { border-bottom:none; }
-    td { padding:12px 16px; }
-    .badge { display:inline-flex; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:500; }
-    .badge-completed { background:rgba(74,222,128,0.12); color:#4ADE80; }
-    .badge-approved  { background:rgba(74,222,128,0.12); color:#4ADE80; }
-    .badge-pending   { background:rgba(255,255,255,0.07); color:rgba(255,255,255,0.4); }
-    .badge-sent      { background:rgba(96,165,250,0.15); color:#60A5FA; }
-    .empty-mini { padding:20px; text-align:center; color:rgba(255,255,255,0.2); font-size:12px; }
-  </style>
-</head>
-<body>
-{% include "_sidebar.html" %}
-<main class="main">
-  <a href="/customers" class="back-link">← Back to Customers</a>
-  <div class="top-bar">
+{% block content %}
+<a href="/customers" class="back-link">← Back to Customers</a>
+  <div class="page-head">
     <div>
       <p class="cust-name">{{ customer.name }}</p>
       <p class="cust-meta">{{ customer.phone }} {% if customer.email %}· {{ customer.email }}{% endif %}</p>
@@ -96,7 +41,7 @@
   <p class="section-title">Booking History</p>
   <div class="table-wrap">
     {% if bookings %}
-    <table>
+    <table class="data">
       <thead><tr><th>Vehicle</th><th>Service</th><th>Date</th><th>Status</th></tr></thead>
       <tbody>
         {% for b in bookings %}
@@ -105,9 +50,9 @@
           <td>{{ b.service_name }}</td>
           <td>{{ b.date }} {{ b.time_slot }}</td>
           <td>
-            {% if b.status == 'Completed' %}<span class="badge badge-completed">Completed</span>
-            {% elif b.status == 'Confirmed' %}<span class="badge badge-sent">Confirmed</span>
-            {% else %}<span class="badge badge-pending">{{ b.status }}</span>{% endif %}
+            {% if b.status == 'Completed' %}<span class="badge status-completed">Completed</span>
+            {% elif b.status == 'Confirmed' %}<span class="badge badge-blue">Confirmed</span>
+            {% else %}<span class="badge status-pending">{{ b.status }}</span>{% endif %}
           </td>
         </tr>
         {% endfor %}
@@ -121,7 +66,7 @@
   <p class="section-title">Estimate History</p>
   <div class="table-wrap">
     {% if estimates %}
-    <table>
+    <table class="data">
       <thead><tr><th>Vehicle</th><th>Total</th><th>Status</th><th>Date</th></tr></thead>
       <tbody>
         {% for e in estimates %}
@@ -129,9 +74,9 @@
           <td>{{ e.vehicle }}</td>
           <td style="color:#C8A96E;">${{ "%.2f"|format(e.total/100) }}</td>
           <td>
-            {% if e.status == 'Approved' %}<span class="badge badge-approved">Approved</span>
-            {% elif e.status == 'Sent' %}<span class="badge badge-sent">Sent</span>
-            {% else %}<span class="badge badge-pending">{{ e.status }}</span>{% endif %}
+            {% if e.status == 'Approved' %}<span class="badge status-completed">Approved</span>
+            {% elif e.status == 'Sent' %}<span class="badge badge-blue">Sent</span>
+            {% else %}<span class="badge status-pending">{{ e.status }}</span>{% endif %}
           </td>
           <td>{{ e.created_at[:10] }}</td>
         </tr>
@@ -142,6 +87,4 @@
     <div class="empty-mini">No estimates yet</div>
     {% endif %}
   </div>
-</main>
-</body>
-</html>
+{% endblock %}

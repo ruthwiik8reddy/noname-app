@@ -1,107 +1,134 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Job #{{ job.id }} — {{ studio }}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
-  {% include "_theme.html" %}
-  <style>
-    .two-col { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; align-items: start; }
-    @media (max-width: 1000px) { .two-col { grid-template-columns: 1fr; } }
-    /* The audit trail reads as a real sequence, so a timeline rail is earned here. */
-    .trail { list-style: none; position: relative; padding-left: 20px; }
-    .trail::before { content: ""; position: absolute; left: 4px; top: 6px; bottom: 6px; width: 1px; background: var(--line); }
-    .trail li { position: relative; padding: 0 0 18px 4px; }
-    .trail li::before {
-      content: ""; position: absolute; left: -20px; top: 5px; width: 7px; height: 7px;
-      border-radius: 50%; background: var(--bg); border: 1.5px solid var(--gold);
-    }
-    .trail li:first-child::before { background: var(--gold); }
-    .trail-main { font-size: 13px; }
-    .trail-meta { font-size: 11px; color: var(--ink-faint); margin-top: 3px; }
-    .kv { display: grid; grid-template-columns: 120px 1fr; gap: 10px 16px; font-size: 13px; }
-    .kv dt { color: var(--ink-faint); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; padding-top: 2px; }
-  </style>
-</head>
-<body>
-{% include "_sidebar.html" %}
-<main class="main">
-  <div class="top-bar">
-    <div>
-      <h1 class="page-heading">{{ job.car }}</h1>
-      <p class="page-sub">{{ job.service }} · Job #{{ job.id }}</p>
-    </div>
-    <div style="display:flex;gap:8px;flex-shrink:0;">
-      <a class="btn btn-quiet" href="/dispatch/">Back to board</a>
-      <a class="btn" href="/dvi/job/{{ job.id }}">Open inspection</a>
-    </div>
+{% extends "_base.html" %}
+{% block title %}Job #{{ job.id }} — {{ studio }}{% endblock %}
+
+{% block page_head %}
+<div class="page-head rise">
+  <div>
+    <a href="/dispatch/" class="faint" style="font-size:12.5px">&larr; Dispatch</a>
+    <h1 class="page-title" style="margin-top:4px">{{ job.car }}</h1>
+    <p class="page-sub">
+      {{ job.service }} · Job #{{ job.id }}
+      <span class="badge status-{{ job.status|lower|replace(' ','-') }}" style="margin-left:6px"><span class="dot"></span>{{ job.status }}</span>
+    </p>
   </div>
+  <div class="page-actions">
+    <a class="btn btn-secondary" href="/dvi/job/{{ job.id }}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L8 6H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3.2"/></svg>
+      Inspect
+    </a>
+    {% for st in allowed_next %}
+    <button class="btn {{ 'btn-primary' if st != 'Pending' else 'btn-secondary' }}" onclick="move('{{ st }}')">
+      Move to {{ st }}
+    </button>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
 
-  <div class="two-col">
-    <div>
-      <div class="card">
-        <dl class="kv">
-          <dt>Status</dt>
-          <dd><span class="badge badge-{{ 'progress' if job.status == 'In Progress' else 'completed' if job.status == 'Completed' else 'pending' }}"><span class="dot"></span>{{ job.status }}</span></dd>
-          <dt>Technician</dt><dd>{{ job.technician or 'Unassigned' }}</dd>
-          <dt>Price</dt><dd style="color:var(--gold)">${{ job.price }}</dd>
-          <dt>Assigned</dt><dd>{{ job.assigned_at or '—' }}</dd>
-          <dt>Started</dt><dd>{{ job.started_at or '—' }}</dd>
-          <dt>Completed</dt><dd>{{ job.completed_at or '—' }}</dd>
-        </dl>
-      </div>
+{% block content %}
+<div class="grid" style="grid-template-columns:minmax(0,1fr) 320px; gap:20px; align-items:start">
 
-      {% if can_dispatch and allowed_next %}
-      <div class="section-label">Move this job</div>
-      <div class="card" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-        {% for next in allowed_next %}
-        <form method="POST" action="/dispatch/job/{{ job.id }}/transition">
-          <input type="hidden" name="status" value="{{ next }}">
-          <input type="hidden" name="redirect_to" value="/dispatch/job/{{ job.id }}">
-          <button class="btn" type="submit">→ {{ next }}</button>
-        </form>
-        {% endfor %}
-        <form method="POST" action="/dispatch/job/{{ job.id }}/assign" style="display:flex;gap:8px;margin-left:auto;">
-          <input type="hidden" name="redirect_to" value="/dispatch/job/{{ job.id }}">
-          <select name="staff_id" aria-label="Reassign technician">
-            <option value="">Unassigned</option>
-            {% for t in technicians %}<option value="{{ t.id }}" {% if job.assigned_staff_id == t.id %}selected{% endif %}>{{ t.name }}</option>{% endfor %}
-          </select>
-          <button class="btn btn-quiet" type="submit">Reassign</button>
-        </form>
-      </div>
-      {% elif job.status == 'Completed' %}
-      <p class="hint">This job is complete. Completed jobs are terminal — reopening one is a deliberate override, not a board action.</p>
-      {% endif %}
-    </div>
-
-    <div>
-      <div class="section-label" style="margin-top:0;">Status history</div>
-      <ul class="trail">
+  <div>
+    <div class="card rise">
+      <div class="card-head"><span class="card-title">Status history</span></div>
+      <div class="card-body">
+        {% if status_history %}
         {% for h in status_history %}
-        <li>
-          <div class="trail-main">{{ h.from_status or 'created' }} → <strong>{{ h.to_status }}</strong></div>
-          <div class="trail-meta">{{ h.actor }} · {{ h.created_at }}{% if h.note %} · {{ h.note }}{% endif %}</div>
-        </li>
-        {% else %}
-        <li><div class="trail-meta">No recorded transitions.</div></li>
+        <div style="display:flex;gap:12px;padding:11px 0;{% if not loop.last %}border-bottom:1px solid var(--line-soft){% endif %}">
+          <span class="badge status-{{ h.to_status|lower|replace(' ','-') }}" style="align-self:flex-start"><span class="dot"></span>{{ h.to_status }}</span>
+          <div style="flex:1">
+            <div style="font-size:13px;color:var(--gray-700)">
+              {% if h.from_status %}from <strong>{{ h.from_status }}</strong>{% else %}Job created{% endif %}
+              {% if h.note %}<span class="muted"> — {{ h.note }}</span>{% endif %}
+            </div>
+            <div class="faint" style="font-size:11.5px;margin-top:2px">{{ h.actor }} · {{ h.created_at }}</div>
+          </div>
+        </div>
         {% endfor %}
-      </ul>
-
-      <div class="section-label">Assignment history</div>
-      <ul class="trail">
-        {% for a in assignment_history %}
-        <li>
-          <div class="trail-main">{{ a.staff_name or 'Unassigned' }}</div>
-          <div class="trail-meta">set by {{ a.assigned_by }} · {{ a.assigned_at }}</div>
-        </li>
-        {% else %}
-        <li><div class="trail-meta">Never reassigned.</div></li>
-        {% endfor %}
-      </ul>
+        {% else %}<div class="muted">No history recorded.</div>{% endif %}
+      </div>
     </div>
+
+    {% if assignment_history %}
+    <div class="card rise mt-16">
+      <div class="card-head"><span class="card-title">Assignment history</span></div>
+      <div class="card-body">
+        {% for a in assignment_history %}
+        <div class="flex gap-10" style="padding:9px 0;{% if not loop.last %}border-bottom:1px solid var(--line-soft){% endif %}">
+          <span class="avatar {% if a.staff_name == 'Unassigned' %}unassigned{% endif %}">{{ (a.staff_name or '?')[0]|upper }}</span>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600;color:var(--gray-800)">{{ a.staff_name }}</div>
+            <div class="faint" style="font-size:11.5px">assigned by {{ a.assigned_by }} · {{ a.assigned_at }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
   </div>
-</main>
-</body>
-</html>
+
+  <aside class="card card-pad rise">
+    <div class="card-title mb-16">Assignment</div>
+    {% if can_dispatch %}
+    <form method="POST" action="/dispatch/job/{{ job.id }}/assign">
+      <div class="field">
+        <label>Technician</label>
+        <select name="staff_id">
+          <option value="">Unassigned</option>
+          {% for t in technicians %}
+          <option value="{{ t.id }}" {% if t.id == job.assigned_staff_id %}selected{% endif %}>{{ t.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button class="btn btn-primary btn-block">Save assignment</button>
+    </form>
+    <div class="divider"></div>
+    <button class="btn btn-secondary btn-block" onclick="suggest()">Suggest a technician</button>
+    <div id="suggestions" class="mt-16"></div>
+    {% else %}
+    <div class="who-row">
+      <span class="avatar lg">{{ (job.technician or '?')[0]|upper }}</span>
+      <span class="nm">{{ job.technician or 'Unassigned' }}</span>
+    </div>
+    {% endif %}
+
+    <div class="divider"></div>
+    <div class="muted" style="font-size:12.5px;line-height:1.8">
+      <div><span class="faint">Price</span> · <strong>${{ '{:,.0f}'.format(job.price or 0) }}</strong></div>
+      {% if job.started_at %}<div><span class="faint">Started</span> · {{ job.started_at }}</div>{% endif %}
+      {% if job.completed_at %}<div><span class="faint">Completed</span> · {{ job.completed_at }}</div>{% endif %}
+    </div>
+  </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const JOB = {{ job.id }};
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  async function move(status) {
+    try {
+      const r = await api(`/dispatch/job/${JOB}/transition`, { method: 'POST', body: JSON.stringify({ status }) });
+      toast(r.message, 'ok');
+      setTimeout(() => location.reload(), 550);
+    } catch (e) { toast(e.message, 'err'); }
+  }
+
+  async function suggest() {
+    const host = document.getElementById('suggestions');
+    host.innerHTML = '<div class="flex gap-10"><span class="spinner"></span><span class="muted">Ranking…</span></div>';
+    try {
+      const d = await api(`/dispatch/api/job/${JOB}/suggest`);
+      host.innerHTML = d.suggestions.map((s, i) => `
+        <div class="card card-pad" style="margin-bottom:8px;${i === 0 ? 'border-color:var(--violet-300);background:var(--violet-50)' : ''}">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:9px">
+            <span class="who-row"><span class="avatar">${esc(s.name[0]).toUpperCase()}</span><span class="nm strong">${esc(s.name)}</span></span>
+            ${i === 0 ? '<span class="badge badge-violet">Best fit</span>' : `<span class="faint" style="font-size:11.5px">${s.score}</span>`}
+          </div>
+          <div class="muted" style="font-size:12px;margin-top:6px">${esc(s.reason)}</div>
+        </div>`).join('');
+    } catch (e) { host.innerHTML = `<div class="alert alert-danger">${esc(e.message)}</div>`; }
+  }
+</script>
+{% endblock %}

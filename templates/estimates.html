@@ -1,57 +1,14 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Estimates — {{ studio }}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-  <style>
-    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
-    body { font-family:'DM Sans',sans-serif; background:#0D0D0D; color:#E8E6E0; min-height:100vh; display:flex; }
-    .sidebar { width:220px; flex-shrink:0; border-right:1px solid rgba(255,255,255,0.07); display:flex; flex-direction:column; }
-    .logo-area { padding:28px 24px; border-bottom:1px solid rgba(255,255,255,0.07); }
-    .studio-logo { width:140px; height:52px; object-fit:contain; object-position:left; display:block; margin-bottom:8px; }
-    .studio-name-fallback { font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:.1em; color:#C8A96E; display:none; margin-bottom:6px; }
-    .studio-city  { font-size:11px; color:rgba(255,255,255,0.3); }
-    .studio-owner { font-size:11px; color:rgba(255,255,255,0.2); margin-top:3px; }
-    nav { flex:1; padding:20px 12px; }
-    nav a { display:block; padding:10px 12px; font-size:13px; color:rgba(255,255,255,0.4); text-decoration:none; border-radius:4px; margin-bottom:2px; transition:color .15s,background .15s; }
-    nav a:hover  { color:#E8E6E0; background:rgba(255,255,255,0.05); }
-    nav a.active { color:#C8A96E; background:rgba(200,169,110,0.1); }
-    .logout-area { padding:16px 24px; border-top:1px solid rgba(255,255,255,0.07); }
-    .logout-area a { font-size:12px; color:rgba(255,255,255,0.25); text-decoration:none; }
-    .main { flex:1; padding:44px 48px; overflow-y:auto; }
-    .top-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:32px; }
-    .page-heading { font-family:'Bebas Neue',sans-serif; font-size:30px; letter-spacing:.1em; color:#C8A96E; }
-    .btn { padding:10px 20px; background:#C8A96E; color:#0D0D0D; border:none; border-radius:4px; font-family:'Bebas Neue',sans-serif; font-size:15px; letter-spacing:.08em; cursor:pointer; text-decoration:none; display:inline-block; }
-    .btn:hover { opacity:.85; }
-    .table-wrap { background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.07); border-radius:6px; overflow:hidden; }
-    table { width:100%; border-collapse:collapse; font-size:13px; }
-    thead th { padding:12px 16px; text-align:left; font-size:11px; font-weight:500; letter-spacing:.07em; text-transform:uppercase; color:rgba(255,255,255,0.3); border-bottom:1px solid rgba(255,255,255,0.07); }
-    tbody tr { border-bottom:1px solid rgba(255,255,255,0.04); transition:background .15s; }
-    tbody tr:last-child { border-bottom:none; }
-    tbody tr:hover { background:rgba(255,255,255,0.02); }
-    td { padding:13px 16px; vertical-align:middle; }
-    .badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:500; }
-    .badge-draft    { background:rgba(255,255,255,0.07); color:rgba(255,255,255,0.4); }
-    .badge-sent     { background:rgba(96,165,250,0.15);  color:#60A5FA; }
-    .badge-approved { background:rgba(74,222,128,0.12);  color:#4ADE80; }
-    .badge-revision { background:rgba(251,191,36,0.12);  color:#FBBF24; }
-    .dot { width:5px; height:5px; border-radius:50%; background:currentColor; }
-    .empty { padding:60px; text-align:center; color:rgba(255,255,255,0.2); font-size:13px; }
-    .empty a { color:#C8A96E; text-decoration:none; }
-    .view-link { color:#C8A96E; text-decoration:none; font-size:12px; }
-  </style>
-</head>
-<body>
-{% include "_sidebar.html" %}
-<main class="main">
-  <div class="top-bar">
-    <h1 class="page-heading">Estimates</h1>
-    <a href="/estimates/new" class="btn">+ New Estimate</a>
+{% extends "_base.html" %}
+{% block title %}Estimates — {{ studio }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <h1 class="page-title">Estimates</h1>
+    <a href="/estimates/new" class="btn btn-primary">+ New Estimate</a>
   </div>
   <div class="table-wrap">
     {% if estimates %}
-    <table>
+    <table class="data">
       <thead>
         <tr><th>#</th><th>Customer</th><th>Vehicle</th><th>Total</th><th>Status</th><th>Created</th><th></th></tr>
       </thead>
@@ -67,13 +24,13 @@
           <td style="color:#C8A96E;font-weight:500;">${{ "%.2f"|format(e.total/100) }}</td>
           <td>
             {% if e.status == 'Approved' %}
-              <span class="badge badge-approved"><span class="dot"></span>Approved</span>
+              <span class="badge status-completed"><span class="dot"></span>Approved</span>
             {% elif e.status == 'Sent' %}
-              <span class="badge badge-sent"><span class="dot"></span>Sent</span>
+              <span class="badge badge-blue"><span class="dot"></span>Sent</span>
             {% elif e.status == 'Revision Requested' %}
               <span class="badge badge-revision"><span class="dot"></span>Revision</span>
             {% else %}
-              <span class="badge badge-draft"><span class="dot"></span>Draft</span>
+              <span class="badge status-draft"><span class="dot"></span>Draft</span>
             {% endif %}
           </td>
           <td style="color:rgba(255,255,255,0.3);font-size:12px;">{{ e.created_at[:10] }}</td>
@@ -86,6 +43,4 @@
     <div class="empty">No estimates yet — <a href="/estimates/new">create one</a></div>
     {% endif %}
   </div>
-</main>
-</body>
-</html>
+{% endblock %}

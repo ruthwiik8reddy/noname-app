@@ -188,7 +188,6 @@ def report(inspection_id: int):
         **auth_context(),
         active_page="dvi",
         **data,
-        can_view_payments=can(current_role(), "view_payments"),
     )
 
 
