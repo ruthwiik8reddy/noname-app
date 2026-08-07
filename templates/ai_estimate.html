@@ -1,109 +1,93 @@
 {% extends "_base.html" %}
-{% block title %}AI Estimate — {{ studio }}{% endblock %}
+{% block title %}Quick Quote — {{ studio }}{% endblock %}
+
+{% block page_head %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">✦ Quick Quote</h1>
+    <p class="page-sub">Describe the vehicle and the work needed — AI suggests services and pricing from your catalog.</p>
+  </div>
+</div>
+{% endblock %}
 
 {% block content %}
-<h1 class="page-title">✦ AI Estimate</h1>
-  <p class="page-sub">
-    Describe the vehicle and the work needed. The AI will suggest services and line items
-    based on your studio's catalog. You can then open a new estimate pre-filled with these details.
-  </p>
+<div style="max-width:100%;">
 
-  <!-- Input form -->
   <div class="field">
-    <label>Vehicle</label>
+    <label class="lbl">Vehicle</label>
     <input type="text" id="ai_vehicle" placeholder="e.g. 2022 BMW M4, heavy swirl marks, minor scratches" value="{{ prefill_vehicle or '' }}">
   </div>
 
   <div class="field">
-    <label>Describe the job</label>
-    <textarea id="ai_description" placeholder="e.g. Full paint correction needed, ceramic coating after, interior needs deep clean. Customer wants premium finish for a car show.">{{ prefill_desc or '' }}</textarea>
+    <label class="lbl">Describe the job</label>
+    <textarea id="ai_description" placeholder="e.g. Full paint correction needed, ceramic coating after, interior needs deep clean.">{{ prefill_desc or '' }}</textarea>
   </div>
 
   <div class="field">
-    <label>Budget range (optional)</label>
+    <label class="lbl">Budget range (optional)</label>
     <input type="text" id="ai_budget" placeholder="e.g. $500–$1500, or leave blank">
   </div>
 
-  <button class="btn-ask" id="btn_ask" onclick="askAI()">Generate Estimate</button>
-  <p class="hint">Uses your studio's service catalog as context. Results are suggestions — review before saving.</p>
+  <button class="btn btn-primary" id="btn_ask" onclick="askAI()">Generate Estimate</button>
+  <p style="font-size:12px; color:var(--gray-400); margin-top:10px;">Uses your product catalog as context. Results are suggestions — review before saving.</p>
 
-  <!-- Thinking -->
-  <div class="thinking" id="thinking">
-    <div class="dot-pulse"></div>
-    <span>AI is building your estimate…</span>
+  <!-- Thinking state -->
+  <div id="thinking" style="display:none; align-items:center; gap:10px; margin-top:16px; font-size:13px; color:var(--gray-500);">
+    <span style="width:8px;height:8px;border-radius:50%;background:var(--violet-600);animation:pulse 1s infinite;"></span>
+    AI is building your estimate…
   </div>
 
   <!-- Response -->
-  <div class="response-card" id="response_card">
-    <div class="response-title">AI Suggestion</div>
-    <div class="response-text" id="response_text"></div>
-
-    <div class="parsed-services" id="parsed_services"></div>
-
-    <a href="/estimates/new" class="btn-use" id="btn_use_estimate">
-      Open New Estimate with these details →
-    </a>
+  <div id="response_card" class="card" style="display:none; margin-top:24px; background:var(--gray-50); border-color:var(--line);">
+    <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--gray-400); margin-bottom:12px;">AI Suggestion</div>
+    <div id="response_text" style="font-size:14px; white-space:pre-wrap; line-height:1.7; color:var(--gray-800); border-bottom:1px solid var(--line); padding-bottom:16px; margin-bottom:16px;"></div>
+    <a href="/estimates/new" id="btn_use_estimate" class="btn btn-secondary">Open New Estimate with these details →</a>
   </div>
+</div>
+{% endblock %}
+
+{% block head %}
+<style>
+  @keyframes pulse { 0%,100% { opacity:.3; transform:scale(.8); } 50% { opacity:1; transform:scale(1); } }
+</style>
 {% endblock %}
 
 {% block scripts %}
 <script>
-  // Store AI result to pass to new estimate
-  let lastResult = "";
+async function askAI() {
+  const vehicle     = document.getElementById('ai_vehicle').value.trim();
+  const description = document.getElementById('ai_description').value.trim();
+  const budget      = document.getElementById('ai_budget').value.trim();
+  if (!vehicle && !description) { document.getElementById('ai_vehicle').focus(); return; }
 
-  async function askAI() {
-    const vehicle     = document.getElementById('ai_vehicle').value.trim();
-    const description = document.getElementById('ai_description').value.trim();
-    const budget      = document.getElementById('ai_budget').value.trim();
+  let prompt = 'You are a service advisor at a professional auto detailing studio. ';
+  prompt += 'Based on the job description below, suggest specific detailing services with estimated prices in USD. ';
+  prompt += 'Format as a list: "Service Name — $price — brief reason".\n\n';
+  if (vehicle)     prompt += `Vehicle: ${vehicle}\n`;
+  if (description) prompt += `Job description: ${description}\n`;
+  if (budget)      prompt += `Customer budget: ${budget}\n`;
+  prompt += '\nSuggest 2–5 line items appropriate for this job. Be specific and practical.';
 
-    if (!vehicle && !description) {
-      document.getElementById('ai_vehicle').focus();
-      return;
-    }
+  document.getElementById('btn_ask').disabled = true;
+  document.getElementById('thinking').style.display = 'flex';
+  document.getElementById('response_card').style.display = 'none';
 
-    const question = buildPrompt(vehicle, description, budget);
-
-    document.getElementById('btn_ask').disabled = true;
-    document.getElementById('thinking').classList.add('visible');
-    document.getElementById('response_card').classList.remove('visible');
-
-    try {
-      const resp = await fetch('/ai-estimate/query', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, attachments: [] }),
-      });
-      const data = await resp.json();
-      lastResult = data.answer || data.error || 'No response from AI.';
-
-      document.getElementById('response_text').textContent = lastResult;
-      document.getElementById('response_card').classList.add('visible');
-
-      // Build "Open New Estimate" URL with prefill params
-      const params = new URLSearchParams();
-      if (vehicle)     params.set('vehicle', vehicle);
-      if (lastResult)  params.set('ai_suggestion', lastResult.slice(0, 500));
-      document.getElementById('btn_use_estimate').href =
-        '/estimates/new?' + params.toString();
-
-    } catch (err) {
-      document.getElementById('response_text').textContent = 'Request failed: ' + err;
-      document.getElementById('response_card').classList.add('visible');
-    } finally {
-      document.getElementById('btn_ask').disabled = false;
-      document.getElementById('thinking').classList.remove('visible');
-    }
+  try {
+    const data = await api('/ai-estimate/query', { method:'POST', body:JSON.stringify({ question:prompt, attachments:[] }) });
+    const result = data.answer || data.error || 'No response from AI.';
+    document.getElementById('response_text').textContent = result;
+    document.getElementById('response_card').style.display = 'block';
+    const params = new URLSearchParams();
+    if (vehicle) params.set('vehicle', vehicle);
+    if (result)  params.set('ai_suggestion', result.slice(0,500));
+    document.getElementById('btn_use_estimate').href = '/estimates/new?' + params.toString();
+  } catch (err) {
+    document.getElementById('response_text').textContent = 'Request failed: ' + err.message;
+    document.getElementById('response_card').style.display = 'block';
+  } finally {
+    document.getElementById('btn_ask').disabled = false;
+    document.getElementById('thinking').style.display = 'none';
   }
-
-  function buildPrompt(vehicle, description, budget) {
-    let prompt = `You are a service advisor at a professional auto detailing studio. `;
-    prompt += `Based on the job description below, suggest specific detailing services with estimated prices in USD. `;
-    prompt += `Format as a list: "Service Name — $price — brief reason".\n\n`;
-    if (vehicle)     prompt += `Vehicle: ${vehicle}\n`;
-    if (description) prompt += `Job description: ${description}\n`;
-    if (budget)      prompt += `Customer budget: ${budget}\n`;
-    prompt += `\nSuggest 2–5 line items appropriate for this job. Be specific and practical.`;
-    return prompt;
-  }
+}
 </script>
 {% endblock %}

@@ -1,124 +1,122 @@
 {% extends "_base.html" %}
 {% block title %}New Booking — {{ studio }}{% endblock %}
 
-{% block content %}
-<h1 class="page-title">New Booking</h1>
-  <p class="page-sub">Fill in the customer and appointment details below</p>
-
-  {% if errors %}
-  <div class="errors">
-    {% for e in errors %}<p>{{ e }}</p>{% endfor %}
+{% block page_head %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">New Booking</h1>
+    <p class="page-sub">Fill in the customer and appointment details below</p>
   </div>
-  {% endif %}
+  <div class="page-actions">
+    <a href="/bookings" class="btn btn-ghost">← Back</a>
+  </div>
+</div>
+{% endblock %}
 
-  <div id="toast" class="toast">Customer not found</div>
+{% block content %}
+{% if errors %}
+<div class="card" style="border-left:3px solid var(--red); margin-bottom:20px; padding:14px 18px;">
+  {% for e in errors %}<p style="color:var(--red); font-size:13px; margin-bottom:4px;">{{ e }}</p>{% endfor %}
+</div>
+{% endif %}
 
-  <form method="POST" id="bookingForm">
-    <div class="form-grid">
+<form method="POST" id="bookingForm">
 
-      <!-- Estimate ID lookup — replaces Customer ID lookup -->
-      <div class="form-group full">
-        <label>Estimate ID</label>
-        <div class="lookup-row">
-          <input type="number" id="lookupEstId" placeholder="Enter EST-ID to auto-fill" min="1"
-            onkeydown="if(event.key==='Enter'){event.preventDefault();lookupEstimate();}">
-          <button type="button" onclick="lookupEstimate()">Search</button>
-        </div>
-        <input type="hidden" name="estimate_id" id="field_estimate_id">
-      </div>
-
-      <div class="field">
-        <label>Customer Name *</label>
-        <input type="text" id="field_customer_name" name="customer_name" value="{{ form.get('customer_name','') }}" placeholder="John Smith" required>
-      </div>
-
-      <div class="field">
-        <label>Phone Number *</label>
-        <input type="text" id="field_customer_phone" name="customer_phone" value="{{ form.get('customer_phone','') }}" placeholder="+1 (555) 000-0000" required>
-      </div>
-
-      <div class="form-group full">
-        <label>Vehicle *</label>
-        <input type="text" id="field_vehicle" name="vehicle" value="{{ form.get('vehicle','') }}" placeholder="e.g. 2023 BMW M4 Competition" required>
-      </div>
-
-      <!-- Services from estimate — read-only display + hidden value -->
-      <div class="form-group full">
-        <label>Services (from estimate)</label>
-        <input type="text" id="field_services" name="services_summary"
-               value="{{ form.get('services_summary','') }}"
-               placeholder="Will be filled from estimate"
-               readonly style="color:rgba(255,255,255,0.45);cursor:default;">
-      </div>
-
-      <!-- Service selection — real radio buttons styled as cards -->
-      <div class="form-group full">
-        <label>Select Service *</label>
-        <div class="service-cards">
-          {% for svc in services %}
-          <label class="service-card {% if form.get('service_id')|string == svc.id|string %}selected{% endif %}"
-                 onclick="this.querySelector('input').checked=true; document.querySelectorAll('.service-card').forEach(c=>c.classList.remove('selected')); this.classList.add('selected')">
-            <input type="radio" name="service_id" value="{{ svc.id }}"
-                   {% if form.get('service_id')|string == svc.id|string %}checked{% endif %} required>
-            <div class="sname">{{ svc.name }}</div>
-            <div class="sdur">{{ svc.duration_hr }} hrs</div>
-            <div class="sprice">${{ svc.price }}</div>
-          </label>
-          {% endfor %}
-        </div>
-      </div>
-
-      <div class="field">
-        <label>Bay</label>
-        <select name="bay_id" id="bay_select" onchange="refreshSlots()">
-          <option value="">— No bay preference —</option>
-          {% for bay in bays %}
-          <option value="{{ bay.id }}" {% if form.get('bay_id')|string == bay.id|string %}selected{% endif %}>
-            {{ bay.name }}
-          </option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <div class="field">
-        <label>Date *</label>
-        <select name="date" id="date_select" onchange="refreshSlots()" required>
-          <option value="">— Select date —</option>
-          {% for d in dates %}
-          <option value="{{ d }}" {% if form.get('date') == d %}selected{% endif %}>{{ d }}</option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <!-- Time slot — real radio buttons styled as grid -->
-      <div class="form-group full">
-        <label>Time Slot *</label>
-        <div class="slot-grid" id="slotGrid">
-          {% for slot in time_slots %}
-          <label class="slot-btn {% if form.get('time_slot') == slot %}selected{% endif %}"
-                 id="slot_{{ loop.index }}"
-                 onclick="document.querySelectorAll('.slot-btn:not(.booked)').forEach(s=>s.classList.remove('selected')); if(!this.classList.contains('booked')){this.classList.add('selected');}">
-            <input type="radio" name="time_slot" value="{{ slot }}"
-                   {% if form.get('time_slot') == slot %}checked{% endif %}>
-            {{ slot }}
-          </label>
-          {% endfor %}
-        </div>
-        <p class="slot-hint">Select a bay and date to see availability. Strikethrough = already booked.</p>
-      </div>
-
-      <div class="form-group full">
-        <label>Notes (optional)</label>
-        <textarea name="notes" placeholder="Special instructions, customer requests...">{{ form.get('notes','') }}</textarea>
-      </div>
-
+  <!-- Estimate ID lookup -->
+  <div class="field">
+    <label class="lbl">Estimate ID (auto-fill from approved estimate)</label>
+    <div style="display:flex; gap:8px;">
+      <input type="number" id="lookupEstId" placeholder="e.g. 42" min="1"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();lookupEstimate();}">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="lookupEstimate()">Search</button>
     </div>
+    <input type="hidden" name="estimate_id" id="field_estimate_id">
+  </div>
 
-    <div class="actions">
-      <button type="submit" class="btn-submit">Confirm Booking</button>
-      <a href="/bookings" class="btn-cancel">Cancel</a>
+  <div class="form-row">
+    <div class="field">
+      <label class="lbl">Customer Name *</label>
+      <input type="text" id="field_customer_name" name="customer_name" value="{{ form.get('customer_name','') }}" placeholder="John Smith" required>
     </div>
-  </form>
+    <div class="field">
+      <label class="lbl">Phone Number *</label>
+      <input type="text" id="field_customer_phone" name="customer_phone" value="{{ form.get('customer_phone','') }}" placeholder="+1 (555) 000-0000" required>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="lbl">Vehicle *</label>
+    <input type="text" id="field_vehicle" name="vehicle" value="{{ form.get('vehicle','') }}" placeholder="e.g. 2023 BMW M4 Competition" required>
+  </div>
+
+  <div class="field">
+    <label class="lbl">Services (from estimate)</label>
+    <input type="text" id="field_services" name="services_summary" value="{{ form.get('services_summary','') }}" placeholder="Auto-filled from estimate" readonly style="background:var(--gray-50); color:var(--gray-500);">
+  </div>
+
+  <!-- Service selection -->
+  <div class="field">
+    <label class="lbl">Select Service *</label>
+    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:10px;">
+      {% for svc in services %}
+      <label class="svc-pick" style="display:block; padding:14px; cursor:pointer; border:1.5px solid var(--line); border-radius:var(--r-sm); background:var(--white); transition: border-color .15s, background .15s;"
+             onclick="this.querySelector('input').checked=true; document.querySelectorAll('.svc-pick').forEach(c=>{c.style.borderColor='var(--line)';c.style.background='var(--white)'}); this.style.borderColor='var(--violet-600)'; this.style.background='var(--violet-50)';">
+        <input type="radio" name="service_id" value="{{ svc.id }}" {% if form.get('service_id')|string == svc.id|string %}checked{% endif %} required style="display:none;">
+        <div style="font-size:13px; font-weight:600; color:var(--gray-900);">{{ svc.name }}</div>
+        <div style="font-size:12px; color:var(--gray-500); margin-top:3px;">{{ svc.duration_hr }} hrs</div>
+        <div style="font-size:15px; font-weight:700; color:var(--violet-600); margin-top:8px;">${{ svc.price }}</div>
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="field">
+      <label class="lbl">Bay</label>
+      <select name="bay_id" id="bay_select" onchange="refreshSlots()">
+        <option value="">— No bay preference —</option>
+        {% for bay in bays %}
+        <option value="{{ bay.id }}" {% if form.get('bay_id')|string == bay.id|string %}selected{% endif %}>{{ bay.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label class="lbl">Date *</label>
+      <select name="date" id="date_select" onchange="refreshSlots()" required>
+        <option value="">— Select date —</option>
+        {% for d in dates %}
+        <option value="{{ d }}" {% if form.get('date') == d %}selected{% endif %}>{{ d }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <!-- Time slot grid -->
+  <div class="field">
+    <label class="lbl">Time Slot *</label>
+    <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:6px;" id="slotGrid">
+      {% for slot in time_slots %}
+      <label style="padding:8px 4px; text-align:center; font-size:11px; border:1px solid var(--line); border-radius:var(--r-sm); cursor:pointer; transition: all .15s; color:var(--gray-600);"
+             class="slot-btn {% if form.get('time_slot') == slot %}selected{% endif %}"
+             onclick="document.querySelectorAll('.slot-btn:not(.booked)').forEach(s=>{s.style.borderColor='var(--line)';s.style.background='';s.style.color='var(--gray-600)'}); if(!this.classList.contains('booked')){this.style.borderColor='var(--violet-600)';this.style.background='var(--violet-50)';this.style.color='var(--violet-600)';}">
+        <input type="radio" name="time_slot" value="{{ slot }}" {% if form.get('time_slot') == slot %}checked{% endif %} style="display:none;">
+        {{ slot }}
+      </label>
+      {% endfor %}
+    </div>
+    <p class="help">Select a bay and date to see availability. Strikethrough = already booked.</p>
+  </div>
+
+  <div class="field">
+    <label class="lbl">Notes (optional)</label>
+    <textarea name="notes" placeholder="Special instructions, customer requests...">{{ form.get('notes','') }}</textarea>
+  </div>
+
+  <div style="display:flex; gap:12px; align-items:center; margin-top:24px;">
+    <button type="submit" class="btn btn-primary">Confirm Booking</button>
+    <a href="/bookings" class="btn btn-ghost">Cancel</a>
+  </div>
+</form>
 {% endblock %}
 
 {% block scripts %}
@@ -127,7 +125,6 @@ function refreshSlots() {
   const date  = document.getElementById('date_select').value;
   const bayId = document.getElementById('bay_select').value;
   if (!date || !bayId) return;
-
   fetch(`/bookings/slots?date=${date}&bay_id=${bayId}`)
     .then(r => r.json())
     .then(data => {
@@ -136,22 +133,24 @@ function refreshSlots() {
         const slot  = radio.value;
         if (data.booked.includes(slot)) {
           el.classList.add('booked');
-          el.classList.remove('selected');
-          radio.checked = false;
+          el.style.textDecoration = 'line-through';
+          el.style.opacity = '.35';
+          el.style.cursor = 'not-allowed';
           radio.disabled = true;
         } else {
           el.classList.remove('booked');
+          el.style.textDecoration = '';
+          el.style.opacity = '';
+          el.style.cursor = 'pointer';
           radio.disabled = false;
         }
       });
     });
 }
 
-// ── Estimate lookup ────────────────────────────────────────────────────────
 function lookupEstimate() {
   const id = document.getElementById('lookupEstId').value.trim();
   if (!id) return;
-
   fetch('/estimates/' + id + '/lookup')
     .then(r => r.ok ? r.json() : Promise.reject())
     .then(e => {
@@ -160,18 +159,9 @@ function lookupEstimate() {
       document.getElementById('field_customer_phone').value = e.customer_phone;
       document.getElementById('field_vehicle').value        = e.vehicle;
       document.getElementById('field_services').value       = e.services_summary;
-      showToast('✓ EST-' + e.id + ' — ' + e.customer_name, true);
+      toast('✓ EST-' + e.id + ' — ' + e.customer_name, 'ok');
     })
-    .catch(() => showToast('Estimate not found'));
-}
-
-function showToast(msg, ok) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.style.borderColor = ok ? 'rgba(74,222,128,0.4)' : 'rgba(248,113,113,0.4)';
-  t.style.color       = ok ? '#4ADE80' : '#F87171';
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
+    .catch(() => toast('Estimate not found', 'error'));
 }
 </script>
 {% endblock %}

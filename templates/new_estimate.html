@@ -1,107 +1,100 @@
 {% extends "_base.html" %}
 {% block title %}New Estimate — {{ studio }}{% endblock %}
 
+{% block page_head %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">New Estimate</h1>
+    <p class="page-sub">Build a quote for a customer — they'll get a link to approve and sign</p>
+  </div>
+  <div class="page-actions">
+    <a href="/ai-estimate" class="btn btn-secondary">✦ Quick Quote</a>
+    <a href="/estimates" class="btn btn-ghost">← Back</a>
+  </div>
+</div>
+{% endblock %}
+
 {% block content %}
-<div id="toast" class="toast">Customer not found</div>
+<form method="POST" id="estimateForm">
 
-  <h1 class="page-title">New Estimate</h1>
-  <p class="page-sub">Build a quote for a customer — they'll get a link to approve and sign</p>
-
-  <form method="POST" id="estimateForm">
-    <div class="form-grid">
-
-      <!-- Row 1: Customer ID + Search (full width) -->
-      <div class="form-group full">
-        <label>Customer ID</label>
-        <div class="lookup-row">
-          <input type="number" id="lookupId" placeholder="Enter customer ID" min="1"
-            onkeydown="if(event.key==='Enter'){event.preventDefault();lookupCustomer();}">
-          <button type="button" onclick="lookupCustomer()">Search</button>
-        </div>
-        <!-- Hidden field — carries customer_id to POST -->
-        <input type="hidden" id="field_customer_id" name="customer_id">
-      </div>
-
-      <!-- Vehicle — shown after customer lookup -->
-      <div class="form-group full" id="vehicle-row" style="display:none">
-        <label>Vehicle *</label>
-        <select id="field_vehicle_select" name="vehicle">
-          <option value="">— Select vehicle —</option>
-        </select>
-      </div>
-
-      <!-- AI Estimate button beside vehicle -->
-      <div class="field" style="justify-content:flex-end; display:none;" id="ai-btn-row">
-        <label style="visibility:hidden">placeholder</label>
-        <a href="/estimates/ai" class="btn-ai" style="align-self:flex-start;">✦ AI Estimate</a>
-      </div>
-
-      <!-- Line items -->
-      <div class="items-section">
-        <div class="items-header">
-          <label>Services & Line Items *</label>
-        </div>
-        <!-- Quick add from studio services -->
-        <div class="quick-add">
-          <span style="font-size:11px;color:rgba(255,255,255,0.2);padding:5px 0;align-self:center;">Quick add:</span>
-          {% for svc in services %}
-          <button type="button" class="quick-btn"
-                  onclick="addRow('{{ svc.name }}', '{{ svc.name }} service', 1, {{ svc.price }})">
-            {{ svc.name }} — ${{ svc.price }}
-          </button>
-          {% endfor %}
-        </div>
-
-        <table class="items-table">
-          <thead>
-            <tr>
-              <th style="width:35%">Service / Item</th>
-              <th style="width:30%">Description</th>
-              <th style="width:8%">Qty</th>
-              <th style="width:15%">Unit Price ($)</th>
-              <th style="width:10%">Total</th>
-              <th style="width:5%"></th>
-            </tr>
-          </thead>
-          <tbody id="itemsBody">
-            <!-- rows injected by JS -->
-          </tbody>
-        </table>
-        <button type="button" class="add-row-btn" onclick="addRow()">+ Add line item</button>
-      </div>
-
-      <!-- Tax -->
-      <div class="field">
-        <label>Tax Rate (%)</label>
-        <input type="number" name="tax_percent" id="taxInput" value="8.5" step="0.1" min="0" max="30" oninput="recalc()">
-      </div>
-
-      <!-- Totals display -->
-      <div class="totals">
-        <div class="totals-box">
-          <div class="totals-row"><span class="totals-label">Subtotal</span><span id="subtotalDisplay">$0.00</span></div>
-          <div class="totals-row"><span class="totals-label">Tax (<span id="taxPctDisplay">8.5</span>%)</span><span id="taxDisplay">$0.00</span></div>
-          <div class="totals-row"><span class="totals-label">Total</span><span id="totalDisplay">$0.00</span></div>
-        </div>
-      </div>
-
-      <!-- Notes -->
-      <div class="form-group full">
-        <label>Notes for Customer</label>
-        <textarea name="notes" placeholder="Visible to the customer on the estimate..."></textarea>
-      </div>
-      <div class="form-group full">
-        <label>Internal Notes</label>
-        <textarea name="internal_notes" placeholder="Only visible to your team..."></textarea>
-      </div>
-
+  <!-- Customer lookup -->
+  <div class="field">
+    <label class="lbl">Customer ID</label>
+    <div style="display:flex; gap:8px;">
+      <input type="number" id="lookupId" placeholder="Enter customer ID" min="1"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();lookupCustomer();}">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="lookupCustomer()">Search</button>
     </div>
+    <input type="hidden" id="field_customer_id" name="customer_id">
+    <p class="help">Enter an existing customer ID to auto-fill their vehicle.</p>
+  </div>
 
-    <div class="actions">
-      <button type="submit" class="btn-submit">Save Estimate</button>
-      <a href="/estimates" class="btn-cancel">Cancel</a>
+  <!-- Vehicle — shown after lookup -->
+  <div class="field" id="vehicle-row" style="display:none;">
+    <label class="lbl">Vehicle *</label>
+    <select id="field_vehicle_select" name="vehicle">
+      <option value="">— Select vehicle —</option>
+    </select>
+  </div>
+
+  <!-- Line items -->
+  <div class="field" style="margin-top:24px;">
+    <label class="lbl">Services & Line Items *</label>
+
+    {% if services %}
+    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;">
+      <span style="font-size:11px; color:var(--gray-400); padding:5px 0;">Quick add:</span>
+      {% for svc in services %}
+      <button type="button" class="btn btn-ghost btn-sm"
+              onclick="addRow('{{ svc.name }}', '{{ svc.name }} service', 1, {{ svc.price }})"
+              style="font-size:11px; padding:4px 10px;">
+        {{ svc.name }} — ${{ svc.price }}
+      </button>
+      {% endfor %}
     </div>
-  </form>
+    {% endif %}
+
+    <div class="table-scroll">
+      <table class="data" style="font-size:13px;">
+        <thead><tr>
+          <th>Service / Item</th><th>Description</th><th>Qty</th><th>Unit Price ($)</th><th>Total</th><th></th>
+        </tr></thead>
+        <tbody id="itemsBody"></tbody>
+      </table>
+    </div>
+    <button type="button" class="btn btn-ghost btn-sm" onclick="addRow()" style="margin-top:10px;">+ Add line item</button>
+  </div>
+
+  <!-- Tax -->
+  <div class="form-row" style="margin-top:20px;">
+    <div class="field">
+      <label class="lbl">Tax Rate (%)</label>
+      <input type="number" name="tax_percent" id="taxInput" value="8.5" step="0.1" min="0" max="30" oninput="recalc()">
+    </div>
+    <div class="field" style="display:flex; flex-direction:column; justify-content:flex-end;">
+      <div style="text-align:right; font-size:13px; color:var(--gray-500); line-height:2;">
+        <div>Subtotal: <strong id="subtotalDisplay">$0.00</strong></div>
+        <div>Tax (<span id="taxPctDisplay">8.5</span>%): <strong id="taxDisplay">$0.00</strong></div>
+        <div style="font-size:16px; font-weight:700; color:var(--violet-600);">Total: <span id="totalDisplay">$0.00</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notes -->
+  <div class="field">
+    <label class="lbl">Notes for Customer</label>
+    <textarea name="notes" placeholder="Visible to the customer on the estimate..."></textarea>
+  </div>
+  <div class="field">
+    <label class="lbl">Internal Notes</label>
+    <textarea name="internal_notes" placeholder="Only visible to your team..."></textarea>
+  </div>
+
+  <div style="display:flex; gap:12px; align-items:center; margin-top:24px;">
+    <button type="submit" class="btn btn-primary">Save Estimate</button>
+    <a href="/estimates" class="btn btn-ghost">Cancel</a>
+  </div>
+</form>
 {% endblock %}
 
 {% block scripts %}
@@ -111,60 +104,46 @@ let rowCount = 0;
 function addRow(name='', desc='', qty=1, price='') {
   const tbody = document.getElementById('itemsBody');
   const tr = document.createElement('tr');
-  tr.dataset.row = rowCount;
   tr.innerHTML = `
-    <td><input type="text"   name="item_name"  value="${name}"  placeholder="e.g. Ceramic Coating" oninput="recalc()"></td>
-    <td><input type="text"   name="item_desc"  value="${desc}"  placeholder="Optional description"></td>
-    <td><input type="number" name="item_qty"   value="${qty}"   min="1" style="width:60px" oninput="recalc()"></td>
+    <td><input type="text" name="item_name" value="${name}" placeholder="e.g. Ceramic Coating" oninput="recalc()" style="min-width:140px;"></td>
+    <td><input type="text" name="item_desc" value="${desc}" placeholder="Optional"></td>
+    <td><input type="number" name="item_qty" value="${qty}" min="1" style="width:60px" oninput="recalc()"></td>
     <td><input type="number" name="item_price" value="${price}" min="0" step="0.01" placeholder="0.00" oninput="recalc()"></td>
-    <td id="row_total_${rowCount}" style="color:#C8A96E;font-size:13px;padding-top:16px;">$0.00</td>
-    <td><button type="button" class="remove-row" onclick="removeRow(this)">×</button></td>
+    <td class="num" id="row_total_${rowCount}" style="font-weight:600; color:var(--violet-600);">$0.00</td>
+    <td><button type="button" onclick="this.closest('tr').remove();recalc()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;">×</button></td>
   `;
   tbody.appendChild(tr);
   rowCount++;
   recalc();
 }
 
-function removeRow(btn) {
-  btn.closest('tr').remove();
-  recalc();
-}
-
 function recalc() {
-  const rows = document.querySelectorAll('#itemsBody tr');
   let subtotal = 0;
-  rows.forEach((row, i) => {
+  document.querySelectorAll('#itemsBody tr').forEach(row => {
     const qty   = parseFloat(row.querySelector('[name=item_qty]').value)   || 0;
     const price = parseFloat(row.querySelector('[name=item_price]').value) || 0;
     const total = qty * price;
-    subtotal += total;
-    const cell = row.querySelector('[id^=row_total_]');
+    subtotal   += total;
+    const cell  = row.querySelector('[id^=row_total_]');
     if (cell) cell.textContent = '$' + total.toFixed(2);
   });
   const taxPct = parseFloat(document.getElementById('taxInput').value) || 0;
   const tax    = subtotal * taxPct / 100;
-  const total  = subtotal + tax;
   document.getElementById('subtotalDisplay').textContent = '$' + subtotal.toFixed(2);
   document.getElementById('taxDisplay').textContent      = '$' + tax.toFixed(2);
-  document.getElementById('totalDisplay').textContent    = '$' + total.toFixed(2);
+  document.getElementById('totalDisplay').textContent    = '$' + (subtotal + tax).toFixed(2);
   document.getElementById('taxPctDisplay').textContent   = taxPct;
 }
 
-// Start with one empty row
 addRow();
 
-// ── Customer lookup ────────────────────────────────────────────────────────
 function lookupCustomer() {
   const id = document.getElementById('lookupId').value.trim();
   if (!id) return;
-
   fetch('/customers/' + id + '/lookup')
     .then(r => r.ok ? r.json() : Promise.reject())
     .then(c => {
-      // Store customer_id as hidden field
       document.getElementById('field_customer_id').value = c.id;
-
-      // Populate vehicle dropdown
       const sel = document.getElementById('field_vehicle_select');
       sel.innerHTML = '<option value="">— Select vehicle —</option>';
       c.vehicles.forEach(v => {
@@ -172,24 +151,11 @@ function lookupCustomer() {
         sel.innerHTML += `<option value="${v.make_model}">${label}</option>`;
       });
       if (c.vehicles.length > 0) sel.options[1].selected = true;
-      sel.setAttribute('required', 'required');
-
-      // Show vehicle row + AI button
-      document.getElementById('vehicle-row').style.display = 'flex';
-      document.getElementById('ai-btn-row').style.display  = 'flex';
-
-      showToast('✓ ' + c.name + ' — ' + c.vehicles.length + ' vehicle(s)', true);
+      sel.required = true;
+      document.getElementById('vehicle-row').style.display = 'block';
+      toast('✓ ' + c.name + ' — ' + c.vehicles.length + ' vehicle(s)', 'ok');
     })
-    .catch(() => showToast('Customer not found'));
-}
-
-function showToast(msg, ok) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.style.borderColor = ok ? 'rgba(74,222,128,0.4)' : 'rgba(248,113,113,0.4)';
-  t.style.color       = ok ? '#4ADE80' : '#F87171';
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
+    .catch(() => toast('Customer not found', 'error'));
 }
 </script>
 {% endblock %}

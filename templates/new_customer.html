@@ -1,43 +1,59 @@
 {% extends "_base.html" %}
 {% block title %}Add Customer — {{ studio }}{% endblock %}
 
+{% block page_head %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Add Customer</h1>
+    <p class="page-sub">Create a customer profile, optionally with their first vehicle</p>
+  </div>
+  <div class="page-actions">
+    <a href="/customers" class="btn btn-ghost">← Back</a>
+  </div>
+</div>
+{% endblock %}
+
 {% block content %}
-<h1 class="page-title">Add Customer</h1>
-  <p class="page-sub">Create a customer profile, optionally with their first vehicle</p>
+{% if errors %}
+<div class="card" style="border-left:3px solid var(--red); margin-bottom:20px; padding:14px 18px;">
+  {% for e in errors %}<p style="color:var(--red); font-size:13px; margin-bottom:4px;">{{ e }}</p>{% endfor %}
+</div>
+{% endif %}
 
-  {% if errors %}
-  <div class="errors">{% for e in errors %}<p>{{ e }}</p>{% endfor %}</div>
-  {% endif %}
-
-  <form method="POST">
-    <div class="form-grid">
-      <div>
-        <label>Full Name *</label>
-        <input type="text" name="name" placeholder="John Smith" required>
-      </div>
-      <div>
-        <label>Phone *</label>
-        <input type="text" name="phone" placeholder="+1 (555) 000-0000" required>
-      </div>
-      <div>
-        <label>Email</label>
-        <input type="email" name="email" placeholder="john@email.com">
-      </div>
-      <div>
-        <label>Notes</label>
-        <textarea name="notes" placeholder="Any notes about this customer..."></textarea>
-      </div>
-
-      <div class="section-divider">Vehicle (optional)</div>
-      <div>
-        <label>Make / Model</label>
-        <input type="text" name="vehicle_make_model" placeholder="2023 BMW M4 Competition">
-      </div>
+<form method="POST">
+  <div class="form-row">
+    <div class="field">
+      <label class="lbl">Full Name *</label>
+      <input type="text" name="name" placeholder="John Smith" required>
     </div>
-
-    <div class="actions">
-      <button type="submit" class="btn-submit">Save Customer</button>
-      <a href="/customers" class="btn-cancel">Cancel</a>
+    <div class="field">
+      <label class="lbl">Phone *</label>
+      <input type="text" name="phone" placeholder="+1 (555) 000-0000" required>
     </div>
-  </form>
+  </div>
+
+  <div class="field">
+    <label class="lbl">Email</label>
+    <input type="email" name="email" placeholder="john@email.com">
+  </div>
+
+  <div class="field">
+    <label class="lbl">Notes</label>
+    <textarea name="notes" placeholder="Any notes about this customer..."></textarea>
+  </div>
+
+  <div style="border-top:1px solid var(--line); margin:20px 0 16px; padding-top:16px;">
+    <span style="font-size:11px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--gray-400);">Vehicle (optional)</span>
+  </div>
+
+  <div class="field">
+    <label class="lbl">Make / Model</label>
+    <input type="text" name="vehicle_make_model" placeholder="2023 BMW M4 Competition">
+  </div>
+
+  <div style="display:flex; gap:12px; align-items:center; margin-top:24px;">
+    <button type="submit" class="btn btn-primary">Save Customer</button>
+    <a href="/customers" class="btn btn-ghost">Cancel</a>
+  </div>
+</form>
 {% endblock %}

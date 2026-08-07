@@ -1,68 +1,73 @@
 {% extends "_base.html" %}
-{% block title %}{{ 'Edit' if product else 'New' }} Product — Autofiera{% endblock %}
+{% block title %}{{ 'Edit' if product else 'New' }} Product — BayQ{% endblock %}
+
+{% block page_head %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">{{ 'Edit' if product else 'New' }} Product</h1>
+    <p class="page-sub">Pricing entered here is what the AI estimator uses to quote jobs.</p>
+  </div>
+  <div class="page-actions">
+    <a href="/products" class="btn btn-ghost">← Back</a>
+  </div>
+</div>
+{% endblock %}
 
 {% block content %}
-<a href="/products" class="back">← Back to Products</a>
-  <h1 class="page-title">{{ 'Edit' if product else 'New' }} Product</h1>
-  <p class="page-sub">Pricing entered here is what the AI estimator uses to quote jobs.</p>
+<form method="POST">
 
-  <form method="POST" class="card">
-    <div class="row">
-      <div>
-        <label>Product Name *</label>
-        <input type="text" name="name" required value="{{ product.name if product else '' }}"
-               placeholder="e.g. XPEL Ultimate Plus">
-      </div>
-      <div>
-        <label>Category</label>
-        <select name="category">
-          {% for c in categories %}
-          <option value="{{ c }}" {% if product and product.category == c %}selected{% endif %}>{{ c }}</option>
-          {% endfor %}
-        </select>
-      </div>
+  <div class="form-row">
+    <div class="field">
+      <label class="lbl">Product Name *</label>
+      <input type="text" name="name" required value="{{ product.name if product else '' }}" placeholder="e.g. XPEL Ultimate Plus">
     </div>
-
-    <div class="row">
-      <div>
-        <label>Brand</label>
-        <input type="text" name="brand" value="{{ product.brand if product else '' }}" placeholder="e.g. XPEL, Gtechniq">
-      </div>
-      <div>
-        <label>Warranty (years)</label>
-        <input type="number" name="warranty_years" min="0" value="{{ product.warranty_years if product else 0 }}">
-      </div>
+    <div class="field">
+      <label class="lbl">Category</label>
+      <select name="category">
+        {% for c in categories %}
+        <option value="{{ c }}" {% if product and product.category == c %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
     </div>
+  </div>
 
-    <div class="row3">
-      <div>
-        <label>Material cost / sqft *</label>
-        <input type="number" step="0.01" min="0" name="cost_per_sqft" id="mat" required
-               value="{{ product.cost_per_sqft if product else '' }}" placeholder="6.50">
-      </div>
-      <div>
-        <label>Labour cost / sqft</label>
-        <input type="number" step="0.01" min="0" name="labour_per_sqft" id="lab"
-               value="{{ product.labour_per_sqft if product else 0 }}" placeholder="4.00">
-      </div>
-      <div>
-        <label>Markup %</label>
-        <input type="number" step="1" min="0" name="markup_percent" id="mk"
-               value="{{ product.markup_percent if product else 0 }}" placeholder="35">
-      </div>
+  <div class="form-row">
+    <div class="field">
+      <label class="lbl">Brand</label>
+      <input type="text" name="brand" value="{{ product.brand if product else '' }}" placeholder="e.g. XPEL, Gtechniq">
     </div>
-
-    <div class="calc" id="calc">
-      Example on a <b>200 sqft</b> vehicle: <span id="ex">—</span>
+    <div class="field">
+      <label class="lbl">Warranty (years)</label>
+      <input type="number" name="warranty_years" min="0" value="{{ product.warranty_years if product else 0 }}">
     </div>
+  </div>
 
-    <div style="margin-bottom:18px">
-      <label>Notes</label>
-      <textarea name="notes" placeholder="Anything staff should know about this product">{{ product.notes if product else '' }}</textarea>
+  <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px;">
+    <div class="field">
+      <label class="lbl">Material cost / sqft *</label>
+      <input type="number" step="0.01" min="0" name="cost_per_sqft" id="mat" required value="{{ product.cost_per_sqft if product else '' }}" placeholder="6.50">
     </div>
+    <div class="field">
+      <label class="lbl">Labour cost / sqft</label>
+      <input type="number" step="0.01" min="0" name="labour_per_sqft" id="lab" value="{{ product.labour_per_sqft if product else 0 }}" placeholder="4.00">
+    </div>
+    <div class="field">
+      <label class="lbl">Markup %</label>
+      <input type="number" step="1" min="0" name="markup_percent" id="mk" value="{{ product.markup_percent if product else 0 }}" placeholder="35">
+    </div>
+  </div>
 
-    <button type="submit" class="btn-gold">{{ 'Save Changes' if product else 'Add Product' }}</button>
-  </form>
+  <div class="card" style="background:var(--violet-50); border-color:var(--violet-200); margin:18px 0; padding:14px 16px; font-size:13px; line-height:1.7; color:var(--gray-700);">
+    Example on a <strong style="color:var(--violet-600);">200 sqft</strong> vehicle: <span id="ex">—</span>
+  </div>
+
+  <div class="field">
+    <label class="lbl">Notes</label>
+    <textarea name="notes" placeholder="Anything staff should know about this product">{{ product.notes if product else '' }}</textarea>
+  </div>
+
+  <button type="submit" class="btn btn-primary">{{ 'Save Changes' if product else 'Add Product' }}</button>
+</form>
 {% endblock %}
 
 {% block scripts %}
@@ -73,7 +78,7 @@ function upd(){
   const k=parseFloat(document.getElementById('mk').value||0);
   const area=200, base=(m+l)*area, mk=base*k/100, tot=base+mk;
   document.getElementById('ex').innerHTML =
-    `material <b>$${(m*area).toFixed(0)}</b> + labour <b>$${(l*area).toFixed(0)}</b> + margin <b>$${mk.toFixed(0)}</b> = <b>$${tot.toFixed(0)}</b>`;
+    `material <b>$${(m*area).toFixed(0)}</b> + labour <b>$${(l*area).toFixed(0)}</b> + margin <b>$${mk.toFixed(0)}</b> = <b style="color:var(--violet-600)">$${tot.toFixed(0)}</b>`;
 }
 ['mat','lab','mk'].forEach(id=>document.getElementById(id).addEventListener('input',upd));
 upd();

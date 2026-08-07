@@ -1,73 +1,94 @@
 {% extends "_base.html" %}
 {% block title %}Upload Media — {{ studio }}{% endblock %}
 
+{% block page_head %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Upload Media</h1>
+    <p class="page-sub">Add before / during / after photos for a job</p>
+  </div>
+  <div class="page-actions">
+    <a href="/media" class="btn btn-ghost">← Back</a>
+  </div>
+</div>
+{% endblock %}
+
 {% block content %}
-<h1 class="page-title">Upload Media</h1>
-  <p class="page-sub">Add before / during / after photos for a job</p>
+{% if errors %}
+<div class="card" style="border-left:3px solid var(--red); margin-bottom:20px; padding:14px 18px;">
+  {% for e in errors %}<p style="color:var(--red); font-size:13px; margin-bottom:4px;">{{ e }}</p>{% endfor %}
+</div>
+{% endif %}
 
-  {% if errors %}
-  <div class="errors">{% for e in errors %}<p>{{ e }}</p>{% endfor %}</div>
-  {% endif %}
+<form method="POST" enctype="multipart/form-data">
 
-  <form method="POST" enctype="multipart/form-data">
-    <div class="form-grid">
-      <div>
-        <label>Job (optional)</label>
-        <select name="job_id">
-          <option value="">— No specific job —</option>
-          {% for j in jobs %}
-          <option value="{{ j.id }}">#{{ j.id }} — {{ j.car }} ({{ j.service }})</option>
-          {% endfor %}
-        </select>
-      </div>
+  <div class="field">
+    <label class="lbl">Job (optional)</label>
+    <select name="job_id">
+      <option value="">— No specific job —</option>
+      {% for j in jobs %}
+      <option value="{{ j.id }}">#{{ j.id }} — {{ j.car }} ({{ j.service }})</option>
+      {% endfor %}
+    </select>
+  </div>
 
-      <div>
-        <label>Stage</label>
-        <div class="stage-cards">
-          <label class="stage-card selected" onclick="selectStage(this)">
-            <input type="radio" name="stage" value="before" checked>Before
-          </label>
-          <label class="stage-card" onclick="selectStage(this)">
-            <input type="radio" name="stage" value="during">During
-          </label>
-          <label class="stage-card" onclick="selectStage(this)">
-            <input type="radio" name="stage" value="after">After
-          </label>
-        </div>
-      </div>
-
-      <div>
-        <label>Photos / Videos</label>
-        <div class="file-drop" onclick="document.getElementById('fileInput').click()">
-          <div>Click to choose files</div>
-          <div style="font-size:11px;opacity:.4;margin-top:6px;">Images and videos supported</div>
-          <input type="file" id="fileInput" name="files" multiple accept="image/*,video/*" onchange="showFiles(this)">
-        </div>
-        <div class="file-list" id="fileList"></div>
-      </div>
-
-      <div>
-        <label>Caption (optional)</label>
-        <textarea name="caption" rows="2" placeholder="Notes about these photos..."></textarea>
-      </div>
+  <div class="field">
+    <label class="lbl">Stage</label>
+    <div style="display:flex; gap:10px;">
+      <label class="stage-pick active" onclick="pickStage(this)" style="flex:1; text-align:center; padding:10px; border:1.5px solid var(--violet-600); background:var(--violet-50); border-radius:var(--r-sm); cursor:pointer; font-size:13px; font-weight:600; color:var(--violet-600); transition:all .15s;">
+        <input type="radio" name="stage" value="before" checked style="display:none;">Before
+      </label>
+      <label class="stage-pick" onclick="pickStage(this)" style="flex:1; text-align:center; padding:10px; border:1.5px solid var(--line); background:var(--white); border-radius:var(--r-sm); cursor:pointer; font-size:13px; font-weight:500; color:var(--gray-600); transition:all .15s;">
+        <input type="radio" name="stage" value="during" style="display:none;">During
+      </label>
+      <label class="stage-pick" onclick="pickStage(this)" style="flex:1; text-align:center; padding:10px; border:1.5px solid var(--line); background:var(--white); border-radius:var(--r-sm); cursor:pointer; font-size:13px; font-weight:500; color:var(--gray-600); transition:all .15s;">
+        <input type="radio" name="stage" value="after" style="display:none;">After
+      </label>
     </div>
+  </div>
 
-    <div class="actions">
-      <button type="submit" class="btn-submit">Upload</button>
-      <a href="/media" class="btn-cancel">Cancel</a>
+  <div class="field">
+    <label class="lbl">Photos / Videos</label>
+    <div onclick="document.getElementById('fileInput').click()"
+         style="border:2px dashed var(--gray-300); border-radius:var(--r); padding:36px 20px; text-align:center; cursor:pointer; transition:border-color .2s; color:var(--gray-500);"
+         onmouseover="this.style.borderColor='var(--violet-400)'" onmouseout="this.style.borderColor='var(--gray-300)'">
+      <div style="font-size:14px; font-weight:500;">Click to choose files</div>
+      <div style="font-size:12px; color:var(--gray-400); margin-top:6px;">Images and videos supported</div>
+      <input type="file" id="fileInput" name="files" multiple accept="image/*,video/*" onchange="showFiles(this)" style="display:none;">
     </div>
-  </form>
+    <div id="fileList" style="font-size:12px; color:var(--gray-500); margin-top:8px;"></div>
+  </div>
+
+  <div class="field">
+    <label class="lbl">Caption (optional)</label>
+    <textarea name="caption" rows="2" placeholder="Notes about these photos..."></textarea>
+  </div>
+
+  <div style="display:flex; gap:12px; align-items:center; margin-top:24px;">
+    <button type="submit" class="btn btn-primary">Upload</button>
+    <a href="/media" class="btn btn-ghost">Cancel</a>
+  </div>
+</form>
 {% endblock %}
 
 {% block scripts %}
 <script>
-function selectStage(el) {
-  document.querySelectorAll('.stage-card').forEach(c => c.classList.remove('selected'));
-  el.classList.add('selected');
+function pickStage(el) {
+  document.querySelectorAll('.stage-pick').forEach(c => {
+    c.style.borderColor = 'var(--line)';
+    c.style.background = 'var(--white)';
+    c.style.color = 'var(--gray-600)';
+    c.style.fontWeight = '500';
+    c.classList.remove('active');
+  });
+  el.style.borderColor = 'var(--violet-600)';
+  el.style.background = 'var(--violet-50)';
+  el.style.color = 'var(--violet-600)';
+  el.style.fontWeight = '600';
+  el.classList.add('active');
 }
 function showFiles(input) {
-  const list = document.getElementById('fileList');
-  list.textContent = input.files.length + ' file(s) selected: ' +
+  document.getElementById('fileList').textContent = input.files.length + ' file(s) selected: ' +
     Array.from(input.files).map(f => f.name).join(', ');
 }
 </script>

@@ -1,513 +1,220 @@
 {% extends "_base.html" %}
-{% block title %}Inventory & AI - Autofiera{% endblock %}
+{% block title %}Inventory — BayQ{% endblock %}
+
+{% block head %}{% endblock %}
+
+{% block page_head %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Inventory & Studio Stock</h1>
+    <p class="page-sub">Manage products, track usage, and monitor AI stock analytics.</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-secondary" onclick="runAIAnalytics()">Run AI Stock Analysis</button>
+    <button class="btn btn-secondary" onclick="startScanner()">Scan Barcode</button>
+    <button class="btn btn-primary" onclick="openAddItemModal()">+ Add New Item</button>
+  </div>
+</div>
+{% endblock %}
 
 {% block content %}
-<!-- Main Content Area -->
-    <div class="main-content">
-      <div class="container-fluid py-2">
-        <!-- Header -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-          <div>
-            <h2 class="h3 fw-bold mb-0 text-white">Inventory & Studio Stock</h2>
-            <p class="text-muted small mb-0">
-              Manage products, track usage, and monitor AI stock analytics.
-            </p>
-          </div>
-          <div class="d-flex gap-2">
-            <button class="btn btn-outline-primary" onclick="runAIAnalytics()">
-              🤖 Run AI Stock Analysis
-            </button>
-            <!-- NEW SCAN BUTTON -->
-            <button class="btn btn-outline-light" onclick="startScanner()">
-              📷 Scan Barcode
-            </button>
-            <!-- EXISTING ADD BUTTON -->
-            <button
-              class="btn btn-primary"
-              data-bs-toggle="modal"
-              data-bs-target="#addItemModal"
-            >
-              + Add New Item
-            </button>
-          </div>
-        </div>
+<!-- Metric Cards -->
+<div class="grid grid-3 stagger" style="margin-bottom:24px;">
+  <div class="card stat">
+    <div class="label">Total Catalog SKUs</div>
+    <div class="value">{{ total_items }}</div>
+  </div>
+  <div class="card stat">
+    <div class="label">Low Stock Warnings</div>
+    <div class="value" style="color:var(--red);">{{ low_stock_count }}</div>
+  </div>
+  <div class="card stat">
+    <div class="label">Total Stock Valuation</div>
+    <div class="value" style="color:var(--green);">{{ total_valuation_display }}</div>
+  </div>
+</div>
 
-        <!-- Metric Cards -->
-        <div class="row g-3 mb-4">
-          <div class="col-md-4">
-            <div class="card border-0 shadow-sm p-3">
-              <span class="text-muted small">Total Catalog SKUs</span>
-              <h3 class="fw-bold my-1">{{ total_items }}</h3>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="card border-0 shadow-sm p-3">
-              <span class="text-muted small">Low Stock Warnings</span>
-              <h3 class="fw-bold text-danger my-1">{{ low_stock_count }}</h3>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="card border-0 shadow-sm p-3">
-              <span class="text-muted small">Total Stock Valuation</span>
-              <h3 class="fw-bold text-success my-1">
-                {{ total_valuation_display }}
-              </h3>
-            </div>
-          </div>
-        </div>
+<!-- AI Analytics Widget (hidden until triggered) -->
+<div id="aiAnalyticsWidget" class="card" style="display:none; margin-bottom:20px;">
+  <div class="card-head">
+    <span class="card-title">AI Inventory Health & Reorder Advisor</span>
+    <span id="aiHealthBadge" class="badge status-pending">Analyzing...</span>
+  </div>
+  <div id="aiAnalyticsBody" style="padding:20px; font-size:13px; color:var(--gray-600);">
+    Analyzing stock levels...
+  </div>
+</div>
 
-        <!-- AI Analytics Widget (Hidden by default) -->
-        <div id="aiAnalyticsWidget" class="card shadow-sm mb-4 d-none">
-          <div
-            class="card-header d-flex justify-content-between align-items-center"
-          >
-            <h5 class="mb-0 fw-bold">
-              🤖 AI Inventory Health & Reorder Advisor
-            </h5>
-            <span
-              id="aiHealthBadge"
-              class="badge bg-dark text-white border border-light"
-              >Analyzing...</span
-            >
-          </div>
-          <div class="card-body" id="aiAnalyticsBody">
-            <div class="text-center py-3">
-              <div
-                class="spinner-border"
-                style="color: #c8a96e"
-                role="status"
-              ></div>
-              <p class="mt-2 text-muted">
-                Analyzing stock levels, job usage history, and upcoming
-                appointments...
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Inventory Table -->
-        <div class="card border-0 shadow-sm">
-          <div class="card-body p-0">
-            <div class="table-responsive">
-              <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                  <tr>
-                    <th>SKU</th>
-                    <th>Product Name</th>
-                    <th>Category</th>
-                    <th>Stock Level</th>
-                    <th>Unit Cost</th>
-                    <th>Supplier</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for item in items %}
-                  <tr
-                    class="{% if item.quantity <= item.reorder_level %}table-danger text-dark{% endif %}"
-                  >
-                    <td><code>{{ item.sku }}</code></td>
-                    <td class="fw-bold">{{ item.name }}</td>
-                    <td>
-                      <span class="badge bg-secondary"
-                        >{{ item.category }}</span
-                      >
-                    </td>
-                    <td>
-                      {{ item.quantity }} {{ item.unit }} {% if item.quantity <=
-                      item.reorder_level %}
-                      <span class="badge bg-danger ms-1">Low Stock</span>
-                      {% endif %}
-                    </td>
-                    <td>${{ "%.2f"|format(item.cost_per_unit / 100) }}</td>
-                    <td>{{ item.supplier or 'N/A' }}</td>
-                    <td>
-                      <button
-                        class="btn btn-sm btn-outline-light"
-                        onclick="openAdjustModal('{{ item.id }}', '{{ item.name }}')"
-                      >
-                        Adjust
-                      </button>
-                    </td>
-                  </tr>
-                  {% else %}
-                  <tr>
-                    <td colspan="7" class="text-center py-4 text-muted">
-                      No inventory items found. Add your first product above!
-                    </td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal: Add Item -->
-    <div
-      class="modal fade"
-      id="addItemModal"
-      tabindex="-1"
-      data-bs-theme="dark"
-    >
-      <div class="modal-dialog">
-        <form
-          action="{{ url_for('main.new_inventory_item') }}"
-          method="POST"
-          class="modal-content"
-        >
-          <div class="modal-header">
-            <h5 class="modal-title">Add Inventory Item</h5>
-            <button
-              type="button"
-              class="btn-close"
-              data-bs-dismiss="modal"
-            ></button>
-          </div>
-          <div class="modal-body">
-            <div class="mb-3">
-              <label class="form-label">SKU</label>
-              <input
-                type="text"
-                name="sku"
-                class="form-control"
-                placeholder="e.g. COAT-CER-50"
-                required
-              />
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Product Name</label>
-              <input
-                type="text"
-                name="name"
-                class="form-control"
-                placeholder="e.g. Ceramic Coating 50ml"
-                required
-              />
-            </div>
-            <div class="row">
-              <div class="col-6 mb-3">
-                <label class="form-label">Category</label>
-                <input
-                  type="text"
-                  name="category"
-                  class="form-control"
-                  placeholder="Coatings, Compounds..."
-                  required
-                />
-              </div>
-              <div class="col-6 mb-3">
-                <label class="form-label">Unit of Measure</label>
-                <input
-                  type="text"
-                  name="unit"
-                  class="form-control"
-                  placeholder="bottles, ml, pads"
-                  required
-                />
-              </div>
-            </div>
-            <div class="row">
-              <div class="col-6 mb-3">
-                <label class="form-label">Initial Quantity</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  name="quantity"
-                  class="form-control"
-                  value="10"
-                  required
-                />
-              </div>
-              <div class="col-6 mb-3">
-                <label class="form-label">Reorder Level Alert</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  name="reorder_level"
-                  class="form-control"
-                  value="3"
-                  required
-                />
-              </div>
-            </div>
-            <div class="row">
-              <div class="col-6 mb-3">
-                <label class="form-label">Unit Cost ($)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  name="cost_per_unit"
-                  class="form-control"
-                  placeholder="45.00"
-                />
-              </div>
-              <div class="col-6 mb-3">
-                <label class="form-label">Supplier Name</label>
-                <input
-                  type="text"
-                  name="supplier"
-                  class="form-control"
-                  placeholder="e.g. Gtechniq / CARPRO"
-                />
-              </div>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="submit" class="btn btn-primary">Save Product</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- Modal: Adjust Stock -->
-    <div
-      class="modal fade"
-      id="adjustItemModal"
-      tabindex="-1"
-      data-bs-theme="dark"
-    >
-      <div class="modal-dialog">
-        <form id="adjustForm" method="POST" class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">
-              Adjust Stock:
-              <span id="adjustItemName" class="text-primary"></span>
-            </h5>
-            <button
-              type="button"
-              class="btn-close"
-              data-bs-dismiss="modal"
-            ></button>
-          </div>
-          <div class="modal-body">
-            <div class="mb-3">
-              <label class="form-label"
-                >Change Quantity (+ to add, - to deduct)</label
-              >
-              <input
-                type="number"
-                step="0.1"
-                name="change_qty"
-                class="form-control"
-                placeholder="e.g., 5 or -1"
-                required
-              />
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Reason</label>
-              <input
-                type="text"
-                name="reason"
-                class="form-control"
-                placeholder="e.g., New shipment arrived, spilled bottle..."
-                required
-              />
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="submit" class="btn btn-primary">Update Stock</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- Modal: Barcode Scanner -->
-    <div
-      class="modal fade"
-      id="scannerModal"
-      tabindex="-1"
-      data-bs-theme="dark"
-    >
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Scan Barcode</h5>
-            <button
-              type="button"
-              class="btn-close"
-              data-bs-dismiss="modal"
-              onclick="stopScanner()"
-            ></button>
-          </div>
-          <div class="modal-body text-center">
-            <!-- The camera feed will render inside this div -->
-            <div
-              id="reader"
-              style="width: 100%; border-radius: 8px; overflow: hidden"
-            ></div>
-            <p class="text-muted small mt-3 mb-0">
-              Point your camera at the product barcode (UPC/EAN).
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- Load Bootstrap JS -->
-    
-
-    <!-- AI Analytics Logic -->
-    
-    <!-- Load Html5Qrcode Library -->
+<!-- Inventory Table -->
+<div class="table-wrap rise">
+  <div class="table-scroll">
+    <table class="data">
+      <thead>
+        <tr><th>SKU</th><th>Product Name</th><th>Category</th><th>Stock Level</th><th>Unit Cost</th><th>Supplier</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr {% if item.quantity <= item.reorder_level %}style="background:var(--red-bg);"{% endif %}>
+          <td><code style="background:var(--gray-100); padding:2px 6px; border-radius:4px; font-size:12px;">{{ item.sku }}</code></td>
+          <td class="strong">{{ item.name }}</td>
+          <td><span class="badge status-pending">{{ item.category }}</span></td>
+          <td>
+            {{ item.quantity }} {{ item.unit }}
+            {% if item.quantity <= item.reorder_level %}
+            <span class="badge" style="background:var(--red-bg); color:var(--red); margin-left:6px;">Low Stock</span>
+            {% endif %}
+          </td>
+          <td class="num">${{ "%.2f"|format(item.cost_per_unit / 100) }}</td>
+          <td class="dim">{{ item.supplier or 'N/A' }}</td>
+          <td><button class="btn btn-ghost btn-sm" onclick="openAdjustModal('{{ item.id }}', '{{ item.name }}')">Adjust</button></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" style="text-align:center; padding:40px; color:var(--gray-400);">No inventory items found. Add your first product above!</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 <script>
-      async function runAIAnalytics() {
-        const widget = document.getElementById("aiAnalyticsWidget");
-        const body = document.getElementById("aiAnalyticsBody");
-        const badge = document.getElementById("aiHealthBadge");
+/* ── Add Item Modal (uses window.modal from _base.html) ──────────────────── */
+function openAddItemModal() {
+  window.modal.open(`
+    <div class="modal-head"><span class="t">Add Inventory Item</span></div>
+    <form action="/inventory/new" method="POST" class="modal-body">
+      <div class="field">
+        <label class="lbl">SKU *</label>
+        <input type="text" name="sku" placeholder="e.g. COAT-CER-50" required>
+      </div>
+      <div class="field">
+        <label class="lbl">Product Name *</label>
+        <input type="text" name="name" placeholder="e.g. Ceramic Coating 50ml" required>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label class="lbl">Category *</label>
+          <input type="text" name="category" placeholder="Coatings, Compounds..." required>
+        </div>
+        <div class="field">
+          <label class="lbl">Unit of Measure *</label>
+          <input type="text" name="unit" placeholder="bottles, ml, pads" required>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label class="lbl">Initial Quantity *</label>
+          <input type="number" step="0.1" name="quantity" value="10" required>
+        </div>
+        <div class="field">
+          <label class="lbl">Reorder Level Alert *</label>
+          <input type="number" step="0.1" name="reorder_level" value="3" required>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label class="lbl">Unit Cost ($)</label>
+          <input type="number" step="0.01" name="cost_per_unit" placeholder="45.00">
+        </div>
+        <div class="field">
+          <label class="lbl">Supplier Name</label>
+          <input type="text" name="supplier" placeholder="e.g. Gtechniq / CARPRO">
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" onclick="window.modal.close()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Product</button>
+      </div>
+    </form>
+  `);
+}
 
-        widget.classList.remove("d-none");
-        body.innerHTML = `
-        <div class="text-center py-3">
-            <div class="spinner-border" style="color: #C8A96E;" role="status"></div>
-            <p class="mt-2 text-muted">Running local AI inventory analysis against jobs and bookings...</p>
-        </div>`;
+/* ── Adjust Stock Modal ──────────────────────────────────────────────────── */
+function openAdjustModal(id, name) {
+  window.modal.open(`
+    <div class="modal-head"><span class="t">Adjust Stock: ${name}</span></div>
+    <form action="/inventory/${id}/adjust" method="POST" class="modal-body">
+      <div class="field">
+        <label class="lbl">Change Quantity (+ to add, - to deduct) *</label>
+        <input type="number" step="0.1" name="change_qty" placeholder="e.g., 5 or -1" required>
+      </div>
+      <div class="field">
+        <label class="lbl">Reason *</label>
+        <input type="text" name="reason" placeholder="e.g., New shipment arrived, spilled bottle..." required>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" onclick="window.modal.close()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Update Stock</button>
+      </div>
+    </form>
+  `);
+}
 
-        try {
-          const res = await fetch("/inventory/api/ai-analytics", {
-            method: "POST",
-          });
-          const data = await res.json();
+/* ── AI Analytics ────────────────────────────────────────────────────────── */
+async function runAIAnalytics() {
+  const widget = document.getElementById("aiAnalyticsWidget");
+  const body   = document.getElementById("aiAnalyticsBody");
+  const badge  = document.getElementById("aiHealthBadge");
 
-          if (!res.ok || data.error) {
-            body.innerHTML = `<div class="alert alert-danger mb-0">${
-              data.error || "Failed to generate AI analytics."
-            }</div>`;
-            return;
-          }
+  widget.classList.remove("d-none");
+  body.innerHTML = '<div class="text-center py-3"><p class="text-muted">Running AI inventory analysis...</p></div>';
 
-          badge.innerText = `Health: ${data.health_score}`;
-          badge.className = data.health_score.includes("Critical")
-            ? "badge bg-danger"
-            : data.health_score.includes("Attention")
-            ? "badge bg-warning text-dark"
-            : "badge bg-success";
+  try {
+    const res  = await fetch("/inventory/api/ai-analytics", { method:"POST" });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      body.innerHTML = `<p style="color:var(--red)">${data.error || "Failed."}</p>`;
+      return;
+    }
+    badge.innerText = "Health: " + data.health_score;
+    let html = `<p style="font-weight:500">${data.summary}</p>`;
+    if (data.urgent_reorders && data.urgent_reorders.length) {
+      html += '<p style="font-weight:700; color:var(--red); margin-top:12px;">Recommended Reorders:</p><ul>';
+      data.urgent_reorders.forEach(i => { html += `<li><strong>${i.name}</strong> (${i.sku}) — Order +${i.suggested_order_qty}. ${i.reason}</li>`; });
+      html += '</ul>';
+    }
+    body.innerHTML = html;
+  } catch(e) {
+    body.innerHTML = '<p style="color:var(--red)">Connection error.</p>';
+  }
+}
 
-          let reorderHtml = "";
-          if (data.urgent_reorders && data.urgent_reorders.length > 0) {
-            reorderHtml = `<h6 class="fw-bold text-danger mt-3">🚨 Recommended Reorders:</h6><ul>`;
-            data.urgent_reorders.forEach((item) => {
-              reorderHtml += `<li><strong>${item.name}</strong> (SKU: ${item.sku}) — Order +${item.suggested_order_qty}. <em class="text-muted">${item.reason}</em></li>`;
-            });
-            reorderHtml += `</ul>`;
-          }
+/* ── Barcode Scanner ─────────────────────────────────────────────────────── */
+let html5QrcodeScanner = null;
 
-          let forecastHtml = "";
-          if (data.consumption_forecast) {
-            forecastHtml = `<h6 class="fw-bold text-info mt-3">📈 Usage Forecasts:</h6><ul>`;
-            data.consumption_forecast.forEach((f) => {
-              forecastHtml += `<li><strong>${f.category}</strong> [${f.trend} Trend]: <span class="text-muted">${f.insight}</span></li>`;
-            });
-            forecastHtml += `</ul>`;
-          }
+function startScanner() {
+  window.modal.open(`
+    <div class="modal-head"><span class="t">Scan Barcode</span></div>
+    <div class="modal-body" style="text-align:center;">
+      <div id="reader" style="width:100%; border-radius:8px; overflow:hidden;"></div>
+      <p style="font-size:12px; color:var(--gray-400); margin-top:12px;">Point your camera at the product barcode (UPC/EAN).</p>
+    </div>
+  `);
+  setTimeout(() => {
+    html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps:10, qrbox:{width:250,height:150} }, false);
+    html5QrcodeScanner.render(onScanSuccess, () => {});
+  }, 200);
+}
 
-          body.innerHTML = `
-                <p class="lead text-white mb-2">${data.summary}</p>
-                ${reorderHtml}
-                ${forecastHtml}
-            `;
-        } catch (e) {
-          body.innerHTML = `<div class="alert alert-danger mb-0">Connection error while calling local AI Analytics.</div>`;
-        }
-      }
-    </script>
-<script
-      src="https://unpkg.com/html5-qrcode"
-      type="text/javascript"
-    ></script>
-<script>
-      // --- Adjust Modal Logic ---
-      function openAdjustModal(id, name) {
-        document.getElementById("adjustItemName").innerText = name;
-        document.getElementById("adjustForm").action =
-          "/inventory/" + id + "/adjust";
-        new bootstrap.Modal(document.getElementById("adjustItemModal")).show();
-      }
-      let html5QrcodeScanner = null;
+async function onScanSuccess(decodedText) {
+  if (html5QrcodeScanner) html5QrcodeScanner.clear();
+  window.modal.close();
 
-      function startScanner() {
-        // Show the modal
-        new bootstrap.Modal(document.getElementById("scannerModal")).show();
-
-        // Initialize the scanner
-        html5QrcodeScanner = new Html5QrcodeScanner(
-          "reader",
-          { fps: 10, qrbox: { width: 250, height: 150 } },
-          /* verbose= */ false
-        );
-
-        html5QrcodeScanner.render(onScanSuccess, onScanFailure);
-      }
-
-      function stopScanner() {
-        if (html5QrcodeScanner) {
-          html5QrcodeScanner.clear().catch((error) => {
-            console.error("Failed to clear scanner.", error);
-          });
-        }
-      }
-
-      async function onScanSuccess(decodedText, decodedResult) {
-        // 1. Stop the scanner and hide the Bootstrap 5 modal
-        if (typeof html5QrcodeScanner !== "undefined") {
-          html5QrcodeScanner.clear();
-        }
-        let scannerModalEl = document.getElementById("scannerModal");
-        if (scannerModalEl) {
-          let modal = bootstrap.Modal.getInstance(scannerModalEl);
-          if (modal) modal.hide();
-        }
-
-        // 2. Prompt the technician for the quantity used immediately after scanning
-        let qty = prompt(
-          `Scanned SKU: ${decodedText}\n\nHow much did you use on the current job?`
-        );
-
-        // 3. Validate the input is a positive number
-        if (
-          qty !== null &&
-          qty.trim() !== "" &&
-          !isNaN(qty) &&
-          Number(qty) > 0
-        ) {
-          try {
-            // 4. Fire the data to our new raw SQLite backend route
-            const response = await fetch("/api/jobs/log-material", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                sku: decodedText,
-                quantity_used: parseFloat(qty),
-              }),
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-              // Success: Show confirmation and refresh to update the Jinja2 UI
-              alert(`✅ Success: ${data.message}`);
-              location.reload();
-            } else {
-              // Fails if they don't have an "In Progress" job, or product isn't found
-              alert(`❌ Error: ${data.error}`);
-            }
-          } catch (error) {
-            console.error("Error logging material:", error);
-            alert("Failed to connect to the server.");
-          }
-        } else if (qty !== null) {
-          alert("Log cancelled: Please enter a valid number.");
-        }
-      }
-
-      function onScanFailure(error) {
-        // Html5Qrcode throws errors constantly as it tries to focus/find codes.
-        // We safely ignore these background errors.
-      }
-    </script>
+  let qty = prompt(`Scanned SKU: ${decodedText}\n\nHow much did you use on the current job?`);
+  if (qty && !isNaN(qty) && Number(qty) > 0) {
+    try {
+      const resp = await fetch("/api/jobs/log-material", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ sku:decodedText, quantity_used:parseFloat(qty) })
+      });
+      const data = await resp.json();
+      if (resp.ok) { toast(data.message, 'ok'); location.reload(); }
+      else { toast(data.error, 'error'); }
+    } catch(e) { toast("Failed to connect.", "error"); }
+  }
+}
+</script>
 {% endblock %}
+

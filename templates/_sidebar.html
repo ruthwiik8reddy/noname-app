@@ -4,8 +4,10 @@
 <aside class="sidebar">
 
   <div class="sidebar-brand">
-    <img src="/static/logos/bayq_logo.png" alt="BayQ"
-         onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+    <img src="/static/logos/bayq_logo.png" alt="BayQ" class="logo-light"
+         onerror="this.style.display='none';document.querySelector('.wordmark').style.display='block'">
+    <img src="/static/logos/bayq_logo_dark.png" alt="BayQ" class="logo-dark"
+         onerror="this.style.display='none'">
     <span class="wordmark" style="display:none">Bay<span>Q</span></span>
   </div>
 
@@ -108,8 +110,64 @@
   </nav>
 
   <div class="sidebar-foot">
-    <div class="who">{{ current_name or owner or 'Signed in' }}</div>
-    <div class="role">{{ current_role_label or '' }}</div>
-    <a class="logout" href="/logout">Sign out →</a>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <div class="profile-avatar">
+        {% if profile_picture %}
+        <img src="{{ profile_picture }}" alt="{{ current_name }}">
+        {% else %}
+        {{ (current_name or owner or 'U')[0]|upper }}
+        {% endif %}
+      </div>
+      <div>
+        <div class="who">{{ current_name or owner or 'Signed in' }}</div>
+        <div class="role">{{ current_role_label or '' }}</div>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-top:10px;">
+      <a class="logout" href="/logout">Sign out →</a>
+      <button class="theme-btn" id="themeToggle" onclick="toggleDarkMode()" title="Toggle dark mode">
+        <svg id="iconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        <svg id="iconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
   </div>
 </aside>
+
+<script>
+// Scroll the active sidebar item into view on page load
+(function() {
+  const active = document.querySelector('.sidebar-nav a.active');
+  if (active) active.scrollIntoView({ block: 'center', behavior: 'instant' });
+})();
+
+// Dark mode toggle — persists in localStorage
+(function() {
+  const saved = localStorage.getItem('bayq-theme');
+  if (saved === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    updateIcon(true);
+  }
+})();
+
+function toggleDarkMode() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if (isDark) {
+    document.documentElement.removeAttribute('data-theme');
+    localStorage.setItem('bayq-theme', 'light');
+    updateIcon(false);
+  } else {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    localStorage.setItem('bayq-theme', 'dark');
+    updateIcon(true);
+  }
+}
+
+function updateIcon(dark) {
+  const sun  = document.getElementById('iconSun');
+  const moon = document.getElementById('iconMoon');
+  if (sun && moon) {
+    sun.style.display  = dark ? 'none' : 'block';
+    moon.style.display = dark ? 'block' : 'none';
+  }
+}
+</script>

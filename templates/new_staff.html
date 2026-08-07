@@ -1,54 +1,65 @@
 {% extends "_base.html" %}
 {% block title %}Add Staff — {{ studio }}{% endblock %}
 
+{% block page_head %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Add Staff Member</h1>
+    <p class="page-sub">Create a login for a new team member</p>
+  </div>
+  <div class="page-actions">
+    <a href="/staff" class="btn btn-ghost">← Back</a>
+  </div>
+</div>
+{% endblock %}
+
 {% block content %}
-<h1 class="page-title">Add Staff Member</h1>
-  <p class="page-sub">Create a login for a new team member</p>
+{% if errors %}
+<div class="card" style="border-left:3px solid var(--red); margin-bottom:20px; padding:14px 18px;">
+  {% for e in errors %}<p style="color:var(--red); font-size:13px; margin-bottom:4px;">{{ e }}</p>{% endfor %}
+</div>
+{% endif %}
 
-  {% if errors %}
-  <div class="errors">{% for e in errors %}<p>{{ e }}</p>{% endfor %}</div>
-  {% endif %}
+<form method="POST">
+  <div class="field">
+    <label class="lbl">Full Name *</label>
+    <input type="text" name="name" placeholder="Maria Lopez" required>
+  </div>
 
-  <form method="POST">
-    <div class="form-grid">
-      <div>
-        <label>Full Name</label>
-        <input type="text" name="name" placeholder="Maria Lopez" required>
-      </div>
-
-      <div>
-        <label>Role</label>
-        <div class="role-cards">
-          {% for r in roles %}
-          <label class="role-card" onclick="document.querySelectorAll('.role-card').forEach(c=>c.classList.remove('selected')); this.classList.add('selected')">
-            <input type="radio" name="role" value="{{ r }}" required>
-            <div class="role-name">{{ role_labels[r] }}</div>
-            <div class="role-desc">
-              {% if r == 'general_manager' %}Full access, can't manage staff
-              {% elif r == 'service_advisor' %}Bookings, estimates, payments
-              {% elif r == 'technician' %}Assigned jobs, media upload
-              {% elif r == 'photographer' %}Media gallery only
-              {% endif %}
-            </div>
-          </label>
-          {% endfor %}
+  <div class="field">
+    <label class="lbl">Role *</label>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+      {% for r in roles %}
+      <label class="card" style="padding:12px 14px; cursor:pointer; border:1.5px solid var(--line); transition:all .15s;"
+             onclick="document.querySelectorAll('.role-pick').forEach(c=>{c.style.borderColor='var(--line)';c.style.background=''}); this.style.borderColor='var(--violet-600)'; this.style.background='var(--violet-50)';"
+             class="role-pick">
+        <input type="radio" name="role" value="{{ r }}" required style="display:none;">
+        <div style="font-size:13px; font-weight:600; color:var(--gray-900);">{{ role_labels[r] }}</div>
+        <div style="font-size:11px; color:var(--gray-500); margin-top:3px;">
+          {% if r == 'general_manager' %}Full access, can't manage staff
+          {% elif r == 'service_advisor' %}Bookings, estimates, payments
+          {% elif r == 'technician' %}Assigned jobs, media upload
+          {% elif r == 'photographer' %}Media gallery only{% endif %}
         </div>
-      </div>
-
-      <div>
-        <label>Username</label>
-        <input type="text" name="username" placeholder="maria" required>
-      </div>
-
-      <div>
-        <label>Password</label>
-        <input type="password" name="password" placeholder="Min 8 chars, upper, lower, number, symbol" required>
-      </div>
+      </label>
+      {% endfor %}
     </div>
+  </div>
 
-    <div class="actions">
-      <button type="submit" class="btn-submit">Create Staff Login</button>
-      <a href="/staff" class="btn-cancel">Cancel</a>
+  <div class="form-row">
+    <div class="field">
+      <label class="lbl">Username *</label>
+      <input type="text" name="username" placeholder="maria" required>
     </div>
-  </form>
+    <div class="field">
+      <label class="lbl">Password *</label>
+      <input type="password" name="password" placeholder="Min 8 chars, upper+lower+number+symbol" required>
+    </div>
+  </div>
+
+  <div style="display:flex; gap:12px; align-items:center; margin-top:24px;">
+    <button type="submit" class="btn btn-primary">Create Staff Login</button>
+    <a href="/staff" class="btn btn-ghost">Cancel</a>
+  </div>
+</form>
 {% endblock %}

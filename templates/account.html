@@ -1,111 +1,119 @@
 {% extends "_base.html" %}
-{% block title %}Account — {{ studio }}{% endblock %}
+{% block title %}Settings — {{ studio }}{% endblock %}
+
+{% block page_head %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Settings</h1>
+    <p class="page-sub">Your profile and workspace configuration</p>
+  </div>
+</div>
+{% endblock %}
 
 {% block content %}
-<h1 class="page-title">Account</h1>
-  <p class="page-sub">Your profile and workspace settings</p>
+{% if flash_ok %}
+<div class="card" style="border-left:3px solid var(--green); margin-bottom:20px; padding:14px 18px;">
+  <p style="color:var(--green); font-size:13px;">{{ flash_ok }}</p>
+</div>
+{% endif %}
+{% if flash_err %}
+<div class="card" style="border-left:3px solid var(--red); margin-bottom:20px; padding:14px 18px;">
+  <p style="color:var(--red); font-size:13px;">{{ flash_err }}</p>
+</div>
+{% endif %}
 
-  {% if flash_ok %}<div class="flash-ok">{{ flash_ok }}</div>{% endif %}
-  {% if flash_err %}<div class="flash-err">{{ flash_err }}</div>{% endif %}
+<!-- Profile -->
+<div class="section-head"><span class="section-title">Profile</span></div>
+<div class="grid grid-4 stagger" style="margin-bottom:28px;">
+  <div class="card stat">
+    <div class="label">Name</div>
+    <div class="value" style="font-size:16px;">{{ current_name }}</div>
+  </div>
+  <div class="card stat">
+    <div class="label">Role</div>
+    <div class="value" style="font-size:16px; color:var(--violet-600);">{{ current_role_label }}</div>
+  </div>
+  <div class="card stat">
+    <div class="label">Studio</div>
+    <div class="value" style="font-size:16px;">{{ studio }}</div>
+  </div>
+  <div class="card stat">
+    <div class="label">Location</div>
+    <div class="value" style="font-size:16px;">{{ city }}</div>
+  </div>
+</div>
 
-  <!-- ── Profile ─────────────────────────────────────────────────────────── -->
-  <div class="section">
-    <div class="section-title">Profile</div>
-    <div class="info-grid">
-      <div class="info-card">
-        <div class="info-label">Name</div>
-        <div class="info-value">{{ current_name }}</div>
-      </div>
-      <div class="info-card">
-        <div class="info-label">Role</div>
-        <div class="info-value gold">{{ current_role_label }}</div>
-      </div>
-      <div class="info-card">
-        <div class="info-label">Studio</div>
-        <div class="info-value">{{ studio }}</div>
-      </div>
-      <div class="info-card">
-        <div class="info-label">Location</div>
-        <div class="info-value">{{ city }}</div>
-      </div>
+{% if is_admin %}
+
+<!-- Subscription -->
+<div class="section-head"><span class="section-title">Subscription</span></div>
+<div style="background:var(--violet-50); border:1.5px solid var(--violet-200); border-radius:var(--r-lg); padding:24px; margin-bottom:28px;">
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap;">
+    <div>
+      <div style="font-size:20px; font-weight:700; color:var(--violet-600);">{{ plan_name }}</div>
+      <p style="font-size:13px; color:var(--gray-500); margin-top:4px;">{{ plan_description }}</p>
+      <span class="badge status-completed" style="margin-top:8px;">{{ plan_status }}</span>
     </div>
+    {% if plan_name == "Free" %}
+    <a href="#" class="btn btn-primary">Upgrade Plan</a>
+    {% endif %}
   </div>
 
-  <!-- ── Admin-only sections ──────────────────────────────────────────────── -->
-  {% if is_admin %}
-
-  <div class="divider"></div>
-
-  <!-- Subscription plan -->
-  <div class="section">
-    <div class="section-title">Subscription</div>
-    <div class="plan-card">
-      <div class="plan-left">
-        <h3>{{ plan_name }}</h3>
-        <p>{{ plan_description }}</p>
-        <span class="plan-badge">{{ plan_status }}</span>
-      </div>
-      {% if plan_name == "Free" %}
-      <a href="#" class="btn-upgrade">Upgrade Plan</a>
-      {% endif %}
+  {% if plan_features %}
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:18px; padding-top:16px; border-top:1px solid var(--violet-200);">
+    {% for feature in plan_features %}
+    <div style="font-size:12px; color:var(--gray-600); padding-left:16px; position:relative; line-height:1.6;">
+      <span style="position:absolute; left:0; color:var(--violet-600); font-weight:700;">✓</span>
+      {{ feature }}
     </div>
-
-    <div class="plan-features">
-      {% for feature in plan_features %}
-      <div class="plan-feature">{{ feature }}</div>
-      {% endfor %}
-    </div>
-  </div>
-
-  <div class="divider"></div>
-
-  <!-- SMS / Twilio configuration -->
-  <div class="section">
-    <div class="section-title">SMS Configuration (Twilio)</div>
-    <p style="font-size:13px;color:rgba(255,255,255,0.4);margin-bottom:20px;line-height:1.6;">
-      Configure your Twilio credentials to send customers live tracking links and status updates via SMS.
-      These are stored securely in your environment config.
-    </p>
-
-    <form method="POST" action="/account/sms-config">
-      <div class="field">
-        <label>Twilio Account SID</label>
-        <input type="text" name="twilio_sid" value="{{ twilio_sid }}" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
-        <span class="form-hint">Found in your Twilio Console dashboard.</span>
-      </div>
-
-      <div class="field">
-        <label>Twilio Auth Token</label>
-        <input type="password" name="twilio_token" value="{{ twilio_token_masked }}"
-               placeholder="Enter to update"
-               autocomplete="new-password">
-        <span class="form-hint">Leave blank to keep existing token unchanged.</span>
-      </div>
-
-      <div class="field">
-        <label>Twilio From Number</label>
-        <input type="text" name="twilio_from" value="{{ twilio_from }}" placeholder="+1XXXXXXXXXX">
-        <span class="form-hint">The phone number SMS messages are sent from. Must be a verified Twilio number.</span>
-      </div>
-
-      <div class="field">
-        <label>App Base URL</label>
-        <input type="text" name="app_base_url" value="{{ app_base_url }}" placeholder="https://yourdomain.com">
-        <span class="form-hint">Used to build the tracking link in SMS messages. No trailing slash.</span>
-      </div>
-
-      <button type="submit" class="btn-save">Save SMS Settings</button>
-    </form>
-  </div>
-
-  {% else %}
-  <!-- Non-admin: show a simple note -->
-  <div class="divider"></div>
-  <div class="section">
-    <p style="font-size:13px;color:rgba(255,255,255,0.3);line-height:1.6;">
-      Subscription and billing settings are managed by your studio admin.<br>
-      Contact <strong>{{ owner }}</strong> to make changes.
-    </p>
+    {% endfor %}
   </div>
   {% endif %}
+</div>
+
+<!-- SMS Configuration -->
+<div class="section-head"><span class="section-title">SMS Configuration (Twilio)</span></div>
+<div style="background:var(--white); border:1.5px solid var(--gray-200); border-radius:var(--r-lg); padding:24px;">
+  <p style="font-size:13px; color:var(--gray-500); margin-bottom:20px; line-height:1.6;">
+    Configure your Twilio credentials to send customers live tracking links via SMS.
+  </p>
+
+  <form method="POST" action="/account/sms-config">
+    <div class="form-row">
+      <div class="field">
+        <label class="lbl">Twilio Account SID</label>
+        <input type="text" name="twilio_sid" value="{{ twilio_sid }}" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+        <p class="help">Found in your Twilio Console dashboard.</p>
+      </div>
+      <div class="field">
+        <label class="lbl">Twilio Auth Token</label>
+        <input type="password" name="twilio_token" value="{{ twilio_token_masked }}" placeholder="Enter to update" autocomplete="new-password">
+        <p class="help">Leave blank to keep existing token unchanged.</p>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="field">
+        <label class="lbl">Twilio From Number</label>
+        <input type="text" name="twilio_from" value="{{ twilio_from }}" placeholder="+1XXXXXXXXXX">
+        <p class="help">Must be a verified Twilio number.</p>
+      </div>
+      <div class="field">
+        <label class="lbl">App Base URL</label>
+        <input type="text" name="app_base_url" value="{{ app_base_url }}" placeholder="https://yourdomain.com">
+        <p class="help">Used in SMS tracking links. No trailing slash.</p>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="margin-top:8px;">Save SMS Settings</button>
+  </form>
+</div>
+
+{% else %}
+<!-- Non-admin -->
+<div style="margin-top:28px; padding:20px; color:var(--gray-500); font-size:13px; line-height:1.6;">
+  Subscription and billing settings are managed by your studio admin.<br>
+  Contact <strong style="color:var(--gray-700);">{{ owner }}</strong> to make changes.
+</div>
+{% endif %}
 {% endblock %}
