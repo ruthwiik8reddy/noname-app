@@ -6,6 +6,8 @@ import uuid
 import secrets
 from werkzeug.utils import secure_filename
 
+logger = logging.getLogger(__name__)
+
 from .db_manager import get_db
 # ── Orchestrator Pattern ──
 # Controllers never call an LLM directly. Every AI-backed feature is routed
@@ -74,6 +76,7 @@ def _reminder_db_path() -> str:
 
 @bp.route("/")
 def index():
+    logger.info("Entering index()")
     return redirect(url_for("main.dashboard") if session.get("logged_in") else url_for("main.login"))
 
 
@@ -86,23 +89,31 @@ def login():
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
+        logger.info(f"Login attempt for username: {username}")
 
         if not username or not password:
             error = "Please enter both username and password."
         else:
-            conn = get_db()
-            payload = attempt_login(username, password, conn)
-            if payload:
-                set_session(payload)
-                next_url = request.args.get("next") or url_for("main.dashboard")
-                return redirect(next_url)
-            error = "Invalid username or password."
+            try:
+                conn = get_db()
+                payload = attempt_login(username, password, conn)
+                if payload:
+                    set_session(payload)
+                    logger.info(f"Login successful: {username} (role={payload.get('role')})")
+                    next_url = request.args.get("next") or url_for("main.dashboard")
+                    return redirect(next_url)
+                logger.warning(f"Login failed: invalid credentials for {username}")
+                error = "Invalid username or password."
+            except Exception as e:
+                logger.error(f"Login error for {username}: {e}", exc_info=True)
+                error = "An error occurred. Please try again."
 
     return render_template("login.html", error=error)
 
 
 @bp.route("/logout")
 def logout():
+    logger.info("Entering logout()")
     clear_session()
     return redirect(url_for("main.login"))
 
@@ -112,6 +123,7 @@ def logout():
 @bp.route("/dashboard")
 @login_required
 def dashboard():
+    logger.info("Entering dashboard()")
     sid = session["studio_id"]
     conn = get_db()
     jobs = conn.execute(
@@ -146,6 +158,7 @@ def dashboard():
 @bp.route("/bookings")
 @staff_or_admin_required
 def bookings():
+    logger.info("Entering bookings()")
     sid = session["studio_id"]
     conn = get_db()
     all_bookings = conn.execute("""
@@ -166,6 +179,7 @@ def bookings():
 def new_booking():
     sid = session["studio_id"]
     conn = get_db()
+    logger.info(f"Entering new_booking(studio_id={sid}, method={request.method})")
 
     if request.method == "POST":
         f = request.form
@@ -242,6 +256,7 @@ def new_booking():
 @bp.route("/bookings/slots")
 @login_required
 def available_slots():
+    logger.info("Entering available_slots()")
     sid    = session["studio_id"]
     date   = request.args.get("date")
     bay_id = request.args.get("bay_id")
@@ -257,12 +272,18 @@ def available_slots():
 @bp.route("/bookings/<int:booking_id>/status", methods=["POST"])
 @staff_or_admin_required
 def update_booking_status(booking_id):
-    conn = get_db()
-    conn.execute(
-        "UPDATE bookings SET status=? WHERE id=? AND studio_id=?",
-        (request.form.get("status"), booking_id, session["studio_id"])
-    )
-    conn.commit()
+    logger.info(f"Entering update_booking_status(booking_id={booking_id})")
+    try:
+        conn = get_db()
+        conn.execute(
+            "UPDATE bookings SET status=? WHERE id=? AND studio_id=?",
+            (request.form.get("status"), booking_id, session["studio_id"])
+        )
+        conn.commit()
+        logger.info(f"Exiting update_booking_status — booking {booking_id} status updated")
+    except Exception as e:
+        logger.error(f"Error in update_booking_status(booking_id={booking_id}): {e}", exc_info=True)
+        return redirect(url_for("main.bookings"))
     return redirect(url_for("main.bookings"))
 
 
@@ -271,6 +292,7 @@ def update_booking_status(booking_id):
 @bp.route("/jobs")
 @staff_or_admin_required
 def jobs_list():
+    logger.info("Entering jobs_list()")
     sid  = session["studio_id"]
     role = current_role()
     conn = get_db()
@@ -296,25 +318,28 @@ def jobs_list():
 def update_job_status(job_id):
     sid = session["studio_id"]
     new_status = request.form.get("status")
-    conn = get_db()
-    conn.execute(
-        "UPDATE jobs SET status=? WHERE id=? AND studio_id=?",
-        (new_status, job_id, sid)
-    )
-    # Stamp completed_at when job is marked done
-    if new_status == "Completed":
+    logger.info(f"Entering update_job_status(job_id={job_id}, new_status={new_status})")
+    try:
+        conn = get_db()
         conn.execute(
-            "UPDATE jobs SET completed_at=date('now') WHERE id=? AND studio_id=?",
-            (job_id, sid)
+            "UPDATE jobs SET status=? WHERE id=? AND studio_id=?",
+            (new_status, job_id, sid)
         )
-    conn.commit()
+        if new_status == "Completed":
+            conn.execute(
+                "UPDATE jobs SET completed_at=date('now') WHERE id=? AND studio_id=?",
+                (job_id, sid)
+            )
+        conn.commit()
 
-    if new_status == "Completed":
-        svc = ReminderService(_reminder_db_path())
-        svc.schedule_for_completed_job(sid, job_id)
+        if new_status == "Completed":
+            svc = ReminderService(_reminder_db_path())
+            svc.schedule_for_completed_job(sid, job_id)
 
-    # ── SMS: notify customer of status change ─────────────────────────────
-    _send_job_status_sms(conn, sid, job_id, new_status)
+        _send_job_status_sms(conn, sid, job_id, new_status)
+        logger.info(f"Exiting update_job_status — job {job_id} → {new_status}")
+    except Exception as e:
+        logger.error(f"Error in update_job_status(job_id={job_id}): {e}", exc_info=True)
 
     redirect_to = request.form.get("redirect_to") or url_for("main.jobs_list")
     return redirect(redirect_to)
@@ -324,6 +349,7 @@ def update_job_status(job_id):
 @bp.route("/inventory")
 @staff_or_admin_required
 def inventory_dashboard():
+    logger.info("Entering inventory_dashboard()")
     sid = session["studio_id"]
     conn = get_db()
 
@@ -354,6 +380,7 @@ def inventory_dashboard():
 @bp.route("/inventory/new", methods=["POST"])
 @staff_or_admin_required
 def new_inventory_item():
+    logger.info("Entering new_inventory_item()")
     sid = session["studio_id"]
     conn = get_db()
     f = request.form
@@ -368,20 +395,25 @@ def new_inventory_item():
     cost_cents = int(cost_dollars * 100)
     supplier = f.get("supplier", "").strip()
 
-    if sku and name:
-        cur = conn.execute("""
-            INSERT INTO inventory_items 
-            (studio_id, sku, name, category, quantity, unit, reorder_level, cost_per_unit, supplier)
-            VALUES (?,?,?,?,?,?,?,?,?)
-        """, (sid, sku, name, category, qty, unit, reorder_level, cost_cents, supplier))
-        
-        item_id = cur.lastrowid
-        conn.execute("""
-            INSERT INTO inventory_logs (studio_id, item_id, change_qty, reason)
-            VALUES (?,?,?, 'Initial Stock Entry')
-        """, (sid, item_id, qty))
-        conn.commit()
-        _inventory_ai.invalidate(sid)  # stock changed — next forecast recomputes
+    try:
+        if sku and name:
+            cur = conn.execute("""
+                INSERT INTO inventory_items 
+                (studio_id, sku, name, category, quantity, unit, reorder_level, cost_per_unit, supplier)
+                VALUES (?,?,?,?,?,?,?,?,?)
+            """, (sid, sku, name, category, qty, unit, reorder_level, cost_cents, supplier))
+            
+            item_id = cur.lastrowid
+            conn.execute("""
+                INSERT INTO inventory_logs (studio_id, item_id, change_qty, reason)
+                VALUES (?,?,?, 'Initial Stock Entry')
+            """, (sid, item_id, qty))
+            conn.commit()
+            _inventory_ai.invalidate(sid)  # stock changed — next forecast recomputes
+        logger.info(f"Exiting new_inventory_item — added SKU={sku}")
+    except Exception as e:
+        logger.error(f"Error in new_inventory_item: {e}", exc_info=True)
+        return redirect(url_for("main.inventory_dashboard"))
 
     return redirect(url_for("main.inventory_dashboard"))
 
@@ -389,6 +421,7 @@ def new_inventory_item():
 @bp.route("/inventory/<int:item_id>/adjust", methods=["POST"])
 @staff_or_admin_required
 def adjust_inventory_stock(item_id):
+    logger.info(f"Entering adjust_inventory_stock(item_id={item_id})")
     sid = session["studio_id"]
     conn = get_db()
     f = request.form
@@ -396,22 +429,26 @@ def adjust_inventory_stock(item_id):
     change_qty = float(f.get("change_qty", 0))
     reason = f.get("reason", "Manual Adjustment").strip()
 
-    item = conn.execute(
-        "SELECT * FROM inventory_items WHERE id=? AND studio_id=?", (item_id, sid)
-    ).fetchone()
+    try:
+        item = conn.execute(
+            "SELECT * FROM inventory_items WHERE id=? AND studio_id=?", (item_id, sid)
+        ).fetchone()
 
-    if item and change_qty != 0:
-        new_qty = max(0.0, item["quantity"] + change_qty)
-        conn.execute(
-            "UPDATE inventory_items SET quantity=?, updated_at=datetime('now') WHERE id=?",
-            (new_qty, item_id)
-        )
-        conn.execute(
-            "INSERT INTO inventory_logs (studio_id, item_id, change_qty, reason) VALUES (?,?,?,?)",
-            (sid, item_id, change_qty, reason)
-        )
-        conn.commit()
-        _inventory_ai.invalidate(sid)  # stock changed — next forecast recomputes
+        if item and change_qty != 0:
+            new_qty = max(0.0, item["quantity"] + change_qty)
+            conn.execute(
+                "UPDATE inventory_items SET quantity=?, updated_at=datetime('now') WHERE id=?",
+                (new_qty, item_id)
+            )
+            conn.execute(
+                "INSERT INTO inventory_logs (studio_id, item_id, change_qty, reason) VALUES (?,?,?,?)",
+                (sid, item_id, change_qty, reason)
+            )
+            conn.commit()
+            _inventory_ai.invalidate(sid)  # stock changed — next forecast recomputes
+        logger.info(f"Exiting adjust_inventory_stock — item {item_id} adjusted by {change_qty}")
+    except Exception as e:
+        logger.error(f"Error in adjust_inventory_stock(item_id={item_id}): {e}", exc_info=True)
 
     return redirect(url_for("main.inventory_dashboard"))
 
@@ -430,10 +467,12 @@ def api_inventory_analytics():
     The response is remapped to the original key names so the existing
     inventory.html widget keeps working untouched.
     """
+    logger.info("Entering api_inventory_analytics()")
     sid = session["studio_id"]
     try:
         result = _inventory_ai.stock_forecast(sid, session.get("studio", ""))
     except OrchestratorError as exc:
+        logger.error(f"Error in api_inventory_analytics: {exc}", exc_info=True)
         return jsonify({"error": str(exc)}), 400
 
     briefing = result.get("briefing", {})
@@ -475,6 +514,7 @@ def api_lookup_sku():
     AJAX endpoint used by the barcode scanner.
     Checks if a scanned SKU already exists in the studio's inventory.
     """
+    logger.info("Entering api_lookup_sku()")
     sid = session["studio_id"]
     sku = request.args.get("sku", "").strip()
     
@@ -500,6 +540,7 @@ def api_lookup_sku():
 @bp.route("/estimates")
 @staff_or_admin_required
 def estimates():
+    logger.info("Entering estimates()")
     sid = session["studio_id"]
     conn = get_db()
     all_estimates = conn.execute(
@@ -514,6 +555,7 @@ def estimates():
 @staff_or_admin_required
 def ai_estimate():
     """Dedicated AI Estimate page — describe the job, AI suggests line items."""
+    logger.info("Entering ai_estimate()")
     return render_template("ai_estimate.html",
         **sidebar_context(), **auth_context(), active_page="estimates",
         prefill_vehicle=request.args.get("vehicle", ""),
@@ -524,80 +566,86 @@ def ai_estimate():
 @bp.route("/estimates/new", methods=["GET", "POST"])
 @staff_or_admin_required
 def new_estimate():
+    logger.info(f"Entering new_estimate(method={request.method})")
     sid = session["studio_id"]
     conn = get_db()
 
     if request.method == "POST":
-        f = request.form
+        try:
+            f = request.form
 
-        # Customer comes from the CRM lookup — pull from DB, not form fields
-        customer_id_raw = f.get("customer_id", "").strip()
-        customer_name  = ""
-        customer_email = ""
-        customer_phone = ""
-        vehicle        = f.get("vehicle", "").strip()
+            # Customer comes from the CRM lookup — pull from DB, not form fields
+            customer_id_raw = f.get("customer_id", "").strip()
+            customer_name  = ""
+            customer_email = ""
+            customer_phone = ""
+            vehicle        = f.get("vehicle", "").strip()
 
-        if customer_id_raw:
-            cust = conn.execute(
-                "SELECT name, email, phone FROM customers WHERE id=? AND studio_id=?",
-                (customer_id_raw, sid)
-            ).fetchone()
-            if cust:
-                customer_name  = cust["name"]
-                customer_email = cust["email"] or ""
-                customer_phone = cust["phone"] or ""
+            if customer_id_raw:
+                cust = conn.execute(
+                    "SELECT name, email, phone FROM customers WHERE id=? AND studio_id=?",
+                    (customer_id_raw, sid)
+                ).fetchone()
+                if cust:
+                    customer_name  = cust["name"]
+                    customer_email = cust["email"] or ""
+                    customer_phone = cust["phone"] or ""
 
-        names       = f.getlist("item_name")
-        descs       = f.getlist("item_desc")
-        quantities  = f.getlist("item_qty")
-        unit_prices = f.getlist("item_price")
-        items = []
-        for i in range(len(names)):
-            if names[i].strip() and unit_prices[i].strip():
-                qty   = int(quantities[i] or 1)
-                price = int(float(unit_prices[i] or 0) * 100)
-                items.append({
-                    "name":  names[i].strip(),
-                    "desc":  descs[i].strip() if i < len(descs) else "",
-                    "qty":   qty,
-                    "price": price,
-                    "total": qty * price,
-                })
+            names       = f.getlist("item_name")
+            descs       = f.getlist("item_desc")
+            quantities  = f.getlist("item_qty")
+            unit_prices = f.getlist("item_price")
+            items = []
+            for i in range(len(names)):
+                if names[i].strip() and unit_prices[i].strip():
+                    qty   = int(quantities[i] or 1)
+                    price = int(float(unit_prices[i] or 0) * 100)
+                    items.append({
+                        "name":  names[i].strip(),
+                        "desc":  descs[i].strip() if i < len(descs) else "",
+                        "qty":   qty,
+                        "price": price,
+                        "total": qty * price,
+                    })
 
-        subtotal   = sum(it["total"] for it in items)
-        tax_pct    = float(f.get("tax_percent", 8.5))
-        tax_amount = int(subtotal * tax_pct / 100)
-        total      = subtotal + tax_amount
+            subtotal   = sum(it["total"] for it in items)
+            tax_pct    = float(f.get("tax_percent", 8.5))
+            tax_amount = int(subtotal * tax_pct / 100)
+            total      = subtotal + tax_amount
 
-        # Build human-readable services summary for booking autofill
-        services_summary = ", ".join(
-            it["name"] + (f" ×{it['qty']}" if it["qty"] > 1 else "")
-            for it in items
-        )
+            # Build human-readable services summary for booking autofill
+            services_summary = ", ".join(
+                it["name"] + (f" ×{it['qty']}" if it["qty"] > 1 else "")
+                for it in items
+            )
 
-        cur = conn.execute("""
-            INSERT INTO estimates
-            (studio_id, customer_name, customer_email, customer_phone,
-             vehicle, status, subtotal, tax_percent, tax_amount, total,
-             notes, internal_notes, customer_id, services_summary)
-            VALUES (?,?,?,?,?,'Draft',?,?,?,?,?,?,?,?)
-        """, (sid, customer_name, customer_email, customer_phone, vehicle,
-              subtotal, tax_pct, tax_amount, total,
-              f.get("notes", "").strip(),
-              f.get("internal_notes", "").strip(),
-              customer_id_raw or None,
-              services_summary))
-        estimate_id = cur.lastrowid
+            cur = conn.execute("""
+                INSERT INTO estimates
+                (studio_id, customer_name, customer_email, customer_phone,
+                 vehicle, status, subtotal, tax_percent, tax_amount, total,
+                 notes, internal_notes, customer_id, services_summary)
+                VALUES (?,?,?,?,?,'Draft',?,?,?,?,?,?,?,?)
+            """, (sid, customer_name, customer_email, customer_phone, vehicle,
+                  subtotal, tax_pct, tax_amount, total,
+                  f.get("notes", "").strip(),
+                  f.get("internal_notes", "").strip(),
+                  customer_id_raw or None,
+                  services_summary))
+            estimate_id = cur.lastrowid
 
-        for it in items:
-            conn.execute("""
-                INSERT INTO estimate_items
-                (estimate_id, name, description, quantity, unit_price, total)
-                VALUES (?,?,?,?,?,?)
-            """, (estimate_id, it["name"], it["desc"], it["qty"], it["price"], it["total"]))
+            for it in items:
+                conn.execute("""
+                    INSERT INTO estimate_items
+                    (estimate_id, name, description, quantity, unit_price, total)
+                    VALUES (?,?,?,?,?,?)
+                """, (estimate_id, it["name"], it["desc"], it["qty"], it["price"], it["total"]))
 
-        conn.commit()
-        return redirect(url_for("main.estimate_detail", estimate_id=estimate_id))
+            conn.commit()
+            logger.info(f"Exiting new_estimate — created estimate {estimate_id}")
+            return redirect(url_for("main.estimate_detail", estimate_id=estimate_id))
+        except Exception as e:
+            logger.error(f"Error in new_estimate: {e}", exc_info=True)
+            return redirect(url_for("main.estimates"))
 
     services = conn.execute("SELECT * FROM services WHERE studio_id=?", (sid,)).fetchall()
     return render_template("new_estimate.html",
@@ -611,6 +659,7 @@ def api_generate_estimate():
     API endpoint for the frontend to hit when a user clicks 'Generate AI Estimate'.
     Expects a JSON payload: {"notes": "Customer wants a ceramic coating on their Tesla..."}
     """
+    logger.info("Entering api_generate_estimate()")
     sid = session["studio_id"]
     data = request.get_json(silent=True) or {}
     notes = data.get("notes", "").strip()
@@ -635,6 +684,7 @@ def estimate_lookup(estimate_id):
     AJAX — returns estimate data for the new_booking form autofill.
     Returns customer name, phone, vehicle, services summary, and total.
     """
+    logger.info(f"Entering estimate_lookup(estimate_id={estimate_id})")
     sid  = session["studio_id"]
     conn = get_db()
     est  = conn.execute(
@@ -659,6 +709,7 @@ def estimate_lookup(estimate_id):
 @bp.route("/estimates/<int:estimate_id>")
 @staff_or_admin_required
 def estimate_detail(estimate_id):
+    logger.info(f"Entering estimate_detail(estimate_id={estimate_id})")
     sid  = session["studio_id"]
     role = current_role()
     conn = get_db()
@@ -683,18 +734,24 @@ def estimate_detail(estimate_id):
 @bp.route("/estimates/<int:estimate_id>/send", methods=["POST"])
 @staff_or_admin_required
 def send_estimate(estimate_id):
-    conn = get_db()
-    conn.execute(
-        "UPDATE estimates SET status='Sent' WHERE id=? AND studio_id=?",
-        (estimate_id, session["studio_id"])
-    )
-    conn.commit()
+    logger.info(f"Entering send_estimate(estimate_id={estimate_id})")
+    try:
+        conn = get_db()
+        conn.execute(
+            "UPDATE estimates SET status='Sent' WHERE id=? AND studio_id=?",
+            (estimate_id, session["studio_id"])
+        )
+        conn.commit()
+        logger.info(f"Exiting send_estimate — estimate {estimate_id} marked as Sent")
+    except Exception as e:
+        logger.error(f"Error in send_estimate(estimate_id={estimate_id}): {e}", exc_info=True)
     return redirect(url_for("main.estimate_detail", estimate_id=estimate_id))
 
 
 @bp.route("/estimates/<int:estimate_id>/approve", methods=["GET", "POST"])
 def approve_estimate(estimate_id):
     """Public route — no login required. Customer opens this link."""
+    logger.info(f"Entering approve_estimate(estimate_id={estimate_id}, method={request.method})")
     conn = get_db()
     est = conn.execute(
         "SELECT e.*, s.name as studio_name FROM estimates e "
@@ -705,22 +762,27 @@ def approve_estimate(estimate_id):
         return "Estimate not found", 404
 
     if request.method == "POST":
-        action    = request.form.get("action")
-        signature = request.form.get("signature", "").strip()
-        if action == "approve" and signature:
-            conn.execute(
-                "UPDATE estimates SET status='Approved', signature=?, "
-                "approved_at=datetime('now') WHERE id=?",
-                (signature, estimate_id)
-            )
-        elif action == "revision":
-            conn.execute(
-                "UPDATE estimates SET status='Revision Requested' WHERE id=?",
-                (estimate_id,)
-            )
-        conn.commit()
-        return render_template("approve_success.html",
-            est=est, revision=(action == "revision"))
+        try:
+            action    = request.form.get("action")
+            signature = request.form.get("signature", "").strip()
+            if action == "approve" and signature:
+                conn.execute(
+                    "UPDATE estimates SET status='Approved', signature=?, "
+                    "approved_at=datetime('now') WHERE id=?",
+                    (signature, estimate_id)
+                )
+            elif action == "revision":
+                conn.execute(
+                    "UPDATE estimates SET status='Revision Requested' WHERE id=?",
+                    (estimate_id,)
+                )
+            conn.commit()
+            logger.info(f"Exiting approve_estimate — estimate {estimate_id} action={action}")
+            return render_template("approve_success.html",
+                est=est, revision=(action == "revision"))
+        except Exception as e:
+            logger.error(f"Error in approve_estimate(estimate_id={estimate_id}): {e}", exc_info=True)
+            return "An error occurred", 500
 
     items = conn.execute(
         "SELECT * FROM estimate_items WHERE estimate_id=?", (estimate_id,)
@@ -754,6 +816,7 @@ def get_notes_for(conn, studio_id, role, job_id=None, estimate_id=None, booking_
 @bp.route("/notes/add", methods=["POST"])
 @staff_or_admin_required
 def add_note():
+    logger.info("Entering add_note()")
     sid  = session["studio_id"]
     role = current_role()
     f    = request.form
@@ -768,16 +831,20 @@ def add_note():
     if note_type == "internal" and not can(role, "view_internal_notes"):
         note_type = "client"
 
-    if content:
-        conn = get_db()
-        conn.execute("""
-            INSERT INTO notes
-            (studio_id, job_id, estimate_id, booking_id, note_type,
-             content, author_name, author_role)
-            VALUES (?,?,?,?,?,?,?,?)
-        """, (sid, job_id, estimate_id, booking_id, note_type,
-              content, session.get("name", ""), role))
-        conn.commit()
+    try:
+        if content:
+            conn = get_db()
+            conn.execute("""
+                INSERT INTO notes
+                (studio_id, job_id, estimate_id, booking_id, note_type,
+                 content, author_name, author_role)
+                VALUES (?,?,?,?,?,?,?,?)
+            """, (sid, job_id, estimate_id, booking_id, note_type,
+                  content, session.get("name", ""), role))
+            conn.commit()
+            logger.info(f"Exiting add_note — note added for job={job_id}, estimate={estimate_id}")
+    except Exception as e:
+        logger.error(f"Error in add_note: {e}", exc_info=True)
 
     return redirect(redirect_to)
 
@@ -785,21 +852,26 @@ def add_note():
 @bp.route("/notes/<int:note_id>/delete", methods=["POST"])
 @staff_or_admin_required
 def delete_note(note_id):
+    logger.info(f"Entering delete_note(note_id={note_id})")
     sid  = session["studio_id"]
     role = current_role()
     conn = get_db()
 
-    note = conn.execute(
-        "SELECT * FROM notes WHERE id=? AND studio_id=?", (note_id, sid)
-    ).fetchone()
-    if not note:
-        return "Not found", 404
+    try:
+        note = conn.execute(
+            "SELECT * FROM notes WHERE id=? AND studio_id=?", (note_id, sid)
+        ).fetchone()
+        if not note:
+            return "Not found", 404
 
-    if not can(role, "delete_anything") and note["author_name"] != session.get("name", ""):
-        abort(403)
+        if not can(role, "delete_anything") and note["author_name"] != session.get("name", ""):
+            abort(403)
 
-    conn.execute("DELETE FROM notes WHERE id=?", (note_id,))
-    conn.commit()
+        conn.execute("DELETE FROM notes WHERE id=?", (note_id,))
+        conn.commit()
+        logger.info(f"Exiting delete_note — note {note_id} deleted")
+    except Exception as e:
+        logger.error(f"Error in delete_note(note_id={note_id}): {e}", exc_info=True)
     redirect_to = request.form.get("redirect_to") or url_for("main.dashboard")
     return redirect(redirect_to)
 
@@ -809,6 +881,7 @@ def delete_note(note_id):
 @bp.route("/staff")
 @admin_required
 def staff_list():
+    logger.info("Entering staff_list()")
     sid = session["studio_id"]
     conn = get_db()
     all_staff = conn.execute(
@@ -823,39 +896,45 @@ def staff_list():
 @bp.route("/staff/new", methods=["GET", "POST"])
 @admin_required
 def new_staff():
+    logger.info(f"Entering new_staff(method={request.method})")
     sid = session["studio_id"]
     conn = get_db()
     errors = []
 
     if request.method == "POST":
-        f = request.form
-        name     = f.get("name", "").strip()
-        role     = f.get("role", "").strip()
-        username = f.get("username", "").strip().lower()
-        password = f.get("password", "").strip()
+        try:
+            f = request.form
+            name     = f.get("name", "").strip()
+            role     = f.get("role", "").strip()
+            username = f.get("username", "").strip().lower()
+            password = f.get("password", "").strip()
 
-        if not name: errors.append("Name is required.")
-        if role not in STAFF_ROLES: errors.append("Please select a valid role.")
-        if not username: errors.append("Username is required.")
+            if not name: errors.append("Name is required.")
+            if role not in STAFF_ROLES: errors.append("Please select a valid role.")
+            if not username: errors.append("Username is required.")
 
-        pw_errors = validate_password_strength(password) if password else ["Password is required."]
-        errors.extend(pw_errors)
+            pw_errors = validate_password_strength(password) if password else ["Password is required."]
+            errors.extend(pw_errors)
 
-        if username:
-            existing = conn.execute(
-                "SELECT id FROM staff WHERE LOWER(username)=?", (username,)
-            ).fetchone()
-            if existing:
-                errors.append("That username is already taken.")
+            if username:
+                existing = conn.execute(
+                    "SELECT id FROM staff WHERE LOWER(username)=?", (username,)
+                ).fetchone()
+                if existing:
+                    errors.append("That username is already taken.")
 
-        if not errors:
-            conn.execute(
-                "INSERT INTO staff (studio_id, name, role, username, password) "
-                "VALUES (?,?,?,?,?)",
-                (sid, name, role, username, hash_password(password))
-            )
-            conn.commit()
-            return redirect(url_for("main.staff_list"))
+            if not errors:
+                conn.execute(
+                    "INSERT INTO staff (studio_id, name, role, username, password) "
+                    "VALUES (?,?,?,?,?)",
+                    (sid, name, role, username, hash_password(password))
+                )
+                conn.commit()
+                logger.info(f"Exiting new_staff — created staff {username}")
+                return redirect(url_for("main.staff_list"))
+        except Exception as e:
+            logger.error(f"Error in new_staff: {e}", exc_info=True)
+            errors.append("An unexpected error occurred.")
 
     return render_template("new_staff.html",
         **sidebar_context(), **auth_context(), active_page="staff",
@@ -866,12 +945,17 @@ def new_staff():
 @bp.route("/staff/<int:staff_id>/deactivate", methods=["POST"])
 @admin_required
 def deactivate_staff(staff_id):
-    conn = get_db()
-    conn.execute(
-        "DELETE FROM staff WHERE id=? AND studio_id=?",
-        (staff_id, session["studio_id"])
-    )
-    conn.commit()
+    logger.info(f"Entering deactivate_staff(staff_id={staff_id})")
+    try:
+        conn = get_db()
+        conn.execute(
+            "DELETE FROM staff WHERE id=? AND studio_id=?",
+            (staff_id, session["studio_id"])
+        )
+        conn.commit()
+        logger.info(f"Exiting deactivate_staff — staff {staff_id} removed")
+    except Exception as e:
+        logger.error(f"Error in deactivate_staff(staff_id={staff_id}): {e}", exc_info=True)
     return redirect(url_for("main.staff_list"))
 
 
@@ -895,6 +979,7 @@ def _studio_upload_dir(studio_id: int) -> str:
 @bp.route("/media")
 @login_required
 def media_gallery():
+    logger.info("Entering media_gallery()")
     sid  = session["studio_id"]
     role = current_role()
     conn = get_db()
@@ -932,6 +1017,7 @@ def media_gallery():
 @bp.route("/media/upload", methods=["GET", "POST"])
 @login_required
 def upload_media():
+    logger.info(f"Entering upload_media(method={request.method})")
     sid  = session["studio_id"]
     role = current_role()
 
@@ -942,38 +1028,43 @@ def upload_media():
     errors = []
 
     if request.method == "POST":
-        job_id  = request.form.get("job_id") or None
-        stage   = request.form.get("stage", "before")
-        caption = request.form.get("caption", "").strip()
-        files   = request.files.getlist("files")
+        try:
+            job_id  = request.form.get("job_id") or None
+            stage   = request.form.get("stage", "before")
+            caption = request.form.get("caption", "").strip()
+            files   = request.files.getlist("files")
 
-        if stage not in ("before", "during", "after"):
-            errors.append("Invalid stage selected.")
-        if not files or all(f.filename == "" for f in files):
-            errors.append("Please select at least one file.")
+            if stage not in ("before", "during", "after"):
+                errors.append("Invalid stage selected.")
+            if not files or all(f.filename == "" for f in files):
+                errors.append("Please select at least one file.")
 
-        if not errors:
-            upload_dir = _studio_upload_dir(sid)
-            saved = 0
-            for f in files:
-                if f and f.filename and _allowed_media_file(f.filename):
-                    ext = f.filename.rsplit(".", 1)[1].lower()
-                    unique_name = f"{uuid.uuid4().hex}.{ext}"
-                    f.save(os.path.join(upload_dir, unique_name))
-                    conn.execute("""
-                        INSERT INTO media
-                        (studio_id, job_id, stage, filename, original_name,
-                         media_type, caption, uploaded_by)
-                        VALUES (?,?,?,?,?,?,?,?)
-                    """, (sid, job_id, stage, unique_name,
-                          secure_filename(f.filename),
-                          _media_type(f.filename), caption,
-                          session.get("name", "")))
-                    saved += 1
-            conn.commit()
-            if saved:
-                return redirect(url_for("main.media_gallery"))
-            errors.append("No valid files were uploaded (allowed: images and videos).")
+            if not errors:
+                upload_dir = _studio_upload_dir(sid)
+                saved = 0
+                for f in files:
+                    if f and f.filename and _allowed_media_file(f.filename):
+                        ext = f.filename.rsplit(".", 1)[1].lower()
+                        unique_name = f"{uuid.uuid4().hex}.{ext}"
+                        f.save(os.path.join(upload_dir, unique_name))
+                        conn.execute("""
+                            INSERT INTO media
+                            (studio_id, job_id, stage, filename, original_name,
+                             media_type, caption, uploaded_by)
+                            VALUES (?,?,?,?,?,?,?,?)
+                        """, (sid, job_id, stage, unique_name,
+                              secure_filename(f.filename),
+                              _media_type(f.filename), caption,
+                              session.get("name", "")))
+                        saved += 1
+                conn.commit()
+                if saved:
+                    logger.info(f"Exiting upload_media — uploaded {saved} file(s)")
+                    return redirect(url_for("main.media_gallery"))
+                errors.append("No valid files were uploaded (allowed: images and videos).")
+        except Exception as e:
+            logger.error(f"Error in upload_media: {e}", exc_info=True)
+            errors.append("An unexpected error occurred during upload.")
 
     jobs = conn.execute(
         "SELECT id, car, service FROM jobs WHERE studio_id=? ORDER BY id DESC", (sid,)
@@ -988,30 +1079,36 @@ def upload_media():
 @bp.route("/media/<int:media_id>/delete", methods=["POST"])
 @login_required
 def delete_media(media_id):
+    logger.info(f"Entering delete_media(media_id={media_id})")
     sid  = session["studio_id"]
     role = current_role()
     conn = get_db()
 
-    item = conn.execute(
-        "SELECT * FROM media WHERE id=? AND studio_id=?", (media_id, sid)
-    ).fetchone()
-    if not item:
-        return "Not found", 404
+    try:
+        item = conn.execute(
+            "SELECT * FROM media WHERE id=? AND studio_id=?", (media_id, sid)
+        ).fetchone()
+        if not item:
+            return "Not found", 404
 
-    if not can(role, "delete_anything") and item["uploaded_by"] != session.get("name", ""):
-        abort(403)
+        if not can(role, "delete_anything") and item["uploaded_by"] != session.get("name", ""):
+            abort(403)
 
-    filepath = os.path.join(_studio_upload_dir(sid), item["filename"])
-    if os.path.exists(filepath):
-        os.remove(filepath)
+        filepath = os.path.join(_studio_upload_dir(sid), item["filename"])
+        if os.path.exists(filepath):
+            os.remove(filepath)
 
-    conn.execute("DELETE FROM media WHERE id=?", (media_id,))
-    conn.commit()
+        conn.execute("DELETE FROM media WHERE id=?", (media_id,))
+        conn.commit()
+        logger.info(f"Exiting delete_media — media {media_id} deleted")
+    except Exception as e:
+        logger.error(f"Error in delete_media(media_id={media_id}): {e}", exc_info=True)
     return redirect(url_for("main.media_gallery"))
 
 
 @bp.route("/uploads/studio_<int:studio_id>/<filename>")
 def serve_upload(studio_id, filename):
+    logger.info(f"Entering serve_upload(studio_id={studio_id}, filename={filename})")
     # Allow logged-in staff, or requests that carry a valid tracking token
     # (customer DVI pages load media this way — no staff session needed).
     if not session.get("logged_in"):
@@ -1034,6 +1131,7 @@ def serve_upload(studio_id, filename):
 @bp.route("/customers")
 @staff_or_admin_required
 def customers_list():
+    logger.info("Entering customers_list()")
     sid = session["studio_id"]
     conn = get_db()
     search = request.args.get("q", "").strip()
@@ -1064,44 +1162,50 @@ def customers_list():
 @bp.route("/customers/new", methods=["GET", "POST"])
 @staff_or_admin_required
 def new_customer():
+    logger.info(f"Entering new_customer(method={request.method})")
     sid = session["studio_id"]
     conn = get_db()
     errors = []
 
     if request.method == "POST":
-        f = request.form
-        name  = f.get("name", "").strip()
-        phone = f.get("phone", "").strip()
-        email = f.get("email", "").strip()
-        notes = f.get("notes", "").strip()
-        vehicle_make_model = f.get("vehicle_make_model", "").strip()
+        try:
+            f = request.form
+            name  = f.get("name", "").strip()
+            phone = f.get("phone", "").strip()
+            email = f.get("email", "").strip()
+            notes = f.get("notes", "").strip()
+            vehicle_make_model = f.get("vehicle_make_model", "").strip()
 
-        if not name:  errors.append("Customer name is required.")
-        if not phone: errors.append("Phone number is required.")
+            if not name:  errors.append("Customer name is required.")
+            if not phone: errors.append("Phone number is required.")
 
-        if not errors:
-            existing = conn.execute(
-                "SELECT id FROM customers WHERE studio_id=? AND phone=?", (sid, phone)
-            ).fetchone()
-            if existing:
-                customer_id = existing["id"]
-            else:
-                username = f"cust_{sid}_{phone}".replace(" ", "")
-                cur = conn.execute(
-                    "INSERT INTO customers (studio_id, name, phone, email, notes, username, password) "
-                    "VALUES (?,?,?,?,?,?,?)",
-                    (sid, name, phone, email, notes, username, "")
-                )
-                customer_id = cur.lastrowid
+            if not errors:
+                existing = conn.execute(
+                    "SELECT id FROM customers WHERE studio_id=? AND phone=?", (sid, phone)
+                ).fetchone()
+                if existing:
+                    customer_id = existing["id"]
+                else:
+                    username = f"cust_{sid}_{phone}".replace(" ", "")
+                    cur = conn.execute(
+                        "INSERT INTO customers (studio_id, name, phone, email, notes, username, password) "
+                        "VALUES (?,?,?,?,?,?,?)",
+                        (sid, name, phone, email, notes, username, "")
+                    )
+                    customer_id = cur.lastrowid
 
-            if vehicle_make_model:
-                conn.execute(
-                    "INSERT INTO vehicles (studio_id, customer_id, make_model) VALUES (?,?,?)",
-                    (sid, customer_id, vehicle_make_model)
-                )
+                if vehicle_make_model:
+                    conn.execute(
+                        "INSERT INTO vehicles (studio_id, customer_id, make_model) VALUES (?,?,?)",
+                        (sid, customer_id, vehicle_make_model)
+                    )
 
-            conn.commit()
-            return redirect(url_for("main.customer_detail", customer_id=customer_id))
+                conn.commit()
+                logger.info(f"Exiting new_customer — created/found customer {customer_id}")
+                return redirect(url_for("main.customer_detail", customer_id=customer_id))
+        except Exception as e:
+            logger.error(f"Error in new_customer: {e}", exc_info=True)
+            errors.append("An unexpected error occurred.")
 
     return render_template("new_customer.html",
         **sidebar_context(), **auth_context(), active_page="customers", errors=errors
@@ -1111,6 +1215,7 @@ def new_customer():
 @bp.route("/customers/<int:customer_id>")
 @staff_or_admin_required
 def customer_detail(customer_id):
+    logger.info(f"Entering customer_detail(customer_id={customer_id})")
     sid = session["studio_id"]
     conn = get_db()
 
@@ -1144,19 +1249,24 @@ def customer_detail(customer_id):
 @bp.route("/customers/<int:customer_id>/vehicles/new", methods=["POST"])
 @staff_or_admin_required
 def add_vehicle(customer_id):
+    logger.info(f"Entering add_vehicle(customer_id={customer_id})")
     sid = session["studio_id"]
     conn = get_db()
     f = request.form
 
-    make_model = f.get("make_model", "").strip()
-    if make_model:
-        conn.execute("""
-            INSERT INTO vehicles (studio_id, customer_id, make_model, year, color, license_plate, vin)
-            VALUES (?,?,?,?,?,?,?)
-        """, (sid, customer_id, make_model,
-              f.get("year", "").strip(), f.get("color", "").strip(),
-              f.get("license_plate", "").strip(), f.get("vin", "").strip()))
-        conn.commit()
+    try:
+        make_model = f.get("make_model", "").strip()
+        if make_model:
+            conn.execute("""
+                INSERT INTO vehicles (studio_id, customer_id, make_model, year, color, license_plate, vin)
+                VALUES (?,?,?,?,?,?,?)
+            """, (sid, customer_id, make_model,
+                  f.get("year", "").strip(), f.get("color", "").strip(),
+                  f.get("license_plate", "").strip(), f.get("vin", "").strip()))
+            conn.commit()
+            logger.info(f"Exiting add_vehicle — added vehicle for customer {customer_id}")
+    except Exception as e:
+        logger.error(f"Error in add_vehicle(customer_id={customer_id}): {e}", exc_info=True)
 
     return redirect(url_for("main.customer_detail", customer_id=customer_id))
 
@@ -1169,6 +1279,7 @@ def customer_lookup(customer_id):
     Used by new_booking and new_estimate forms to auto-fill fields
     when staff enters a customer ID.
     """
+    logger.info(f"Entering customer_lookup(customer_id={customer_id})")
     sid  = session["studio_id"]
     conn = get_db()
 
@@ -1202,6 +1313,7 @@ def customer_lookup(customer_id):
 @bp.route("/reminders")
 @staff_or_admin_required
 def reminders_list():
+    logger.info("Entering reminders_list()")
     sid = session["studio_id"]
     svc = ReminderService(_reminder_db_path())
     due      = svc.get_due_reminders(sid)
@@ -1215,24 +1327,30 @@ def reminders_list():
 @bp.route("/reminders/new", methods=["GET", "POST"])
 @staff_or_admin_required
 def new_reminder():
+    logger.info(f"Entering new_reminder(method={request.method})")
     sid = session["studio_id"]
     conn = get_db()
     errors = []
 
     if request.method == "POST":
-        f = request.form
-        customer_id = f.get("customer_id", "").strip()
-        message     = f.get("message", "").strip()
-        due_date    = f.get("due_date", "").strip()
+        try:
+            f = request.form
+            customer_id = f.get("customer_id", "").strip()
+            message     = f.get("message", "").strip()
+            due_date    = f.get("due_date", "").strip()
 
-        if not customer_id: errors.append("Please select a customer.")
-        if not message:     errors.append("Please enter a message.")
-        if not due_date:    errors.append("Please select a due date.")
+            if not customer_id: errors.append("Please select a customer.")
+            if not message:     errors.append("Please enter a message.")
+            if not due_date:    errors.append("Please select a due date.")
 
-        if not errors:
-            svc = ReminderService(_reminder_db_path())
-            svc.create_manual_reminder(sid, int(customer_id), message, due_date)
-            return redirect(url_for("main.reminders_list"))
+            if not errors:
+                svc = ReminderService(_reminder_db_path())
+                svc.create_manual_reminder(sid, int(customer_id), message, due_date)
+                logger.info(f"Exiting new_reminder — created reminder for customer {customer_id}")
+                return redirect(url_for("main.reminders_list"))
+        except Exception as e:
+            logger.error(f"Error in new_reminder: {e}", exc_info=True)
+            errors.append("An unexpected error occurred.")
 
     customers = conn.execute(
         "SELECT id, name, phone FROM customers WHERE studio_id=? ORDER BY name", (sid,)
@@ -1246,18 +1364,28 @@ def new_reminder():
 @bp.route("/reminders/<int:reminder_id>/send", methods=["POST"])
 @staff_or_admin_required
 def send_reminder(reminder_id):
-    sid = session["studio_id"]
-    svc = ReminderService(_reminder_db_path())
-    svc.mark_sent(sid, reminder_id)
+    logger.info(f"Entering send_reminder(reminder_id={reminder_id})")
+    try:
+        sid = session["studio_id"]
+        svc = ReminderService(_reminder_db_path())
+        svc.mark_sent(sid, reminder_id)
+        logger.info(f"Exiting send_reminder — reminder {reminder_id} marked sent")
+    except Exception as e:
+        logger.error(f"Error in send_reminder(reminder_id={reminder_id}): {e}", exc_info=True)
     return redirect(url_for("main.reminders_list"))
 
 
 @bp.route("/reminders/<int:reminder_id>/dismiss", methods=["POST"])
 @staff_or_admin_required
 def dismiss_reminder(reminder_id):
-    sid = session["studio_id"]
-    svc = ReminderService(_reminder_db_path())
-    svc.dismiss(sid, reminder_id)
+    logger.info(f"Entering dismiss_reminder(reminder_id={reminder_id})")
+    try:
+        sid = session["studio_id"]
+        svc = ReminderService(_reminder_db_path())
+        svc.dismiss(sid, reminder_id)
+        logger.info(f"Exiting dismiss_reminder — reminder {reminder_id} dismissed")
+    except Exception as e:
+        logger.error(f"Error in dismiss_reminder(reminder_id={reminder_id}): {e}", exc_info=True)
     return redirect(url_for("main.reminders_list"))
 
 
@@ -1294,6 +1422,7 @@ def _get_studio_plan(studio_id: int) -> dict:
 @bp.route("/account")
 @login_required
 def account():
+    logger.info("Entering account()")
     sid  = session["studio_id"]
     role = current_role()
     conn = get_db()
@@ -1331,6 +1460,7 @@ def account_sms_config():
     Save Twilio credentials to the .env file.
     Only admins can reach this route.
     """
+    logger.info("Entering account_sms_config()")
     f = request.form
 
     twilio_sid   = f.get("twilio_sid", "").strip()
@@ -1389,6 +1519,7 @@ def account_sms_config():
         return redirect(url_for("main.account") + "?saved=SMS+settings+saved+successfully")
 
     except Exception as exc:
+        logger.error(f"Error in account_sms_config: {exc}", exc_info=True)
         return redirect(url_for("main.account") + f"?error=Save+failed:+{exc}")
 
 
@@ -1456,39 +1587,42 @@ def _send_job_status_sms(conn, studio_id: int, job_id: int, new_status: str) -> 
 @bp.route("/jobs/<int:job_id>/send-tracking-sms", methods=["POST"])
 @staff_or_admin_required
 def send_job_tracking_sms(job_id):
-    """
-    Staff-triggered: send (or re-send) the tracking link to the customer via SMS.
-    Accessible from the job board or tracking page.
-    """
+    """Staff-triggered: send (or re-send) the tracking link to the customer via SMS."""
+    logger.info(f"Entering send_job_tracking_sms(job_id={job_id})")
     sid  = session["studio_id"]
     conn = get_db()
 
-    job = conn.execute(
-        "SELECT * FROM jobs WHERE id=? AND studio_id=?", (job_id, sid)
-    ).fetchone()
-    if not job:
-        return "Job not found", 404
+    try:
+        job = conn.execute(
+            "SELECT * FROM jobs WHERE id=? AND studio_id=?", (job_id, sid)
+        ).fetchone()
+        if not job:
+            logger.warning(f"Job {job_id} not found for studio {sid}")
+            return "Job not found", 404
 
-    # Ensure a token exists (safe to call on legacy jobs)
-    token = job["tracking_token"] if "tracking_token" in job.keys() else None
-    if not token:
-        token = _generate_tracking_token()
-        conn.execute(
-            "UPDATE jobs SET tracking_token=? WHERE id=?", (token, job_id)
+        # Ensure a token exists (safe to call on legacy jobs)
+        token = job["tracking_token"] if "tracking_token" in job.keys() else None
+        if not token:
+            token = _generate_tracking_token()
+            conn.execute(
+                "UPDATE jobs SET tracking_token=? WHERE id=?", (token, job_id)
         )
         conn.commit()
 
-    customer = _get_job_customer(conn, job)
-    if not customer or not customer.get("phone"):
-        # Redirect back with a notice — no phone on file
-        redirect_to = request.form.get("redirect_to") or url_for("main.jobs_list")
-        return redirect(redirect_to)
+        customer = _get_job_customer(conn, job)
+        if not customer or not customer.get("phone"):
+            logger.info(f"No phone on file for job {job_id} — skipping SMS")
+            redirect_to = request.form.get("redirect_to") or url_for("main.jobs_list")
+            return redirect(redirect_to)
 
-    send_tracking_sms(
-        phone=customer["phone"],
-        job_token=token,
-        customer_name=customer.get("name", ""),
-    )
+        send_tracking_sms(
+            phone=customer["phone"],
+            job_token=token,
+            customer_name=customer.get("name", ""),
+        )
+        logger.info(f"Exiting send_job_tracking_sms — SMS sent for job {job_id}")
+    except Exception as e:
+        logger.error(f"Error in send_job_tracking_sms(job_id={job_id}): {e}", exc_info=True)
 
     redirect_to = request.form.get("redirect_to") or url_for("main.jobs_list")
     return redirect(redirect_to)
@@ -1503,6 +1637,7 @@ def customer_warranty_pdf(token):
     Generates and streams the warranty card as a PDF using xhtml2pdf.
     Only works when the job is Completed. Returns 403 otherwise.
     """
+    logger.info(f"Entering customer_warranty_pdf(token={token[:8]}...)")
     from io import BytesIO
     from xhtml2pdf import pisa
     from flask import Response
@@ -1590,6 +1725,7 @@ def customer_tracking_status(token):
     Polled by the customer page every 10 s to get live status updates
     without reloading the page or sending a new SMS link.
     """
+    logger.info(f"Entering customer_tracking_status(token={token[:8]}...)")
     conn = get_db()
     job = conn.execute(
         "SELECT status FROM jobs WHERE tracking_token = ?", (token,)
@@ -1625,6 +1761,7 @@ def customer_tracking(token):
     Customer opens this link from their SMS.
     Shows live progress for their single job.
     """
+    logger.info(f"Entering customer_tracking(token={token[:8]}...)")
     conn = get_db()
     job = conn.execute(
         "SELECT j.*, s.name as studio_name, s.city as studio_city, s.logo as studio_logo "
@@ -1657,6 +1794,7 @@ def customer_dvi(token):
     Public route — no login required.
     Shows DVI (Digital Vehicle Inspection) details for the job.
     """
+    logger.info(f"Entering customer_dvi(token={token[:8]}...)")
     conn = get_db()
     job = conn.execute(
         "SELECT j.*, s.name as studio_name, s.city as studio_city, s.logo as studio_logo "
@@ -1756,6 +1894,7 @@ def _serialize_panels(conn, studio_id, job_id):
 @bp.route("/jobs/<int:job_id>/inspection", methods=["GET", "POST"])
 @staff_or_admin_required
 def job_inspection(job_id):
+    logger.info(f"Entering job_inspection(job_id={job_id}, method={request.method})")
     sid  = session["studio_id"]
     conn = get_db()
     job = conn.execute(
@@ -1765,27 +1904,31 @@ def job_inspection(job_id):
         return "Job not found", 404
 
     if request.method == "POST":
-        f = request.form
-        for key in CANONICAL_PANELS:
-            health    = f.get(f"{key}_health", "").strip()
-            treatment = f.get(f"{key}_treatment", "").strip()
-            notes     = f.get(f"{key}_notes", "").strip()
-            before    = f.get(f"{key}_before", "").strip()
-            after     = f.get(f"{key}_after", "").strip()
-            if health or treatment or notes or before or after:
-                conn.execute("""
-                    INSERT INTO panel_inspections
-                    (studio_id, job_id, panel_key, health_rating, treatment, notes, before_photo, after_photo, updated_at)
-                    VALUES (?,?,?,?,?,?,?,?, datetime('now'))
-                    ON CONFLICT(job_id, panel_key) DO UPDATE SET
-                        health_rating=excluded.health_rating,
-                        treatment=excluded.treatment,
-                        notes=excluded.notes,
-                        before_photo=excluded.before_photo,
-                        after_photo=excluded.after_photo,
-                        updated_at=datetime('now')
-                """, (sid, job_id, key, health or "good", treatment, notes, before, after))
-        conn.commit()
+        try:
+            f = request.form
+            for key in CANONICAL_PANELS:
+                health    = f.get(f"{key}_health", "").strip()
+                treatment = f.get(f"{key}_treatment", "").strip()
+                notes     = f.get(f"{key}_notes", "").strip()
+                before    = f.get(f"{key}_before", "").strip()
+                after     = f.get(f"{key}_after", "").strip()
+                if health or treatment or notes or before or after:
+                    conn.execute("""
+                        INSERT INTO panel_inspections
+                        (studio_id, job_id, panel_key, health_rating, treatment, notes, before_photo, after_photo, updated_at)
+                        VALUES (?,?,?,?,?,?,?,?, datetime('now'))
+                        ON CONFLICT(job_id, panel_key) DO UPDATE SET
+                            health_rating=excluded.health_rating,
+                            treatment=excluded.treatment,
+                            notes=excluded.notes,
+                            before_photo=excluded.before_photo,
+                            after_photo=excluded.after_photo,
+                            updated_at=datetime('now')
+                    """, (sid, job_id, key, health or "good", treatment, notes, before, after))
+            conn.commit()
+            logger.info(f"Exiting job_inspection — saved panels for job {job_id}")
+        except Exception as e:
+            logger.error(f"Error in job_inspection(job_id={job_id}): {e}", exc_info=True)
         return redirect(url_for("main.job_inspection", job_id=job_id))
 
     panels = _get_panel_inspections(conn, job_id)
@@ -1804,6 +1947,7 @@ def job_inspection(job_id):
 @bp.route("/jobs/<int:job_id>/panels.json")
 @staff_or_admin_required
 def job_panels_json(job_id):
+    logger.info(f"Entering job_panels_json(job_id={job_id})")
     sid  = session["studio_id"]
     conn = get_db()
     job = conn.execute(
@@ -1816,6 +1960,7 @@ def job_panels_json(job_id):
 
 @bp.route("/customer/tracking/<token>/panels.json")
 def customer_panels_json(token):
+    logger.info(f"Entering customer_panels_json(token={token[:8]}...)")
     conn = get_db()
     job = conn.execute(
         "SELECT id, studio_id FROM jobs WHERE tracking_token=?", (token,)
@@ -1839,6 +1984,7 @@ from . import product_routes  # noqa: E402,F401
 @bp.route('/api/jobs/log-material', methods=['POST'])
 @staff_or_admin_required
 def log_job_material():
+    logger.info("Entering log_job_material()")
     sid = session.get("studio_id")
     username = session.get("username")
     
@@ -1849,63 +1995,68 @@ def log_job_material():
     if not sku or qty_used <= 0:
         return jsonify({"error": "Valid SKU and quantity are required."}), 400
 
-    conn = get_db()
-    
-    # 1. Map the session username to the technician's full name 
-    # (Because your 'jobs' table tracks techs by their full name, e.g., 'Maria Lopez')
-    staff_member = conn.execute(
-        "SELECT name FROM staff WHERE username=? AND studio_id=?", 
-        (username, sid)
-    ).fetchone()
-    
-    if not staff_member:
-        return jsonify({"error": "Technician profile not found."}), 403
+    try:
+        conn = get_db()
         
-    tech_name = staff_member["name"]
+        # 1. Map the session username to the technician's full name 
+        # (Because your 'jobs' table tracks techs by their full name, e.g., 'Maria Lopez')
+        staff_member = conn.execute(
+            "SELECT name FROM staff WHERE username=? AND studio_id=?", 
+            (username, sid)
+        ).fetchone()
+        
+        if not staff_member:
+            return jsonify({"error": "Technician profile not found."}), 403
+            
+        tech_name = staff_member["name"]
 
-    # 2. Locate the Technician's Active Job
-    active_job = conn.execute(
-        "SELECT id FROM jobs WHERE studio_id=? AND technician=? AND status='In Progress'",
-        (sid, tech_name)
-    ).fetchone()
+        # 2. Locate the Technician's Active Job
+        active_job = conn.execute(
+            "SELECT id FROM jobs WHERE studio_id=? AND technician=? AND status='In Progress'",
+            (sid, tech_name)
+        ).fetchone()
 
-    if not active_job:
-        return jsonify({"error": "You do not have an active 'In Progress' job."}), 400
+        if not active_job:
+            return jsonify({"error": "You do not have an active 'In Progress' job."}), 400
 
-    # 3. Locate the Inventory Item
-    item = conn.execute(
-        "SELECT id, name, unit, quantity FROM inventory_items WHERE studio_id=? AND sku=?",
-        (sid, sku)
-    ).fetchone()
-    
-    if not item:
-        return jsonify({"error": "Product not found in inventory."}), 404
+        # 3. Locate the Inventory Item
+        item = conn.execute(
+            "SELECT id, name, unit, quantity FROM inventory_items WHERE studio_id=? AND sku=?",
+            (sid, sku)
+        ).fetchone()
+        
+        if not item:
+            return jsonify({"error": "Product not found in inventory."}), 404
 
-    # 4. Deduct Stock & Record Usage
-    new_qty = item["quantity"] - qty_used
-    
-    # Subtract from global inventory
-    conn.execute(
-        "UPDATE inventory_items SET quantity=?, updated_at=datetime('now') WHERE id=? AND studio_id=?",
-        (new_qty, item["id"], sid)
-    )
-    
-    # Link material to the job
-    conn.execute(
-        "INSERT INTO job_materials (studio_id, job_id, inventory_id, technician, quantity_used) VALUES (?, ?, ?, ?, ?)",
-        (sid, active_job["id"], item["id"], tech_name, qty_used)
-    )
-    
-    # Keep your inventory_logs accurate!
-    conn.execute(
-        "INSERT INTO inventory_logs (studio_id, item_id, change_qty, reason) VALUES (?, ?, ?, ?)",
-        (sid, item["id"], -qty_used, f"Point of use scan for Job #{active_job['id']}")
-    )
-    
-    conn.commit()
+        # 4. Deduct Stock & Record Usage
+        new_qty = item["quantity"] - qty_used
+        
+        # Subtract from global inventory
+        conn.execute(
+            "UPDATE inventory_items SET quantity=?, updated_at=datetime('now') WHERE id=? AND studio_id=?",
+            (new_qty, item["id"], sid)
+        )
+        
+        # Link material to the job
+        conn.execute(
+            "INSERT INTO job_materials (studio_id, job_id, inventory_id, technician, quantity_used) VALUES (?, ?, ?, ?, ?)",
+            (sid, active_job["id"], item["id"], tech_name, qty_used)
+        )
+        
+        # Keep your inventory_logs accurate!
+        conn.execute(
+            "INSERT INTO inventory_logs (studio_id, item_id, change_qty, reason) VALUES (?, ?, ?, ?)",
+            (sid, item["id"], -qty_used, f"Point of use scan for Job #{active_job['id']}")
+        )
+        
+        conn.commit()
+        logger.info(f"Exiting log_job_material — logged {qty_used} of SKU={sku} to job {active_job['id']}")
 
-    return jsonify({
-        "success": True, 
-        "message": f"Logged {qty_used} {item['unit']} of {item['name']} to Job #{active_job['id']}",
-        "new_stock_level": new_qty
-    })
+        return jsonify({
+            "success": True, 
+            "message": f"Logged {qty_used} {item['unit']} of {item['name']} to Job #{active_job['id']}",
+            "new_stock_level": new_qty
+        })
+    except Exception as e:
+        logger.error(f"Error in log_job_material: {e}", exc_info=True)
+        return jsonify({"error": "An unexpected error occurred."}), 500

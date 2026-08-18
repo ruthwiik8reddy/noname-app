@@ -13,8 +13,11 @@ Estimator (staff):
   /ai-estimate/save             POST → saves the quote as an Estimate
 """
 import json
+import logging
 import re
 from flask import request, redirect, url_for, session, jsonify, render_template
+
+logger = logging.getLogger(__name__)
 
 from .db_manager import get_db
 from .auth import staff_or_admin_required, admin_required
@@ -43,6 +46,7 @@ FALLBACK_SQFT = {
 @bp.route("/products")
 @admin_required
 def products_list():
+    logger.info("Entering products_list()")
     sid = session["studio_id"]; conn = get_db()
     rows = conn.execute(
         "SELECT * FROM products WHERE studio_id=? AND active=1 ORDER BY category, name",
@@ -56,25 +60,31 @@ def products_list():
 @bp.route("/products/new", methods=["GET", "POST"])
 @admin_required
 def product_new():
+    logger.info(f"Entering product_new(method={request.method})")
     sid = session["studio_id"]; conn = get_db()
     if request.method == "POST":
-        f = request.form
-        conn.execute("""
-            INSERT INTO products
-              (studio_id, name, category, brand, cost_per_sqft, labour_per_sqft,
-               markup_percent, warranty_years, notes)
-            VALUES (?,?,?,?,?,?,?,?,?)
-        """, (sid,
-              f.get("name", "").strip(),
-              f.get("category", "PPF"),
-              f.get("brand", "").strip(),
-              float(f.get("cost_per_sqft") or 0),
-              float(f.get("labour_per_sqft") or 0),
-              float(f.get("markup_percent") or 0),
-              int(f.get("warranty_years") or 0),
-              f.get("notes", "").strip()))
-        conn.commit()
-        return redirect(url_for("main.products_list"))
+        try:
+            f = request.form
+            conn.execute("""
+                INSERT INTO products
+                  (studio_id, name, category, brand, cost_per_sqft, labour_per_sqft,
+                   markup_percent, warranty_years, notes)
+                VALUES (?,?,?,?,?,?,?,?,?)
+            """, (sid,
+                  f.get("name", "").strip(),
+                  f.get("category", "PPF"),
+                  f.get("brand", "").strip(),
+                  float(f.get("cost_per_sqft") or 0),
+                  float(f.get("labour_per_sqft") or 0),
+                  float(f.get("markup_percent") or 0),
+                  int(f.get("warranty_years") or 0),
+                  f.get("notes", "").strip()))
+            conn.commit()
+            logger.info("Exiting product_new — product created")
+            return redirect(url_for("main.products_list"))
+        except Exception as e:
+            logger.error(f"Error in product_new: {e}", exc_info=True)
+            return redirect(url_for("main.products_list"))
     return render_template("product_form.html",
         **_c.sidebar_context(), **_c.auth_context(),
         product=None, categories=CATEGORIES, active_page="products")
@@ -83,22 +93,28 @@ def product_new():
 @bp.route("/products/<int:pid>/edit", methods=["GET", "POST"])
 @admin_required
 def product_edit(pid):
+    logger.info(f"Entering product_edit(pid={pid}, method={request.method})")
     sid = session["studio_id"]; conn = get_db()
     p = conn.execute("SELECT * FROM products WHERE id=? AND studio_id=?", (pid, sid)).fetchone()
     if not p:
         return "Product not found", 404
     if request.method == "POST":
-        f = request.form
-        conn.execute("""
-            UPDATE products SET name=?, category=?, brand=?, cost_per_sqft=?,
-                labour_per_sqft=?, markup_percent=?, warranty_years=?, notes=?
-            WHERE id=? AND studio_id=?
-        """, (f.get("name","").strip(), f.get("category","PPF"), f.get("brand","").strip(),
-              float(f.get("cost_per_sqft") or 0), float(f.get("labour_per_sqft") or 0),
-              float(f.get("markup_percent") or 0), int(f.get("warranty_years") or 0),
-              f.get("notes","").strip(), pid, sid))
-        conn.commit()
-        return redirect(url_for("main.products_list"))
+        try:
+            f = request.form
+            conn.execute("""
+                UPDATE products SET name=?, category=?, brand=?, cost_per_sqft=?,
+                    labour_per_sqft=?, markup_percent=?, warranty_years=?, notes=?
+                WHERE id=? AND studio_id=?
+            """, (f.get("name","").strip(), f.get("category","PPF"), f.get("brand","").strip(),
+                  float(f.get("cost_per_sqft") or 0), float(f.get("labour_per_sqft") or 0),
+                  float(f.get("markup_percent") or 0), int(f.get("warranty_years") or 0),
+                  f.get("notes","").strip(), pid, sid))
+            conn.commit()
+            logger.info(f"Exiting product_edit — product {pid} updated")
+            return redirect(url_for("main.products_list"))
+        except Exception as e:
+            logger.error(f"Error in product_edit(pid={pid}): {e}", exc_info=True)
+            return redirect(url_for("main.products_list"))
     return render_template("product_form.html",
         **_c.sidebar_context(), **_c.auth_context(),
         product=p, categories=CATEGORIES, active_page="products")
@@ -107,9 +123,14 @@ def product_edit(pid):
 @bp.route("/products/<int:pid>/delete", methods=["POST"])
 @admin_required
 def product_delete(pid):
-    sid = session["studio_id"]; conn = get_db()
-    conn.execute("UPDATE products SET active=0 WHERE id=? AND studio_id=?", (pid, sid))
-    conn.commit()
+    logger.info(f"Entering product_delete(pid={pid})")
+    try:
+        sid = session["studio_id"]; conn = get_db()
+        conn.execute("UPDATE products SET active=0 WHERE id=? AND studio_id=?", (pid, sid))
+        conn.commit()
+        logger.info(f"Exiting product_delete — product {pid} soft-deleted")
+    except Exception as e:
+        logger.error(f"Error in product_delete(pid={pid}): {e}", exc_info=True)
     return redirect(url_for("main.products_list"))
 
 
@@ -167,6 +188,7 @@ def _price(product, sqft, coverage=1.0):
 @bp.route("/ai-estimate")
 @staff_or_admin_required
 def ai_estimate_page():
+    logger.info("Entering ai_estimate_page()")
     sid = session["studio_id"]; conn = get_db()
     products = conn.execute(
         "SELECT * FROM products WHERE studio_id=? AND active=1 ORDER BY category, name", (sid,)
@@ -179,6 +201,7 @@ def ai_estimate_page():
 @bp.route("/ai-estimate/sqft", methods=["POST"])
 @staff_or_admin_required
 def ai_estimate_sqft():
+    logger.info("Entering ai_estimate_sqft()")
     sid = session["studio_id"]
     data = request.get_json(silent=True) or {}
     vehicle = data.get("vehicle", "").strip()
@@ -207,48 +230,55 @@ def ai_estimate_sqft():
 @staff_or_admin_required
 def ai_estimate_save():
     """Save the chosen AI quote as a real Estimate + line item."""
+    logger.info("Entering ai_estimate_save()")
     sid = session["studio_id"]; conn = get_db()
-    f = request.form
-    vehicle   = f.get("vehicle", "").strip()
-    cust_name = f.get("customer_name", "").strip() or "Walk-in"
-    pid       = int(f.get("product_id"))
-    sqft      = float(f.get("sqft") or 0)
-    coverage  = float(f.get("coverage") or 1.0)
+    try:
+        f = request.form
+        vehicle   = f.get("vehicle", "").strip()
+        cust_name = f.get("customer_name", "").strip() or "Walk-in"
+        pid       = int(f.get("product_id"))
+        sqft      = float(f.get("sqft") or 0)
+        coverage  = float(f.get("coverage") or 1.0)
 
-    p = conn.execute("SELECT * FROM products WHERE id=? AND studio_id=?", (pid, sid)).fetchone()
-    if not p:
-        return "Product not found", 404
-    q = _price(p, sqft, coverage)
+        p = conn.execute("SELECT * FROM products WHERE id=? AND studio_id=?", (pid, sid)).fetchone()
+        if not p:
+            return "Product not found", 404
+        q = _price(p, sqft, coverage)
 
-    tax_pct = float(f.get("tax_percent") or 0)
-    subtotal = q["total"]
-    tax_amt  = round(subtotal * tax_pct / 100.0, 2)
-    total    = round(subtotal + tax_amt, 2)
+        tax_pct = float(f.get("tax_percent") or 0)
+        subtotal = q["total"]
+        tax_amt  = round(subtotal * tax_pct / 100.0, 2)
+        total    = round(subtotal + tax_amt, 2)
 
-    cur = conn.execute("""
-        INSERT INTO estimates
-          (studio_id, customer_name, vehicle, status, subtotal, tax_percent, tax_amount, total, notes)
-        VALUES (?,?,?,?,?,?,?,?,?)
-    """, (sid, cust_name, vehicle, "Draft", subtotal, tax_pct, tax_amt, total,
-          f"AI estimate · {q['area']} sqft @ {p['name']}"))
-    est_id = cur.lastrowid
+        cur = conn.execute("""
+            INSERT INTO estimates
+              (studio_id, customer_name, vehicle, status, subtotal, tax_percent, tax_amount, total, notes)
+            VALUES (?,?,?,?,?,?,?,?,?)
+        """, (sid, cust_name, vehicle, "Draft", subtotal, tax_pct, tax_amt, total,
+              f"AI estimate · {q['area']} sqft @ {p['name']}"))
+        est_id = cur.lastrowid
 
-    conn.execute("""
-        INSERT INTO estimate_items (estimate_id, name, description, quantity, unit_price, total)
-        VALUES (?,?,?,?,?,?)
-    """, (est_id, p["name"],
-          f"{q['area']} sqft · material ${q['material']} + labour ${q['labour']} + margin ${q['markup']}",
-          q["area"],
-          round(q["total"] / q["area"], 2) if q["area"] else 0,
-          q["total"]))
-    conn.commit()
-    return redirect(url_for("main.estimate_detail", estimate_id=est_id))
+        conn.execute("""
+            INSERT INTO estimate_items (estimate_id, name, description, quantity, unit_price, total)
+            VALUES (?,?,?,?,?,?)
+        """, (est_id, p["name"],
+              f"{q['area']} sqft · material ${q['material']} + labour ${q['labour']} + margin ${q['markup']}",
+              q["area"],
+              round(q["total"] / q["area"], 2) if q["area"] else 0,
+              q["total"]))
+        conn.commit()
+        logger.info(f"Exiting ai_estimate_save — created estimate {est_id}")
+        return redirect(url_for("main.estimate_detail", estimate_id=est_id))
+    except Exception as e:
+        logger.error(f"Error in ai_estimate_save: {e}", exc_info=True)
+        return redirect(url_for("main.ai_estimate_page"))
 
 
 @bp.route("/ai-estimate/debug")
 @staff_or_admin_required
 def ai_estimate_debug():
     """Diagnostics — tells you exactly why the estimator is/isn't using Gemini."""
+    logger.info("Entering ai_estimate_debug()")
     info = {
         "gemini_key_set": bool(Config.GEMINI_API_KEY),
         "gemini_key_preview": (Config.GEMINI_API_KEY[:6] + "…") if Config.GEMINI_API_KEY else None,

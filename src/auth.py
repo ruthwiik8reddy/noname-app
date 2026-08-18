@@ -16,9 +16,12 @@ Customers live in the `customers` table and are always role="customer".
 """
 
 import re
+import logging
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask import session, redirect, url_for, abort, request
+
+logger = logging.getLogger(__name__)
 
 
 # ── Password utilities ────────────────────────────────────────────────────────
@@ -52,6 +55,7 @@ def validate_password_strength(password: str) -> list[str]:
 # ── Login logic ───────────────────────────────────────────────────────────────
 
 def attempt_login(username: str, password: str, conn) -> dict | None:
+    logger.info(f"Entering attempt_login(username={username})")
     username = username.strip().lower()
     password = password.strip()
 
