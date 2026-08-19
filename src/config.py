@@ -30,6 +30,25 @@ class Config:
     OLLAMA_TEXT_TIMEOUT   = int(os.getenv("OLLAMA_TEXT_TIMEOUT", "90"))
     OLLAMA_VISION_TIMEOUT = int(os.getenv("OLLAMA_VISION_TIMEOUT", "180"))
 
+    # Backend selection: "ollama" (default) or "llamacpp".
+    LLM_BACKEND = os.getenv("LLM_BACKEND", "ollama")
+
+    # A smaller model for small jobs (drafting a two-line message doesn't need
+    # 8B). Falls back to OLLAMA_MODEL when unset.
+    OLLAMA_FAST_MODEL = os.getenv("OLLAMA_FAST_MODEL", "")
+
+    # llama.cpp servers — one process per model, so one URL per tier.
+    LLAMACPP_URL          = os.getenv("LLAMACPP_URL", "")
+    LLAMACPP_MODEL        = os.getenv("LLAMACPP_MODEL", "local")
+    LLAMACPP_FAST_URL     = os.getenv("LLAMACPP_FAST_URL", "")
+    LLAMACPP_FAST_MODEL   = os.getenv("LLAMACPP_FAST_MODEL", "")
+    LLAMACPP_VISION_URL   = os.getenv("LLAMACPP_VISION_URL", "")
+    LLAMACPP_VISION_MODEL = os.getenv("LLAMACPP_VISION_MODEL", "local-vision")
+
+    # How many inference calls may be in flight. Match this to the backend's
+    # real capacity (OLLAMA_NUM_PARALLEL, or llama-server --parallel).
+    LLM_MAX_CONCURRENT = int(os.getenv("LLM_MAX_CONCURRENT", "2"))
+
     # Global kill switch. Set AI_ENABLED=0 to run the app with every AI feature
     # degrading to its deterministic fallback — useful for demos and CI.
     AI_ENABLED = os.getenv("AI_ENABLED", "1")

@@ -236,23 +236,23 @@ def permission_required(permission: str):
 
 NAV_PERMISSIONS = {
     "admin": [
-        "dashboard", "bookings", "estimates", "jobs", "dispatch",
+        "dashboard", "command", "leads", "agents", "bookings", "estimates", "jobs", "dispatch",
         "tracking", "customers", "staff", "media", "payments",
         "products", "inventory", "analytics", "dvi", "warranties", "settings",
     ],
     "general_manager": [
-        "dashboard", "bookings", "estimates", "jobs", "dispatch",
+        "dashboard", "command", "leads", "agents", "bookings", "estimates", "jobs", "dispatch",
         "tracking", "customers", "media", "payments",
         "inventory", "analytics", "dvi", "warranties",
     ],
     "service_advisor": [
-        "dashboard", "bookings", "estimates", "tracking", "customers", "payments",
+        "dashboard", "command", "leads", "bookings", "estimates", "tracking", "customers", "payments",
         "dispatch", "dvi",
     ],
     # Technicians get the capture screen and their own queue, not the analytics
     # dashboard — inventory cost data isn't theirs to see.
     "technician": [
-        "dashboard", "jobs", "dispatch", "tracking", "media", "dvi", "inventory",
+        "dashboard", "command", "jobs", "dispatch", "tracking", "media", "dvi", "inventory",
     ],
     "photographer": [
         "dashboard", "jobs", "tracking", "media", "dvi",

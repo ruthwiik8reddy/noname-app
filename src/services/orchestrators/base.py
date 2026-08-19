@@ -27,6 +27,7 @@ import time
 from abc import ABC
 from typing import Any, Callable, Dict, List, Optional, Sequence
 
+from ..llm.gate import Priority
 from ..llm.base import (
     LLMError,
     LLMProvider,
@@ -150,6 +151,12 @@ class BaseOrchestrator(ABC):
 
     # ── guarded LLM calls ─────────────────────────────────────────────────
 
+    # Default priority for this orchestrator's calls. Agents override this to
+    # BACKGROUND so a person waiting on a page always overtakes them.
+    priority: int = int(Priority.INTERACTIVE)
+    gate_timeout: Optional[float] = None
+    tier: str = "standard"
+
     def call_json(
         self,
         prompt: str,
@@ -159,6 +166,7 @@ class BaseOrchestrator(ABC):
         repair_prompt_builder: Optional[Callable[[str, str], str]] = None,
         schema_hint: str = "",
         timeout: Optional[int] = None,
+        tier: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Ask for JSON, get JSON — or raise. One repair round-trip is attempted
@@ -167,14 +175,18 @@ class BaseOrchestrator(ABC):
         Raises LLMUnavailableError / OrchestratorError so callers can decide
         between degrading and failing.
         """
-        result = self._raw_call(prompt, images, timeout)
+        result = self._raw_call(prompt, images, timeout, tier or self.tier)
         parsed = self.extract_json(result.text)
 
         if parsed is None and repair_prompt_builder is not None:
             logger.info("Unparseable JSON from %s — attempting one repair pass", result.model)
             repair = repair_prompt_builder(result.text, schema_hint)
             try:
-                retry = self.provider.complete(repair, json_mode=True, timeout=timeout)
+                retry = self.provider.complete(
+                    repair, json_mode=True, timeout=timeout,
+                    priority=self.priority, tier=tier or self.tier,
+                    gate_timeout=self.gate_timeout,
+                )
                 parsed = self.extract_json(retry.text)
                 if parsed is not None:
                     result = retry
@@ -194,14 +206,21 @@ class BaseOrchestrator(ABC):
         return parsed
 
     def _raw_call(
-        self, prompt: str, images: Optional[Sequence[str]], timeout: Optional[int]
+        self, prompt: str, images: Optional[Sequence[str]], timeout: Optional[int],
+        tier: str = "standard",
     ) -> LLMResult:
         if images:
             provider = self.provider
             if not isinstance(provider, VisionLLMProvider):
                 raise LLMUnavailableError("Configured provider cannot process images")
-            return provider.complete_vision(prompt, images, json_mode=True, timeout=timeout)
-        return self.provider.complete(prompt, json_mode=True, timeout=timeout)
+            return provider.complete_vision(
+                prompt, images, json_mode=True, timeout=timeout,
+                priority=self.priority, gate_timeout=self.gate_timeout,
+            )
+        return self.provider.complete(
+            prompt, json_mode=True, timeout=timeout,
+            priority=self.priority, tier=tier, gate_timeout=self.gate_timeout,
+        )
 
     # ── response envelope ─────────────────────────────────────────────────
 

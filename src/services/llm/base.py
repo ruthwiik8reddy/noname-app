@@ -74,8 +74,21 @@ class LLMProvider(ABC):
         timeout: Optional[int] = None,
         model: Optional[str] = None,
         system: Optional[str] = None,
+        priority: int = 0,
+        tier: str = "standard",
+        gate_timeout: Optional[float] = None,
     ) -> LLMResult:
-        """Return a completion or raise an `LLMError` subclass. Never returns None."""
+        """
+        Return a completion or raise an `LLMError` subclass. Never returns None.
+
+        `priority`     — see llm.gate.Priority. Lower is more urgent.
+        `tier`         — "fast" | "standard" | "vision". Lets a caller ask for a
+                         smaller model when the task is small; drafting a
+                         two-sentence follow-up does not need an 8B model.
+        `gate_timeout` — how long to wait for an inference slot before giving up.
+                         Background callers should set this and degrade on
+                         GateTimeout rather than queue indefinitely.
+        """
 
     @abstractmethod
     def is_available(self) -> bool:
@@ -98,6 +111,8 @@ class VisionLLMProvider(LLMProvider):
         temperature: float = 0.1,
         timeout: Optional[int] = None,
         model: Optional[str] = None,
+        priority: int = 0,
+        gate_timeout: Optional[float] = None,
     ) -> LLMResult:
         """`images` are filesystem paths. Implementations handle encoding."""
 

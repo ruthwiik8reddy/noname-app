@@ -98,11 +98,18 @@ def ai_health():
     """Lets the UI show an honest 'local AI offline' badge instead of spinning."""
     from ..services.llm.factory import LLMProviderFactory
 
+    from ..services.llm.gate import GATE
+
     provider = LLMProviderFactory.text_provider()
     try:
-        return jsonify(provider.describe()), 200
+        info = provider.describe()
     except Exception as exc:  # noqa: BLE001
-        return jsonify({"provider": "unknown", "available": False, "error": str(exc)}), 200
+        info = {"provider": "unknown", "available": False, "error": str(exc)}
+
+    # Queue depth and wait times make contention visible. If avg_wait_ms climbs,
+    # either raise concurrency to match the backend or reduce agent frequency.
+    info["gate"] = GATE.stats()
+    return jsonify(info), 200
 
 
 def invalidate_studio_cache(studio_id: int) -> None:

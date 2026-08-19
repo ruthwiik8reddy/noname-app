@@ -1,0 +1,305 @@
+{% extends "_base.html" %}
+{% block title %}Command Center — {{ studio }}{% endblock %}
+
+{% block page_head %}
+<div class="page-head rise">
+  <div>
+    <h1 class="page-title">Command Center</h1>
+    <p class="page-sub" id="pulseLine">Live view of the studio — agents refresh in the background</p>
+  </div>
+  <div class="page-actions">
+    <span class="ai-pill ai-on" id="livePill"><span class="dot"></span>Live</span>
+    <button class="btn btn-secondary" id="runAll">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5v6h-6"/></svg>
+      Run all agents
+    </button>
+    <a class="btn btn-primary" href="/agents/">Agent console</a>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Headline metrics ────────────────────────────────────────────────── -->
+<div class="grid grid-4 stagger">
+  <div class="card stat accent">
+    <div class="label">Revenue this month</div>
+    <div class="value" id="mRevenue">${{ '{:,.0f}'.format(revenue_month) }}</div>
+    <div class="foot">From completed jobs</div>
+  </div>
+  <div class="card stat">
+    <div class="label">In the bay</div>
+    <div class="value" id="mProgress">{{ jobs.get('In Progress', 0) }}</div>
+    <div class="foot"><span id="mPending">{{ jobs.get('Pending', 0) }}</span> waiting to start</div>
+  </div>
+  <div class="card stat">
+    <div class="label">Active leads</div>
+    <div class="value" id="mLeads">{{ lead_stats.active }}</div>
+    <div class="foot">{{ lead_stats.conversion_rate }}% conversion · <span class="violet-text">{{ '{:,.0f}'.format(lead_stats.pipeline_value) }}</span> in pipeline</div>
+  </div>
+  <div class="card stat">
+    <div class="label">Needs attention</div>
+    <div class="value" id="mAlerts" style="color:{% if counts.get('critical') %}var(--red){% endif %}">
+      {{ (counts.get('critical', 0) + counts.get('warning', 0)) }}
+    </div>
+    <div class="foot"><span id="mCritical">{{ counts.get('critical', 0) }}</span> critical · <span id="mOpp">{{ counts.get('opportunity', 0) }}</span> opportunities</div>
+  </div>
+</div>
+
+<div class="grid" style="grid-template-columns:minmax(0,1.6fr) minmax(0,1fr); gap:18px; margin-top:20px; align-items:start">
+
+  <!-- ── Agent feed ───────────────────────────────────────────────────── -->
+  <div>
+    <div class="card rise">
+      <div class="card-head">
+        <span class="card-title">What the agents noticed</span>
+        <div class="flex gap-6">
+          <button class="btn btn-ghost btn-sm feedFilter on" data-sev="all">All</button>
+          <button class="btn btn-ghost btn-sm feedFilter" data-sev="critical">Critical</button>
+          <button class="btn btn-ghost btn-sm feedFilter" data-sev="opportunity">Opportunities</button>
+        </div>
+      </div>
+      <div id="feed" style="max-height:560px; overflow-y:auto">
+        <div style="padding:20px"><div class="skeleton" style="height:60px"></div></div>
+      </div>
+    </div>
+
+    <!-- ── Throughput ─────────────────────────────────────────────────── -->
+    <div class="card rise mt-16">
+      <div class="card-head"><span class="card-title">Completed jobs — last 14 days</span></div>
+      <div class="card-body">
+        {% if trend %}
+        <svg viewBox="0 0 600 140" style="width:100%; height:140px" id="trendChart">
+          {% set maxv = (trend | map(attribute='jobs') | max) or 1 %}
+          {% for d in trend %}
+            {% set x = loop.index0 * (560 / (trend|length if trend|length > 1 else 1)) + 20 %}
+            {% set h = (d.jobs / maxv * 96) %}
+            <rect x="{{ x }}" y="{{ 116 - h }}" width="{{ [520 / (trend|length), 34]|min }}" height="{{ h }}"
+                  rx="3" fill="var(--violet-500)" opacity="0.85">
+              <title>{{ d.day }} — {{ d.jobs }} job(s), ${{ '{:,.0f}'.format(d.revenue or 0) }}</title>
+            </rect>
+          {% endfor %}
+          <line x1="14" y1="117" x2="586" y2="117" stroke="var(--line)" stroke-width="1"/>
+        </svg>
+        <div class="flex" style="justify-content:space-between; font-size:11.5px; color:var(--gray-400)">
+          <span>{{ trend[0].day }}</span><span>{{ trend[-1].day }}</span>
+        </div>
+        {% else %}
+        <div class="empty" style="padding:28px">
+          <div class="title">No completed jobs yet</div>
+          <div class="desc">Throughput appears here once jobs start finishing.</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Side rail ────────────────────────────────────────────────────── -->
+  <div>
+    <div class="card rise">
+      <div class="card-head">
+        <span class="card-title">Leads needing a nudge</span>
+        <a href="/leads" class="btn btn-ghost btn-sm">Pipeline</a>
+      </div>
+      <div id="staleLeads" style="padding:9px"><div class="skeleton" style="height:44px; margin:9px"></div></div>
+    </div>
+
+    <div class="card rise mt-16">
+      <div class="card-head"><span class="card-title">Quick diagnosis</span></div>
+      <div class="card-body">
+        <p class="muted" style="font-size:12.5px; margin-bottom:12px">
+          Describe what you're seeing on a vehicle and get triage without shooting photos.
+        </p>
+        <div class="field">
+          <input id="dxVehicle" placeholder="2023 BMW M4" autocomplete="off">
+        </div>
+        <div class="field">
+          <textarea id="dxSymptoms" rows="3"
+                    placeholder="Swirl marks on the bonnet under LED light, light scratch near the driver door handle…"></textarea>
+        </div>
+        <button class="btn btn-primary btn-block" id="dxRun">Diagnose</button>
+        <div id="dxResult" class="mt-16"></div>
+      </div>
+    </div>
+
+    <div class="card rise mt-16">
+      <div class="card-head"><span class="card-title">Agent status</span></div>
+      <div id="agentStatus" style="padding:9px 14px 14px"></div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const SEV_CLASS = { critical:'urgency-critical', warning:'urgency-warning', opportunity:'badge-violet', info:'badge-gray' };
+  const AGENT_LABEL = { inventory:'Inventory', leads:'Leads', estimate:'Estimates', diagnosis:'Diagnosis' };
+  let severityFilter = 'all';
+  let lastFindings = [];
+
+  /* ── Feed ─────────────────────────────────────────────────────────────── */
+  function renderFeed(findings) {
+    lastFindings = findings;
+    const shown = severityFilter === 'all' ? findings : findings.filter(f => f.severity === severityFilter);
+    const host = document.getElementById('feed');
+
+    if (!shown.length) {
+      host.innerHTML = `<div class="empty" style="padding:44px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.4 2.4 4.6-5"/></svg>
+        <div class="title">${severityFilter === 'all' ? 'Nothing to report' : 'Nothing in this category'}</div>
+        <div class="desc">${severityFilter === 'all'
+          ? 'The agents ran and found no issues worth raising. That is a good result.'
+          : 'Try another filter.'}</div></div>`;
+      return;
+    }
+
+    host.innerHTML = shown.map(f => `
+      <div class="feed-item ${f.status !== 'open' ? 'done' : ''}" data-id="${f.id}">
+        <span class="badge ${SEV_CLASS[f.severity] || 'badge-gray'}" style="align-self:flex-start">
+          <span class="dot"></span>${esc(f.severity)}
+        </span>
+        <div style="flex:1; min-width:0">
+          <div class="flex gap-6" style="justify-content:space-between; align-items:flex-start">
+            <div class="strong" style="font-size:13.5px">${esc(f.title)}</div>
+            <span class="faint nowrap" style="font-size:11px">${esc(AGENT_LABEL[f.agent] || f.agent)}</span>
+          </div>
+          <p class="muted" style="font-size:12.5px; margin-top:5px; white-space:pre-line">${esc(f.detail)}</p>
+          <div class="flex gap-6" style="margin-top:10px">
+            ${f.action_url ? `<a class="btn btn-secondary btn-sm" href="${esc(f.action_url)}">${esc(f.action_label || 'Open')}</a>` : ''}
+            ${f.status === 'open'
+              ? `<button class="btn btn-ghost btn-sm" onclick="decide(${f.id},'dismiss')">Dismiss</button>`
+              : `<span class="badge badge-gray">${esc(f.status)}</span>`}
+          </div>
+        </div>
+      </div>`).join('');
+  }
+
+  document.querySelectorAll('.feedFilter').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.feedFilter').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    severityFilter = b.dataset.sev;
+    renderFeed(lastFindings);
+  }));
+
+  async function decide(id, action) {
+    try {
+      await api(`/agents/finding/${id}/${action}`, { method: 'POST', body: '{}' });
+      lastFindings = lastFindings.filter(f => f.id !== id);
+      renderFeed(lastFindings);
+      toast('Dismissed', 'ok');
+    } catch (e) { toast(e.message, 'err'); }
+  }
+
+  /* ── Pulse ────────────────────────────────────────────────────────────
+     One request refreshes everything. Polling rather than websockets: this is
+     a single-process Flask app, and a 20s poll is honest and simple. */
+  async function pulse() {
+    try {
+      const d = await api('/command/api/pulse');
+      renderFeed(d.findings);
+
+      document.getElementById('mProgress').textContent = d.jobs['In Progress'] || 0;
+      document.getElementById('mPending').textContent  = d.jobs['Pending'] || 0;
+      document.getElementById('mLeads').textContent    = d.leads.active;
+      document.getElementById('mCritical').textContent = d.counts.critical || 0;
+      document.getElementById('mOpp').textContent      = d.counts.opportunity || 0;
+      document.getElementById('mAlerts').textContent   = (d.counts.critical || 0) + (d.counts.warning || 0);
+
+      document.getElementById('staleLeads').innerHTML = d.stale_leads.length
+        ? d.stale_leads.map(l => `
+          <a href="/leads/${l.id}" class="feed-row">
+            <span class="avatar">${esc((l.name || '?')[0]).toUpperCase()}</span>
+            <span style="flex:1; min-width:0">
+              <span class="strong" style="display:block; font-size:13px">${esc(l.name)}</span>
+              <span class="faint" style="font-size:11.5px">${l.days_quiet}d quiet · ${esc(l.status)}</span>
+            </span>
+            <span class="badge badge-violet">${l.score}</span>
+          </a>`).join('')
+        : `<div class="muted" style="padding:18px; text-align:center; font-size:13px">Every active lead has been contacted recently.</div>`;
+
+      document.getElementById('agentStatus').innerHTML = Object.entries(AGENT_LABEL).map(([k, label]) => {
+        const r = d.last_runs[k];
+        const ok = r && r.status === 'ok';
+        return `<div class="flex" style="justify-content:space-between; padding:6px 0; font-size:12.5px">
+          <span class="muted">${label}</span>
+          <span class="badge ${ok ? 'badge-green' : r ? 'badge-red' : 'badge-gray'}">
+            ${r ? (ok ? `${r.findings_count} found` : 'failed') : 'not run'}
+          </span></div>`;
+      }).join('');
+
+      document.getElementById('livePill').className = 'ai-pill ai-on';
+    } catch (e) {
+      document.getElementById('livePill').className = 'ai-pill ai-off';
+    }
+  }
+
+  document.getElementById('runAll').addEventListener('click', async function () {
+    this.disabled = true;
+    this.innerHTML = '<span class="spinner"></span> Running…';
+    try {
+      const d = await api('/agents/run-all', { method: 'POST', body: '{}' });
+      toast(`${d.total_findings} finding(s) across ${Object.keys(d.agents).length} agents`, 'ok');
+      await pulse();
+    } catch (e) { toast(e.message, 'err'); }
+    this.disabled = false;
+    this.innerHTML = 'Run all agents';
+  });
+
+  /* ── Quick diagnosis ──────────────────────────────────────────────────── */
+  document.getElementById('dxRun').addEventListener('click', async function () {
+    const symptoms = document.getElementById('dxSymptoms').value.trim();
+    const vehicle  = document.getElementById('dxVehicle').value.trim();
+    const out = document.getElementById('dxResult');
+
+    if (symptoms.length < 10) { toast('Describe what you can see in a bit more detail', 'err'); return; }
+
+    this.disabled = true;
+    out.innerHTML = '<div class="flex gap-10"><span class="spinner"></span><span class="muted">Thinking locally…</span></div>';
+
+    try {
+      const d = await api('/agents/diagnose', { method: 'POST', body: JSON.stringify({ vehicle, symptoms }) });
+      out.innerHTML = `
+        <div class="alert alert-violet" style="display:block">
+          <div class="strong" style="margin-bottom:5px">Condition ${d.condition_score}/10</div>
+          <div style="font-size:12.5px">${esc(d.assessment)}</div>
+        </div>
+        ${d.findings.length ? `<div class="mt-16">${d.findings.map(f => `
+          <div class="flex" style="justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--line-soft)">
+            <span>
+              <span class="strong" style="font-size:12.5px">${esc(f.defect_type.replace(/_/g,' '))}</span>
+              <span class="faint" style="font-size:11.5px"> · ${esc((f.panel||'').replace(/_/g,' '))} · sev ${f.severity}/5</span>
+            </span>
+            <span class="violet-text strong" style="font-size:12.5px">${f.suggested_upcharge_cents ? money(f.suggested_upcharge_cents) : '—'}</span>
+          </div>`).join('')}
+          <div class="flex" style="justify-content:space-between; margin-top:11px">
+            <span class="strong">Estimated</span>
+            <span class="strong violet-text">${esc(d.estimated_total_display)}</span>
+          </div></div>` : ''}
+        ${d.needs_photos ? `<div class="alert alert-warn mt-16" style="font-size:12.5px">
+          Working from a description only — confidence is lower than a photo inspection.
+          ${(d.clarifying_questions||[]).slice(0,2).map(q => `<div style="margin-top:4px">• ${esc(q)}</div>`).join('')}
+        </div>` : ''}`;
+    } catch (e) {
+      out.innerHTML = `<div class="alert alert-danger" style="font-size:12.5px">${esc(e.message)}</div>`;
+    }
+    this.disabled = false;
+  });
+
+  pulse();
+  setInterval(pulse, 20000);
+</script>
+{% endblock %}
+
+{% block head %}
+<style>
+  .feed-item { display:flex; gap:12px; padding:15px 18px; border-bottom:1px solid var(--line-soft); transition:background var(--fast); }
+  .feed-item:last-child { border-bottom:none; }
+  .feed-item:hover { background:var(--gray-50); }
+  .feed-item.done { opacity:.5; }
+  .feed-row { display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:var(--r-sm); transition:background var(--fast); }
+  .feed-row:hover { background:var(--gray-50); }
+  .feedFilter.on { background:var(--violet-50); color:var(--violet-700); }
+</style>
+{% endblock %}

@@ -1,0 +1,162 @@
+{% extends "_base.html" %}
+{% block title %}Agents — {{ studio }}{% endblock %}
+
+{% block page_head %}
+<div class="page-head rise">
+  <div>
+    <h1 class="page-title">Agents</h1>
+    <p class="page-sub">Background workers that watch the studio and report what they find</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-secondary" href="/command">Command center</a>
+    <button class="btn btn-primary" id="runAll">Run all now</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<div class="grid grid-4 stagger" style="margin-bottom:22px">
+  <div class="card stat"><div class="label">Critical</div>
+    <div class="value" style="color:{% if counts.get('critical') %}var(--red){% endif %}">{{ counts.get('critical', 0) }}</div></div>
+  <div class="card stat"><div class="label">Warnings</div>
+    <div class="value">{{ counts.get('warning', 0) }}</div></div>
+  <div class="card stat"><div class="label">Opportunities</div>
+    <div class="value" style="color:var(--violet-600)">{{ counts.get('opportunity', 0) }}</div></div>
+  <div class="card stat"><div class="label">Informational</div>
+    <div class="value">{{ counts.get('info', 0) }}</div></div>
+</div>
+
+<div class="grid grid-2 stagger">
+  {% for a in agents %}
+  <div class="card card-pad" data-agent="{{ a.name }}">
+    <div class="flex" style="justify-content:space-between; align-items:flex-start; gap:12px">
+      <div style="flex:1; min-width:0">
+        <div class="strong" style="font-size:15px">{{ a.label }}</div>
+        <p class="muted" style="font-size:12.5px; margin-top:4px">{{ a.description }}</p>
+      </div>
+      <label class="switch" title="Enable or pause this agent">
+        <input type="checkbox" {% if a.enabled %}checked{% endif %}
+               onchange="toggleAgent('{{ a.name }}', this.checked)">
+        <span class="track"></span>
+      </label>
+    </div>
+
+    <div class="divider" style="margin:14px 0"></div>
+
+    <div class="flex" style="justify-content:space-between; font-size:12.5px">
+      <span class="muted">Runs every {{ a.interval_mins }} min</span>
+      {% if a.last_status == 'ok' %}
+        <span class="badge badge-green">{{ a.last_findings }} found · {{ a.last_duration_ms }}ms</span>
+      {% elif a.last_status == 'failed' %}
+        <span class="badge badge-red" title="{{ a.last_error }}">failed</span>
+      {% else %}
+        <span class="badge badge-gray">never run</span>
+      {% endif %}
+    </div>
+
+    {% if a.degraded %}
+    <div class="muted" style="font-size:11.5px; margin-top:7px">
+      Last run was degraded — the model was unreachable, so findings came from the deterministic layer only.
+    </div>
+    {% endif %}
+
+    {% if a.responds_to %}
+    <div class="flex gap-6" style="margin-top:11px; flex-wrap:wrap">
+      <span class="faint" style="font-size:11px">Also runs on:</span>
+      {% for t in a.responds_to %}<span class="badge badge-gray">{{ t|replace('_',' ') }}</span>{% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="flex gap-6" style="margin-top:14px">
+      <button class="btn btn-secondary btn-sm" onclick="runAgent('{{ a.name }}', this)">Run now</button>
+      <span class="faint" style="font-size:11.5px; align-self:center">
+        {{ a.open_findings }} open finding{{ '' if a.open_findings == 1 else 's' }}
+        {%- if a.last_run_at %} · last {{ a.last_run_at }}{% endif %}
+      </span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="section-head"><span class="section-title">Recent runs</span></div>
+<div class="table-wrap rise">
+  {% if runs %}
+  <div class="table-scroll">
+    <table class="data">
+      <thead><tr><th>Agent</th><th>Trigger</th><th>Status</th><th class="right">Findings</th>
+        <th class="right">Duration</th><th>Started</th></tr></thead>
+      <tbody>
+        {% for r in runs %}
+        <tr>
+          <td class="strong">{{ r.agent }}</td>
+          <td class="dim">{{ r.trigger }}{% if r.trigger_detail %} <span class="faint">({{ r.trigger_detail }})</span>{% endif %}</td>
+          <td>
+            <span class="badge {% if r.status == 'ok' %}badge-green{% elif r.status == 'failed' %}badge-red{% else %}badge-gray{% endif %}">
+              {{ r.status }}</span>
+            {% if r.degraded %}<span class="badge badge-amber">degraded</span>{% endif %}
+          </td>
+          <td class="num">{{ r.findings_count }}</td>
+          <td class="num dim">{{ r.duration_ms }}ms</td>
+          <td class="dim nowrap">{{ r.started_at }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty"><div class="title">No runs yet</div>
+    <div class="desc">Press "Run all now" to see what the agents find.</div></div>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block head %}
+<style>
+  .switch { position:relative; display:inline-block; width:38px; height:22px; flex-shrink:0; cursor:pointer; }
+  .switch input { opacity:0; width:0; height:0; }
+  .switch .track { position:absolute; inset:0; background:var(--gray-300); border-radius:99px; transition:background var(--fast); }
+  .switch .track::before { content:''; position:absolute; width:16px; height:16px; left:3px; top:3px;
+    background:#fff; border-radius:50%; transition:transform var(--fast); box-shadow:var(--shadow-xs); }
+  .switch input:checked + .track { background:var(--violet-600); }
+  .switch input:checked + .track::before { transform:translateX(16px); }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  async function runAgent(name, btn) {
+    const original = btn.textContent;
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+    try {
+      const d = await api(`/agents/run/${name}`, { method: 'POST', body: '{}' });
+      if (d.error) toast(`${name}: ${d.error}`, 'err');
+      else toast(`${name}: ${d.findings} finding(s)${d.degraded ? ' (degraded)' : ''}`, 'ok');
+      setTimeout(() => location.reload(), 900);
+    } catch (e) {
+      toast(e.message, 'err');
+      btn.disabled = false; btn.textContent = original;
+    }
+  }
+
+  async function toggleAgent(name, enabled) {
+    try {
+      await api(`/agents/toggle/${name}`, { method: 'POST', body: JSON.stringify({ enabled }) });
+      toast(`${name} ${enabled ? 'enabled' : 'paused'}`, 'ok');
+    } catch (e) { toast(e.message, 'err'); }
+  }
+
+  document.getElementById('runAll').addEventListener('click', async function () {
+    this.disabled = true; this.innerHTML = '<span class="spinner"></span> Running…';
+    try {
+      const d = await api('/agents/run-all', { method: 'POST', body: '{}' });
+      toast(`${d.total_findings} finding(s) total`, 'ok');
+      setTimeout(() => location.reload(), 900);
+    } catch (e) {
+      toast(e.message, 'err');
+      this.disabled = false; this.textContent = 'Run all now';
+    }
+  });
+</script>
+{% endblock %}

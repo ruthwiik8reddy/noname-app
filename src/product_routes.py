@@ -24,9 +24,10 @@ from .auth import staff_or_admin_required, admin_required
 # Orchestrator Pattern: no model backends are imported here. Surface-area
 # estimation lives in EstimateOrchestrator, which owns the cache → model →
 # body-type-prior chain that used to be inlined in this module.
-from .services.orchestrators import EstimateOrchestrator
+from .services.orchestrators import AssistantOrchestrator, EstimateOrchestrator
 
 _estimate_ai = EstimateOrchestrator()
+_assistant_ai = AssistantOrchestrator()
 from .config import Config
 from . import controller as _c
 
@@ -196,6 +197,40 @@ def ai_estimate_page():
     return render_template("ai_estimate.html",
         **_c.sidebar_context(), **_c.auth_context(),
         products=products, active_page="estimates")
+
+
+@bp.route("/ai-estimate/query", methods=["POST"])
+@staff_or_admin_required
+def ai_estimate_query():
+    """
+    Quote endpoint for the AI Estimate page.
+
+    This page used to POST to /assistant/query. When the chat assistant was
+    removed, that coupling would have silently broken quoting — so the
+    estimator owns its own route now.
+
+    Pricing questions are grounded: `build_pricing_facts` computes real figures
+    from the product catalog in Python, and the model may only restate them.
+    """
+    payload = request.get_json(silent=True) or {}
+    question = (payload.get("question") or "").strip()
+    if not question:
+        return jsonify({"error": "Describe the vehicle and the work you need quoted."}), 400
+
+    studio_id = session["studio_id"]
+    try:
+        from .estimate_assistant import build_pricing_facts
+        facts = build_pricing_facts(studio_id, question)
+    except Exception as exc:  # noqa: BLE001 - a broken hook must not break quoting
+        logger.warning("Pricing hook failed: %s", exc)
+        facts = None
+
+    if facts:
+        grounded = _assistant_ai.pricing_answer(question, facts)
+        if grounded:
+            return jsonify(grounded)
+
+    return jsonify(_assistant_ai.answer(studio_id, question, []))
 
 
 @bp.route("/ai-estimate/sqft", methods=["POST"])

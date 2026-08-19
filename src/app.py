@@ -33,6 +33,13 @@ def create_app():
         app.register_blueprint(blueprint)
 
     app.teardown_appcontext(close_db)
+
+    # Background agent scheduler. Skipped under the reloader's parent process
+    # and disabled entirely with AGENT_SCHEDULER=0.
+    from .services.agents import start_scheduler
+    if start_scheduler(app):
+        app.logger.info("Agent scheduler running")
+
     return app
 
 

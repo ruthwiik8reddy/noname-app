@@ -19,6 +19,12 @@
   <nav class="sidebar-nav">
 
     <div class="nav-group-label">Overview</div>
+    {% if "command" in nav_items %}
+    <a href="/command" {% if active_page == "command" %}class="active"{% endif %}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6 4.6 1.9-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M18 15l.8 2.2 2.2.8-2.2.8L18 21l-.8-2.2-2.2-.8 2.2-.8z"/></svg>
+      Command
+    </a>
+    {% endif %}
     <a href="/dashboard" {% if active_page == "dashboard" %}class="active"{% endif %}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
       Dashboard
@@ -51,6 +57,12 @@
     {% endif %}
 
     <div class="nav-group-label">Revenue</div>
+    {% if "leads" in nav_items %}
+    <a href="/leads" {% if active_page == "leads" %}class="active"{% endif %}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20v-1.5A3.5 3.5 0 0 1 6.5 15h4A3.5 3.5 0 0 1 14 18.5V20"/><circle cx="8.5" cy="8" r="3.5"/><path d="M17 11l2 2 4-4"/></svg>
+      Leads
+    </a>
+    {% endif %}
     {% if "estimates" in nav_items %}
     <a href="/estimates" {% if active_page == "estimates" %}class="active"{% endif %}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
@@ -85,6 +97,14 @@
     <a href="/products" {% if active_page == "products" %}class="active"{% endif %}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18"/></svg>
       Products
+    </a>
+    {% endif %}
+
+    {% if "agents" in nav_items %}
+    <div class="nav-group-label">Automation</div>
+    <a href="/agents/" {% if active_page == "agents" %}class="active"{% endif %}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2.5"/><path d="M12 8V4M9 4h6"/><circle cx="9" cy="14" r="1.2"/><circle cx="15" cy="14" r="1.2"/></svg>
+      Agents
     </a>
     {% endif %}
 

@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional, Sequence
 
 import requests
 
+from .gate import GATE, GateTimeout, Priority
 from .base import (
     LLMInvalidResponseError,
     LLMResult,
@@ -42,6 +43,7 @@ class OllamaProvider(VisionLLMProvider):
         base_url: str,
         text_model: str,
         vision_model: str = "llava",
+        fast_model: str = "",
         text_timeout: int = DEFAULT_TEXT_TIMEOUT,
         vision_timeout: int = DEFAULT_VISION_TIMEOUT,
         session: Optional[requests.Session] = None,
@@ -49,11 +51,28 @@ class OllamaProvider(VisionLLMProvider):
         self.base_url = (base_url or "").rstrip("/")
         self.text_model = text_model
         self.vision_model = vision_model
+        # A smaller model for small jobs. Drafting two sentences on an 8B model
+        # costs the same slot as a full analytical briefing; a 3B does it in
+        # roughly a third of the time and the output is indistinguishable.
+        self.fast_model = fast_model or text_model
         self.text_timeout = text_timeout
         self.vision_timeout = vision_timeout
-        self._session = session or requests.Session()
+        # A pooled session sized for the gate — otherwise concurrent calls
+        # would open new TCP connections and serialise on connection setup.
+        self._session = session or self._build_session()
         self._health: Optional[bool] = None
         self._health_checked_at: float = 0.0
+
+    @staticmethod
+    def _build_session() -> requests.Session:
+        session = requests.Session()
+        adapter = requests.adapters.HTTPAdapter(pool_connections=8, pool_maxsize=8)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+        return session
+
+    def model_for_tier(self, tier: str) -> str:
+        return {"fast": self.fast_model, "vision": self.vision_model}.get(tier, self.text_model)
 
     # ── health ────────────────────────────────────────────────────────────
 
@@ -102,9 +121,12 @@ class OllamaProvider(VisionLLMProvider):
         timeout: Optional[int] = None,
         model: Optional[str] = None,
         system: Optional[str] = None,
+        priority: int = 0,
+        tier: str = "standard",
+        gate_timeout: Optional[float] = None,
     ) -> LLMResult:
         payload: Dict[str, Any] = {
-            "model": model or self.text_model,
+            "model": model or self.model_for_tier(tier),
             "prompt": prompt,
             "stream": False,
             "options": {"temperature": temperature},
@@ -113,7 +135,8 @@ class OllamaProvider(VisionLLMProvider):
             payload["system"] = system
         if json_mode:
             payload["format"] = "json"
-        return self._post(payload, timeout or self.text_timeout, json_mode, 0)
+        return self._post(payload, timeout or self.text_timeout, json_mode, 0,
+                          priority=priority, gate_timeout=gate_timeout)
 
     def complete_vision(
         self,
@@ -124,6 +147,8 @@ class OllamaProvider(VisionLLMProvider):
         temperature: float = 0.1,
         timeout: Optional[int] = None,
         model: Optional[str] = None,
+        priority: int = 0,
+        gate_timeout: Optional[float] = None,
     ) -> LLMResult:
         encoded = self._encode_images(images)
         if not encoded:
@@ -138,7 +163,8 @@ class OllamaProvider(VisionLLMProvider):
         }
         if json_mode:
             payload["format"] = "json"
-        return self._post(payload, timeout or self.vision_timeout, json_mode, len(encoded))
+        return self._post(payload, timeout or self.vision_timeout, json_mode, len(encoded),
+                          priority=priority, gate_timeout=gate_timeout)
 
     # ── internals ─────────────────────────────────────────────────────────
 
@@ -158,10 +184,25 @@ class OllamaProvider(VisionLLMProvider):
                 logger.warning("Could not read image %s: %s", path, exc)
         return encoded
 
-    def _post(self, payload: Dict[str, Any], timeout: int, json_mode: bool, image_count: int) -> LLMResult:
+    def _post(
+        self, payload: Dict[str, Any], timeout: int, json_mode: bool, image_count: int,
+        priority: int = 0, gate_timeout: Optional[float] = None,
+    ) -> LLMResult:
         if not self.base_url:
             raise LLMUnavailableError("OLLAMA_URL is not configured")
 
+        # Every outbound call queues here. Interactive work overtakes background
+        # work; background work that can't get a slot gives up rather than
+        # blocking a person indefinitely.
+        try:
+            with GATE.slot(priority=priority, timeout=gate_timeout,
+                           label=f"ollama:{payload['model']}"):
+                return self._do_post(payload, timeout, json_mode, image_count)
+        except GateTimeout as exc:
+            raise LLMUnavailableError(str(exc)) from exc
+
+    def _do_post(self, payload: Dict[str, Any], timeout: int, json_mode: bool,
+                 image_count: int) -> LLMResult:
         started = time.time()
         try:
             resp = self._session.post(f"{self.base_url}/api/generate", json=payload, timeout=timeout)

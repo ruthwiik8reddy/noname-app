@@ -1,0 +1,202 @@
+{% extends "_base.html" %}
+{% block title %}Leads — {{ studio }}{% endblock %}
+
+{% block page_head %}
+<div class="page-head rise">
+  <div>
+    <h1 class="page-title">Leads</h1>
+    <p class="page-sub">{{ stats.active }} active · {{ stats.conversion_rate }}% conversion · {{ '{:,.0f}'.format(stats.pipeline_value) }} in pipeline</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-secondary" onclick="importLeads()">Import</button>
+    <button class="btn btn-primary" onclick="newLead()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      New lead
+    </button>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+
+{% if stale %}
+<div class="alert alert-warn mb-16">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+  <div><strong>{{ stale|length }} lead(s) have gone quiet.</strong>
+    {% for l in stale[:3] %}<a href="/leads/{{ l.id }}" style="color:inherit;text-decoration:underline">{{ l.name }}</a> ({{ l.days_quiet }}d){{ ", " if not loop.last }}{% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="board rise">
+  {% for stage in stages %}
+  {% if stage not in ('won','lost') %}
+  {% set items = pipeline.get(stage, []) %}
+  <div class="column" data-stage="{{ stage }}">
+    <div class="column-head">
+      <span class="t">{{ stage|title }}</span>
+      <span class="n">{{ items|length }}</span>
+    </div>
+    <div class="column-body" data-dropzone="{{ stage }}">
+      {% for lead in items %}
+      <div class="job-card" draggable="true" data-lead="{{ lead.id }}" data-stage="{{ stage }}"
+           onclick="if(!window.__drag) location.href='/leads/{{ lead.id }}'">
+        <div class="flex" style="justify-content:space-between; gap:8px">
+          <span class="veh">{{ lead.name }}</span>
+          {% if lead.score %}<span class="badge {% if lead.score >= 60 %}badge-violet{% else %}badge-gray{% endif %}">{{ lead.score }}</span>{% endif %}
+        </div>
+        <div class="svc">{{ lead.service_interest or 'Unspecified' }}{% if lead.vehicle %} · {{ lead.vehicle }}{% endif %}</div>
+        <div class="row">
+          <span class="badge badge-gray">{{ lead.source|replace('_',' ') }}</span>
+          {% if lead.budget_hint %}<span style="font-size:12.5px;font-weight:650;color:var(--gray-800)">{{ '{:,.0f}'.format(lead.budget_hint) }}</span>{% endif %}
+        </div>
+      </div>
+      {% else %}
+      <div style="padding:20px 12px;text-align:center;color:var(--gray-400);font-size:12.5px">Nothing here</div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+  {% endfor %}
+</div>
+
+<div class="grid grid-2" style="margin-top:22px; align-items:start">
+  <div class="card rise">
+    <div class="card-head"><span class="card-title">Where leads come from</span></div>
+    <div class="table-scroll">
+      <table class="data">
+        <thead><tr><th>Source</th><th class="right">Total</th><th class="right">Won</th><th class="right">Rate</th></tr></thead>
+        <tbody>
+          {% for s in by_source %}
+          <tr>
+            <td class="strong">{{ s.source|replace('_',' ')|title }}</td>
+            <td class="num">{{ s.total }}</td>
+            <td class="num">{{ s.won or 0 }}</td>
+            <td class="num strong">{{ ((s.won or 0) / s.total * 100)|round|int }}%</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card rise">
+    <div class="card-head"><span class="card-title">Closed</span></div>
+    <div class="card-body">
+      <div class="grid grid-2">
+        <div><div class="faint" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em">Won</div>
+          <div style="font-size:26px;font-weight:700;color:var(--green)">{{ stats.by_status.get('won', 0) }}</div></div>
+        <div><div class="faint" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em">Lost</div>
+          <div style="font-size:26px;font-weight:700;color:var(--gray-400)">{{ stats.by_status.get('lost', 0) }}</div></div>
+      </div>
+      <div class="bar mt-16"><i class="green" style="width:{{ stats.conversion_rate }}%"></i></div>
+      <div class="faint mt-8" style="font-size:12px">{{ stats.conversion_rate }}% of closed leads converted · {{ stats.new_last_30d }} new in the last 30 days</div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const SOURCES = {{ sources | tojson }};
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  /* Drag a lead between pipeline stages. */
+  (function () {
+    let dragged = null;
+    document.querySelectorAll('[data-lead]').forEach(card => {
+      card.addEventListener('dragstart', () => { dragged = card; window.__drag = true; card.classList.add('dragging'); });
+      card.addEventListener('dragend', () => { card.classList.remove('dragging'); setTimeout(() => window.__drag = false, 60); });
+    });
+    document.querySelectorAll('[data-dropzone]').forEach(zone => {
+      zone.addEventListener('dragover', e => { e.preventDefault(); zone.closest('.column').classList.add('drop-active'); });
+      zone.addEventListener('dragleave', () => zone.closest('.column').classList.remove('drop-active'));
+      zone.addEventListener('drop', async e => {
+        e.preventDefault();
+        zone.closest('.column').classList.remove('drop-active');
+        if (!dragged) return;
+        const stage = zone.dataset.dropzone;
+        if (stage === dragged.dataset.stage) return;
+        try {
+          await api(`/leads/${dragged.dataset.lead}/status`, { method:'POST', body: JSON.stringify({ status: stage }) });
+          toast(`Moved to ${stage}`, 'ok');
+          setTimeout(() => location.reload(), 450);
+        } catch (err) { toast(err.message, 'err'); }
+      });
+    });
+  })();
+
+  function newLead() {
+    modal.open(`<form method="POST" action="/leads/new">
+      <div class="modal-head"><div class="t">New lead</div></div>
+      <div class="modal-body">
+        <div class="field"><label>Name</label><input name="name" required autofocus></div>
+        <div class="form-row">
+          <div class="field"><label>Phone</label><input name="phone"></div>
+          <div class="field"><label>Email</label><input name="email" type="email"></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label>Vehicle</label><input name="vehicle" placeholder="2023 BMW M4"></div>
+          <div class="field"><label>Interested in</label><input name="service_interest" placeholder="Full PPF"></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label>Budget hint</label><input name="budget_hint" type="number" min="0" value="0"></div>
+          <div class="field"><label>Source</label><select name="source">
+            ${SOURCES.map(s => `<option value="${s}">${s.replace(/_/g,' ')}</option>`).join('')}
+          </select></div>
+        </div>
+        <div class="field"><label>Notes</label><textarea name="notes" rows="2"></textarea></div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-secondary" onclick="modal.close()">Cancel</button>
+        <button class="btn btn-primary">Add lead</button>
+      </div></form>`);
+  }
+
+  function importLeads() {
+    modal.open(`
+      <div class="modal-head"><div class="t">Import enquiries</div></div>
+      <div class="modal-body">
+        <p class="muted" style="font-size:12.5px;margin-bottom:12px">
+          One per line, starting with the name. Phone numbers and emails are picked out automatically.<br>
+          <span class="faint">Priya, +91 98450 11223, Audi Q7, full PPF</span>
+        </p>
+        <div class="field"><label>Source</label><select id="impSource">
+          ${SOURCES.map(s => `<option value="${s}" ${s==='whatsapp'?'selected':''}>${s.replace(/_/g,' ')}</option>`).join('')}
+        </select></div>
+        <div class="field"><textarea id="impText" rows="7" placeholder="Paste here…"></textarea></div>
+        <div id="impPreview"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-secondary" onclick="modal.close()">Cancel</button>
+        <button class="btn btn-secondary" onclick="previewImport()">Preview</button>
+        <button class="btn btn-primary" onclick="doImport()">Import</button>
+      </div>`);
+  }
+
+  async function previewImport() {
+    const text = document.getElementById('impText').value;
+    const source = document.getElementById('impSource').value;
+    try {
+      const d = await api('/leads/api/preview-import', { method:'POST', body: JSON.stringify({ text, source }) });
+      document.getElementById('impPreview').innerHTML = d.count
+        ? `<div class="alert alert-violet" style="display:block"><strong>${d.count} enquiry(s) found</strong>
+           ${d.rows.slice(0,6).map(r => `<div style="font-size:12px;margin-top:4px">
+             ${esc(r.name)}${r.phone ? ' · ' + esc(r.phone) : ''}${r.vehicle ? ' · ' + esc(r.vehicle) : ''}</div>`).join('')}</div>`
+        : `<div class="alert alert-warn">Nothing readable found. One enquiry per line, name first.</div>`;
+    } catch (e) { toast(e.message, 'err'); }
+  }
+
+  async function doImport() {
+    const text = document.getElementById('impText').value;
+    const source = document.getElementById('impSource').value;
+    try {
+      const d = await api('/leads/import', { method:'POST', body: JSON.stringify({ text, source }) });
+      toast(`${d.created} imported, ${d.skipped} already existed`, 'ok');
+      modal.close();
+      setTimeout(() => location.reload(), 600);
+    } catch (e) { toast(e.message, 'err'); }
+  }
+</script>
+{% endblock %}
