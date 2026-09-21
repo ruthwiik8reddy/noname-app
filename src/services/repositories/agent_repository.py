@@ -64,6 +64,7 @@ class AgentRepository(BaseRepository):
 
     def save_findings(self, studio_id: int, agent: str, run_id: Optional[int], findings: List[Any]) -> int:
         """Upsert by fingerprint. Returns the number written."""
+        from ..agents.base import SEVERITY_RANK
         if not findings:
             return 0
         with self._conn() as conn:
@@ -77,9 +78,9 @@ class AgentRepository(BaseRepository):
                 if existing:
                     # Re-open a dismissed finding only if it got worse — otherwise
                     # dismissing something would be meaningless.
-                    escalated = existing["severity"] != f.severity
+                    escalated = SEVERITY_RANK.get(f.severity, 9) < SEVERITY_RANK.get(existing["severity"], 9)
                     new_status = (
-                        "open" if (existing["status"] == "dismissed" and escalated)
+                        "open" if (existing["status"] == "resolved" or (existing["status"] == "dismissed" and escalated))
                         else existing["status"]
                     )
                     conn.execute(
@@ -90,7 +91,7 @@ class AgentRepository(BaseRepository):
                         WHERE id=?
                         """,
                         (run_id, f.severity, f.title, f.detail, f.action_label, f.action_url,
-                         json.dumps(f.data, default=str)[:4000], new_status, existing["id"]),
+                         json.dumps(f.data, default=str), new_status, existing["id"]),
                     )
                 else:
                     conn.execute(

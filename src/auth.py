@@ -246,13 +246,13 @@ NAV_PERMISSIONS = {
         "inventory", "analytics", "dvi", "warranties",
     ],
     "service_advisor": [
-        "dashboard", "command", "leads", "bookings", "estimates", "tracking", "customers", "payments",
+        "dashboard", "leads", "bookings", "estimates", "tracking", "customers", "payments",
         "dispatch", "dvi",
     ],
     # Technicians get the capture screen and their own queue, not the analytics
     # dashboard — inventory cost data isn't theirs to see.
     "technician": [
-        "dashboard", "command", "jobs", "dispatch", "tracking", "media", "dvi", "inventory",
+        "dashboard", "jobs", "dispatch", "tracking", "media", "dvi", "inventory",
     ],
     "photographer": [
         "dashboard", "jobs", "tracking", "media", "dvi",

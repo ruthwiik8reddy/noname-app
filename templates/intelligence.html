@@ -1,0 +1,61 @@
+{% extends "_base.html" %}
+{% block title %}Business intelligence — {{ studio }}{% endblock %}
+{% block head %}
+<style>
+.intel-layout{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(300px,1fr);gap:20px}.intel-section{padding:24px;margin-bottom:20px}.intel-section h2{font-size:20px;margin:0 0 14px}.intel-section p{line-height:1.6}.intel-meta{font-size:12px;opacity:.65}.intel-fact{padding:16px 0;border-bottom:1px solid var(--border,#ddd)}.intel-fact h3{font-size:15px;margin:0 0 8px}.intel-fact details{font-size:12px;line-height:1.7}.intel-fact summary{cursor:pointer}.intel-fact pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:230px;overflow:auto}.intel-input{width:100%;min-height:95px;padding:12px;border:1px solid var(--border,#ddd);border-radius:10px;background:var(--surface,#fff);color:inherit}.intel-actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.intel-badge{display:inline-block;padding:5px 10px;border-radius:20px;background:#eaf3ef;color:#235c45;font-size:12px}.intel-loading{padding:15px;background:#f3f0e6;color:#65562c;border-radius:10px}.intel-stat{font-size:28px;font-weight:650;letter-spacing:-1px}@media(max-width:1000px){.intel-layout{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+{% block page_head %}
+<div class="page-head"><div><h1 class="page-title">Business intelligence</h1><p class="page-sub">Understand the numbers. Decide what needs attention.</p></div>
+<form><label for="days">Reporting period</label> <select id="days" name="days" onchange="this.form.submit()">{% for days in [7,30,90] %}<option value="{{days}}" {% if snapshot.period.days==days %}selected{% endif %}>{{days}} days</option>{% endfor %}</select></form></div>
+{% endblock %}
+{% block content %}
+<p class="intel-meta">{{ snapshot.period.start }} through {{ snapshot.period.end_exclusive }} (end exclusive) · UTC · USD · Refreshed {{ snapshot.generated_at[:19] }}</p>
+<div class="grid grid-4" style="margin-bottom:20px">
+{% for f in snapshot.facts if f.id in ['job_value','completed_jobs','estimate_pipeline','low_stock'] %}
+<div class="card stat"><div class="label">{{ f.title }}</div><div class="intel-stat">{% if f.unit=='cents' %}${{ '{:,.2f}'.format(f.value/100) }}{% else %}{{ f.value }}{% endif %}</div><div class="foot">{{ f.unit if f.unit!='cents' else ('Potential work' if f.id=='estimate_pipeline' else 'Completed work') }}</div></div>
+{% endfor %}</div>
+<div class="intel-layout"><div>
+<section class="card intel-section"><h2>Ask about your business</h2><p>Ask in your own words. Answers cite the records used and never change your shop data.</p>
+<form id="ask-form"><label for="question" class="sr-only">Your question</label><textarea id="question" class="intel-input" maxlength="1000" minlength="3" required placeholder="What should I focus on today?"></textarea>
+<div class="intel-actions"><button class="btn btn-primary" id="ask-button">Ask intelligence</button><button type="button" class="btn btn-secondary" id="brief-button">Create business briefing</button></div></form>
+<p class="intel-meta">Uses the configured local AI model when available. Verified rules remain available offline. Each answer is saved with its evidence.</p>
+<div id="answer" aria-live="polite"></div></section>
+<section class="card intel-section"><h2>Suggested priorities</h2>
+{% for a in snapshot.actions %}<article class="intel-fact"><span class="intel-badge">{{a.severity}}</span><h3 style="margin-top:8px">{{a.title}}</h3><p>{{a.detail}}</p><p class="intel-meta">Evidence: {{a.fact_ids|join(', ')}}</p><a href="{{a.url}}" class="btn btn-secondary">Review records</a></article>{% else %}<p>No rule-based priorities were detected in the available records.</p>{% endfor %}</section>
+</div><div>
+<section class="card intel-section"><h2>Facts and evidence</h2>
+{% for f in snapshot.facts %}<article class="intel-fact" id="fact-{{f.id}}"><h3>{{f.title}}</h3><p>{{f.statement}}</p><details><summary>How this is calculated · {{f.evidence_count}} source records</summary><p>{{f.definition}}</p><p>Evidence ID: {{f.id}}. Showing up to 100 records.</p><pre>{{f.evidence|tojson(indent=2)}}</pre></details></article>{% endfor %}</section>
+<section class="card intel-section"><h2>What the data cannot tell us yet</h2><ul>{% for limitation in snapshot.limitations %}<li style="margin-bottom:10px">{{limitation}}</li>{% endfor %}</ul></section>
+<section class="card intel-section"><h2>Saved answers</h2><div id="history">{% for report in history %}<p><button class="btn btn-secondary history-button" data-id="{{report.id}}">{{report.question}}</button><br><span class="intel-meta">{{report.created_at}} · {{report.source}}</span></p>{% else %}<p id="empty-history">Your saved answers will appear here.</p>{% endfor %}</div></section>
+<section class="card intel-section"><h2>Background analysis</h2><p>{{ 'Scheduled analysis is enabled.' if scheduler_enabled else 'In-app scheduled analysis is disabled. A separate worker can process changes.' }}</p><p>{{ pending|length }} change groups are waiting for analysis.</p>{% for event in pending if event.attempts>=5 %}<p>Analysis paused after repeated failures for {{event.event}}. Review the agent console.</p><button class="btn btn-secondary retry-analysis">Retry failed analysis</button>{% endfor %}<a href="/agents/" class="btn btn-secondary">Agent console</a></section>
+</div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+(()=>{
+const answer=document.getElementById('answer'), question=document.getElementById('question');
+const csrf={{csrf|tojson}}, days={{snapshot.period.days|tojson}};
+const el=(tag,text,parent)=>{const node=document.createElement(tag);node.textContent=text;if(parent)parent.append(node);return node;};
+function show(data){
+ answer.replaceChildren();
+ el('p',data.source==='ai'?'AI selected these verified facts · '+data.model:'Verified rules · '+data.degraded_reason,answer).className='intel-badge';
+ el('p',data.message,answer);
+ el('p','Saved answer #'+data.report_id+' · '+(data.duration_ms/1000).toFixed(1)+'s · Evidence captured '+data.snapshot.generated_at,answer).className='intel-meta';
+ const facts=new Map(data.snapshot.facts.map(f=>[f.id,f]));
+ for(const id of data.fact_ids){const f=facts.get(id);if(!f)continue;const a=el('article','',answer);a.className='intel-fact';el('h3',f.title,a);el('p',f.statement,a);const details=el('details','',a);el('summary','Evidence: '+id+' · '+f.evidence_count+' records',details);el('p',f.definition,details);el('pre',JSON.stringify(f.evidence,null,2),details);}
+ for(const id of data.action_ids){const a=data.snapshot.actions.find(a=>a.id===id);if(!a)continue;el('h3',a.title,answer);el('p',a.detail,answer);const link=el('a','Review records',answer);link.href=a.url;link.className='btn btn-secondary';}
+ const limits=el('details','',answer);el('summary','Limits of this answer',limits);for(const text of data.snapshot.limitations)el('p',text,limits);
+}
+async function load(id){answer.textContent='Loading saved evidence…';try{const response=await fetch('/intelligence/api/reports/'+id);if(!response.ok)throw Error('Saved answer could not be loaded.');show(await response.json());answer.scrollIntoView({behavior:'smooth',block:'center'});}catch(error){answer.textContent=error.message;}}
+document.querySelectorAll('.retry-analysis').forEach(b=>b.onclick=async()=>{b.disabled=true;try{const r=await fetch('/intelligence/api/retry-failed',{method:'POST',headers:{'X-CSRF-Token':csrf}});if(!r.ok)throw Error();b.textContent='Queued for retry';}catch{b.textContent='Could not retry. Reload and try again.';b.disabled=false;}});
+document.querySelectorAll('.history-button').forEach(b=>b.onclick=()=>load(b.dataset.id));
+document.getElementById('brief-button').onclick=()=>{question.value='Give me a business briefing and the priorities that need attention.';document.getElementById('ask-form').requestSubmit();};
+document.getElementById('ask-form').onsubmit=async(event)=>{
+ event.preventDefault();const buttons=[document.getElementById('ask-button'),document.getElementById('brief-button')];buttons.forEach(b=>b.disabled=true);answer.textContent='Reviewing your records and asking the local model…';
+ try{const response=await fetch('/intelligence/api/ask',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},body:JSON.stringify({question:question.value,days})});const data=await response.json();if(!response.ok)throw Error(data.error||'The request could not be completed. Reload and try again.');show(data);document.getElementById('empty-history')?.remove();const p=el('p','');const b=el('button',question.value,p);b.className='btn btn-secondary';b.onclick=()=>load(data.report_id);document.getElementById('history').prepend(p);
+ }catch(error){answer.textContent=error.message;}finally{buttons.forEach(b=>b.disabled=false);}
+};
+})();
+</script>
+{% endblock %}

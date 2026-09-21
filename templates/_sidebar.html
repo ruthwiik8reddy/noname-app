@@ -19,6 +19,9 @@
   <nav class="sidebar-nav">
 
     <div class="nav-group-label">Overview</div>
+    {% if session.get('role') in ['admin','general_manager'] %}
+    <a href="/intelligence/" {% if active_page == "intelligence" %}class="active"{% endif %}>Business intelligence</a>
+    {% endif %}
     {% if "command" in nav_items %}
     <a href="/command" {% if active_page == "command" %}class="active"{% endif %}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6 4.6 1.9-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M18 15l.8 2.2 2.2.8-2.2.8L18 21l-.8-2.2-2.2-.8 2.2-.8z"/></svg>

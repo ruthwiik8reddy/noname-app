@@ -11,14 +11,11 @@ Three entry points, one execution path:
 All three funnel through `AgentRunner.run_agent`, so a run is recorded and
 findings are persisted identically no matter what caused it.
 
-**On the scheduler being a thread.** This is a single-process Flask app with a
-SQLite database, so a thread is the honest fit — no broker, no worker fleet, no
-extra thing to keep alive. It is deliberately conservative: it skips entirely
-under Flask's reloader parent process (which would otherwise give you two
-schedulers), holds a lock so runs can't overlap, and catches everything. If this
-app ever runs under multiple workers, this needs to become a real task queue —
-several processes each running the same agent would produce duplicate work and
-contend for SQLite writes.
+The scheduler drains a transactional SQLite outbox before its periodic sweep.
+Per-studio agent leases prevent concurrent manual/scheduled/event execution;
+event claims survive restart and retry failures. Leases expire after 30 minutes.
+This remains a local SQLite worker, not a distributed broker.
+
 """
 
 from __future__ import annotations
@@ -27,6 +24,7 @@ import logging
 import os
 import threading
 import time
+import uuid
 from typing import Any, Dict, List, Optional, Type
 
 from ..repositories.agent_repository import AgentRepository
@@ -35,6 +33,7 @@ from .diagnosis_agent import DiagnosisAgent
 from .estimate_agent import EstimateAgent
 from .inventory_agent import InventoryAgent
 from .leads_agent import LeadsAgent
+from .business_agent import BusinessAgent
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +42,7 @@ REGISTRY: Dict[str, Type[BaseAgent]] = {
     LeadsAgent.name: LeadsAgent,
     EstimateAgent.name: EstimateAgent,
     DiagnosisAgent.name: DiagnosisAgent,
+    BusinessAgent.name: BusinessAgent,
 }
 
 SCHEDULER_TICK_SECONDS = 60
@@ -69,6 +69,28 @@ class AgentRunner:
             return None
 
         self.repo.ensure_settings(studio_id, agent_name, cls.default_interval_mins)
+        # A database lease protects manual, scheduled and event runs across processes.
+        # Older minimal test schemas without the new migration still exercise the old runner.
+        token = uuid.uuid4().hex
+        leased = self.repo.table_exists('agent_leases')
+        if leased:
+            with self.repo._conn() as conn:
+                with conn:
+                    claim = conn.execute("""INSERT INTO agent_leases(studio_id,agent,token,expires_at)
+                        VALUES(?,?,?,?) ON CONFLICT(studio_id,agent) DO UPDATE SET
+                        token=excluded.token,expires_at=excluded.expires_at
+                        WHERE agent_leases.expires_at<=? RETURNING token""",
+                        (studio_id,agent_name,token,time.time()+1800,time.time())).fetchone()
+                    if not claim:
+                        return AgentResult(agent=agent_name, findings=[], error='Agent already running')
+        try:
+            return self._execute(studio_id,agent_name,cls,trigger,detail)
+        finally:
+            if leased:
+                self.repo.execute('DELETE FROM agent_leases WHERE studio_id=? AND agent=? AND token=?',
+                                  (studio_id,agent_name,token))
+
+    def _execute(self, studio_id, agent_name, cls, trigger, detail):
         run_id = self.repo.start_run(studio_id, agent_name, trigger, detail)
 
         result = cls(studio_id).run()
@@ -116,7 +138,7 @@ class AgentRunner:
 
 class TriggerBus:
     """
-    Fire-and-forget event dispatch.
+    Durable dispatch, with synchronous execution available for explicit callers.
 
     Triggers run on a background thread so a technician marking a job complete
     never waits for an agent — and never sees a 500 because one failed.
@@ -125,6 +147,16 @@ class TriggerBus:
     @staticmethod
     def emit(studio_id: int, event: str, detail: str = "", synchronous: bool = False) -> List[str]:
         interested = [n for n, c in REGISTRY.items() if event in c.responds_to]
+        # Domain triggers persist these events in the transaction that caused them.
+        # Keep synchronous dispatch for callers that explicitly need it (including tests).
+        if not synchronous and AgentRepository().table_exists('intelligence_events'):
+            from ..intelligence.events import EventQueue
+            event_name = {'lead_created':'leads_changed','job_completed':'jobs_changed',
+                          'job_assigned':'jobs_changed','estimate_created':'estimates_changed'}.get(event,event)
+            from ..intelligence.events import EVENT_AGENTS
+            if event_name in EVENT_AGENTS:
+                EventQueue().enqueue(studio_id,event_name)
+            return interested
         if not interested:
             return []
 
@@ -160,6 +192,8 @@ def _loop(app: Any) -> None:
                 try:
                     with app.app_context():
                         runner = AgentRunner()
+                        from ..intelligence.events import EventQueue
+                        EventQueue().drain(runner)
                         for studio_id in _studio_ids():
                             due = runner.run_due(studio_id)
                             if due:

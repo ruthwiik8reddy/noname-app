@@ -14,7 +14,7 @@ from typing import Any, Dict, List
 
 from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
 
-from ..auth import auth_context, staff_or_admin_required
+from ..auth import auth_context, staff_or_admin_required, roles_required
 from ..services.agents import TriggerBus
 from ..services.agents.leads_agent import LeadsAgent
 from ..services.repositories import AgentRepository, LeadRepository
@@ -44,7 +44,7 @@ def _actor() -> str:
 # ══════════════════════════════════════════════════════════════════════════════
 
 @bp.route("/command")
-@staff_or_admin_required
+@roles_required("admin", "general_manager")
 def command_center():
     studio_id = session["studio_id"]
     base = BaseRepository()
@@ -82,7 +82,7 @@ def command_center():
 
 
 @bp.route("/command/api/pulse")
-@staff_or_admin_required
+@roles_required("admin", "general_manager")
 def pulse():
     """Everything the dashboard refreshes on a timer, in one round trip."""
     studio_id = session["studio_id"]

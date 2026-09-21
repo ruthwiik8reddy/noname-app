@@ -41,17 +41,11 @@ class BaseRepository:
             yield self._connection
             return
 
-        conn = None
-        try:
-            from flask import has_app_context
-
-            if has_app_context():
-                from ...db_manager import get_db
-
-                yield get_db()
-                return
-        except Exception:  # noqa: BLE001 - fall through to a standalone connection
-            pass
+        from flask import has_app_context
+        if has_app_context():
+            from ...db_manager import get_db
+            yield get_db()
+            return
 
         conn = sqlite3.connect(self._db_path, timeout=15)
         conn.row_factory = sqlite3.Row
@@ -82,7 +76,7 @@ class BaseRepository:
             cur = conn.execute(sql, tuple(params))
             if commit:
                 conn.commit()
-            return cur.lastrowid if cur.lastrowid else cur.rowcount
+            return cur.lastrowid if sql.lstrip().upper().startswith("INSERT") else cur.rowcount
 
     def execute_many(self, sql: str, seq: Iterable[Iterable[Any]], commit: bool = True) -> None:
         with self._conn() as conn:

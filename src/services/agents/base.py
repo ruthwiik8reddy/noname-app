@@ -80,7 +80,7 @@ class Finding:
         return (
             studio_id, run_id, agent, self.kind, self.severity, self.title, self.detail,
             self.action_label, self.action_url, self.entity_type, self.entity_id,
-            self.fingerprint, json.dumps(self.data, default=str)[:4000],
+            self.fingerprint, json.dumps(self.data, default=str),
         )
 
 

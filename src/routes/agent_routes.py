@@ -11,7 +11,7 @@ import logging
 
 from flask import Blueprint, jsonify, render_template, request, session
 
-from ..auth import auth_context, staff_or_admin_required
+from ..auth import auth_context, roles_required
 from ..services.agents import AgentRunner, VehicleDiagnosisOrchestrator, available_agents
 from ..services.llm.base import LLMError
 from ..services.orchestrators.base import OrchestratorError
@@ -40,7 +40,7 @@ def _actor() -> str:
 # ── console ───────────────────────────────────────────────────────────────────
 
 @bp.route("/")
-@staff_or_admin_required
+@roles_required("admin", "general_manager")
 def console():
     studio_id = session["studio_id"]
     repo = AgentRepository()
@@ -82,7 +82,7 @@ def console():
 # ── running ───────────────────────────────────────────────────────────────────
 
 @bp.route("/run/<agent_name>", methods=["POST"])
-@staff_or_admin_required
+@roles_required("admin", "general_manager")
 def run_one(agent_name: str):
     result = _runner.run_agent(session["studio_id"], agent_name, trigger="manual", detail=_actor())
     if result is None:
@@ -98,7 +98,7 @@ def run_one(agent_name: str):
 
 
 @bp.route("/run-all", methods=["POST"])
-@staff_or_admin_required
+@roles_required("admin", "general_manager")
 def run_all():
     results = _runner.run_all(session["studio_id"], trigger="manual")
     return jsonify({
@@ -111,7 +111,7 @@ def run_all():
 
 
 @bp.route("/toggle/<agent_name>", methods=["POST"])
-@staff_or_admin_required
+@roles_required("admin", "general_manager")
 def toggle(agent_name: str):
     enabled = bool((request.json or {}).get("enabled", True))
     AgentRepository().set_enabled(session["studio_id"], agent_name, enabled)
@@ -121,7 +121,7 @@ def toggle(agent_name: str):
 # ── findings ──────────────────────────────────────────────────────────────────
 
 @bp.route("/api/feed")
-@staff_or_admin_required
+@roles_required("admin", "general_manager")
 def feed():
     repo = AgentRepository()
     studio_id = session["studio_id"]
@@ -132,7 +132,7 @@ def feed():
 
 
 @bp.route("/finding/<int:finding_id>/<action>", methods=["POST"])
-@staff_or_admin_required
+@roles_required("admin", "general_manager")
 def decide_finding(finding_id: int, action: str):
     if action not in ("dismiss", "resolve", "reopen"):
         return jsonify({"error": "Unknown action."}), 400
@@ -144,7 +144,7 @@ def decide_finding(finding_id: int, action: str):
 # ── vehicle symptom diagnosis ─────────────────────────────────────────────────
 
 @bp.route("/diagnose", methods=["POST"])
-@staff_or_admin_required
+@roles_required("admin", "general_manager")
 def diagnose():
     """
     Symptom-based paint triage — the DVI pipeline without photos, for when a
