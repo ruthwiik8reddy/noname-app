@@ -147,6 +147,29 @@ class IntelligenceFacts(BaseRepository):
                 if low or stock_ids:
                     action('review_stock', 'Review stock and supplier lead times', 'Verify physical stock and recent usage before ordering.', ['low_stock', *stock_ids], '/inventory', 'warning')
 
+                if conn.execute("SELECT 1 FROM sqlite_master WHERE name='job_cost_plans'").fetchone():
+                    from ..repositories.job_records import JobRecords
+                    reviewed_jobs=rows("""SELECT j.id FROM jobs j JOIN job_cost_plans p ON p.job_id=j.id AND p.studio_id=j.studio_id
+                        WHERE j.studio_id=? AND lower(j.status)='completed' AND p.reviewed_at IS NOT NULL
+                        AND date(j.completed_at)>=? AND date(j.completed_at)<?""",(start.isoformat(),end.isoformat()))
+                    cost_records=[]
+                    for job in reviewed_jobs:
+                        record=JobRecords(connection=conn).detail(studio_id,job['id'])
+                        if record['reviewed']:
+                            cost_records.append(dict(job_id=job['id'],revenue_cents=record['revenue_cents'],
+                                labor_cents=record['labor_cents'],material_cents=record['material_cents'],
+                                contribution_cents=record['contribution_cents']))
+                    amount=sum(r['contribution_cents'] for r in cost_records)
+                    fact('reviewed_contribution','revenue','Reviewed job contribution',amount if cost_records else None,'cents',
+                         (f"{len(cost_records)} completed jobs with reviewed direct costs contributed {money(amount)} before overhead, fees and tax."
+                          if cost_records else 'No completed jobs in this period have reviewed direct costs.'),
+                         'Only explicitly reviewed completed jobs are included. Selling price less recorded labor and materials; not net profit or cash collected.',cost_records)
+                    negative=[r for r in cost_records if r['contribution_cents']<0]
+                    if negative:
+                        action('review_job_costs','Review jobs whose recorded costs exceed their price',
+                               'Check time, materials, pricing and any rework before changing quotes.',
+                               ['reviewed_contribution'],'/work-records/jobs/'+str(negative[0]['job_id']),'warning')
+
                 missing = rows("SELECT id, status, completed_at, customer_id FROM jobs WHERE studio_id=? AND "
                                "(NOT EXISTS (SELECT 1 FROM customers c WHERE c.id=jobs.customer_id AND c.studio_id=jobs.studio_id) OR (lower(status)='completed' AND date(completed_at) IS NULL))")
                 fact('data_quality', 'quality', 'Jobs with incomplete reporting data', len(missing), 'jobs',

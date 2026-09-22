@@ -206,8 +206,8 @@ async function onScanSuccess(decodedText) {
   if (qty && !isNaN(qty) && Number(qty) > 0) {
     try {
       const resp = await fetch("/api/jobs/log-material", {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ sku:decodedText, quantity_used:parseFloat(qty) })
+        method:"POST", headers:{"Content-Type":"application/json", "X-CSRF-Token": {{work_records_csrf|tojson}}},
+        body: JSON.stringify({ sku:decodedText, quantity_used:parseFloat(qty), request_key: crypto.randomUUID() })
       });
       const data = await resp.json();
       if (resp.ok) { toast(data.message, 'ok'); location.reload(); }

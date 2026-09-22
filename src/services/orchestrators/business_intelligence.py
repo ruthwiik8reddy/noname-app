@@ -13,7 +13,7 @@ from ..intelligence.facts import IntelligenceFacts
 
 logger = logging.getLogger(__name__)
 TOPICS = {
-    'revenue': ('revenue', 'sales', 'money', 'ticket', 'earned', 'service mix'),
+    'revenue': ('revenue', 'sales', 'money', 'ticket', 'earned', 'service mix', 'contribution', 'direct cost'),
     'estimates': ('estimate', 'quote', 'approval', 'pipeline'),
     'inventory': ('stock', 'inventory', 'product', 'supply', 'run out'),
     'customers': ('customer', 'rebook', 'return', 'churn'),

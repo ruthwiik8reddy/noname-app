@@ -12,6 +12,7 @@
     </p>
   </div>
   <div class="page-actions">
+    {% if current_role in ["admin","general_manager","technician"] %}<a class="btn btn-secondary" href="/work-records/jobs/{{job.id}}">Work records</a>{% endif %}
     <a class="btn btn-secondary" href="/dvi/job/{{ job.id }}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L8 6H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3.2"/></svg>
       Inspect

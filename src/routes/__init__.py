@@ -5,9 +5,10 @@ Each blueprint is registered in `src/app.py`. Handlers here are intentionally
 thin: session in, orchestrator or agent call, response out.
 """
 
-from . import intelligence_routes, agent_routes, analytics_routes, dispatch_routes, dvi_routes, lead_routes
+from . import job_record_routes, intelligence_routes, agent_routes, analytics_routes, dispatch_routes, dvi_routes, lead_routes
 
 BLUEPRINTS = (
+    job_record_routes.bp,
     intelligence_routes.bp,
     analytics_routes.bp,
     dvi_routes.bp,

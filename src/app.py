@@ -32,6 +32,9 @@ def create_app():
     for blueprint in BLUEPRINTS:
         app.register_blueprint(blueprint)
 
+    from .routes.job_record_routes import csrf_token
+    app.context_processor(lambda: {"work_records_csrf": csrf_token()})
+
     app.teardown_appcontext(close_db)
 
     # Background agent scheduler. Skipped under the reloader's parent process

@@ -564,6 +564,8 @@ def init_db():
     _migrate_phase4(Config.DB_PATH)
     from .migrate_intelligence import migrate as migrate_intelligence
     migrate_intelligence(Config.DB_PATH)
+    from .migrate_job_records import migrate as migrate_job_records
+    migrate_job_records(Config.DB_PATH)
 
 
 def get_studio_inventory(studio_id: int):
