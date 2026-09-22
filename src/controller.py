@@ -181,76 +181,24 @@ def new_booking():
     conn = get_db()
     logger.info(f"Entering new_booking(studio_id={sid}, method={request.method})")
 
-    if request.method == "POST":
-        f = request.form
-        errors = []
-        if not f.get("customer_name", "").strip(): errors.append("Customer name is required.")
-        if not f.get("customer_phone", "").strip(): errors.append("Phone is required.")
-        if not f.get("vehicle", "").strip(): errors.append("Vehicle is required.")
-        if not f.get("service_id", "").strip(): errors.append("Please select a service.")
-        if not f.get("date", "").strip(): errors.append("Please select a date.")
-        if not f.get("time_slot", "").strip(): errors.append("Please select a time slot.")
-
-        if errors:
-            services = conn.execute("SELECT * FROM services WHERE studio_id=?", (sid,)).fetchall()
-            bays     = conn.execute("SELECT * FROM bays WHERE studio_id=?", (sid,)).fetchall()
-            dates    = [(datetime.now().date() + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(14)]
-            return render_template("new_booking.html",
-                **sidebar_context(), **auth_context(), active_page="bookings",
-                services=services, bays=bays, dates=dates,
-                time_slots=TIME_SLOTS, errors=errors, form=f)
-
-        customer_name  = f["customer_name"].strip()
-        customer_phone = f["customer_phone"].strip()
-        vehicle_name   = f["vehicle"].strip()
-        estimate_id    = f.get("estimate_id") or None
-
-        # Auto-create or find customer record
-        existing_customer = conn.execute(
-            "SELECT id FROM customers WHERE studio_id=? AND phone=?",
-            (sid, customer_phone)
-        ).fetchone()
-
-        if existing_customer:
-            customer_id = existing_customer["id"]
-        else:
-            username = f"cust_{sid}_{customer_phone}".replace(" ", "")
-            cur = conn.execute(
-                "INSERT INTO customers (studio_id, name, phone, email, username, password) "
-                "VALUES (?,?,?,?,?,?)",
-                (sid, customer_name, customer_phone, "", username, "")
-            )
-            customer_id = cur.lastrowid
-
-        existing_vehicle = conn.execute(
-            "SELECT id FROM vehicles WHERE customer_id=? AND make_model=?",
-            (customer_id, vehicle_name)
-        ).fetchone()
-        if not existing_vehicle:
-            conn.execute(
-                "INSERT INTO vehicles (studio_id, customer_id, make_model) VALUES (?,?,?)",
-                (sid, customer_id, vehicle_name)
-            )
-
-        conn.execute("""
-            INSERT INTO bookings
-            (studio_id, customer_name, customer_phone, vehicle,
-             service_id, bay_id, date, time_slot, notes, status, customer_id, estimate_id)
-            VALUES (?,?,?,?,?,?,?,?,?,'Pending',?,?)
-        """, (sid, customer_name, customer_phone, vehicle_name,
-              f["service_id"], f.get("bay_id") or None, f["date"], f["time_slot"],
-              f.get("notes", "").strip(), customer_id, estimate_id))
-        conn.commit()
-        return redirect(url_for("main.bookings"))
-
-    services = conn.execute("SELECT * FROM services WHERE studio_id=?", (sid,)).fetchall()
-    bays     = conn.execute("SELECT * FROM bays WHERE studio_id=?", (sid,)).fetchall()
-    dates    = [(datetime.now().date() + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(14)]
-    return render_template("new_booking.html",
-        **sidebar_context(), **auth_context(), active_page="bookings",
-        services=services, bays=bays, dates=dates,
-        time_slots=TIME_SLOTS, errors=[], form={}
-    )
+    from .services.repositories.vehicle_workflow import VehicleWorkflow
+    from .services.repositories.job_records import RecordError
+    from .routes.job_record_routes import verify_csrf, actor
+    workflow=VehicleWorkflow(connection=conn)
+    errors=[]; form=request.form if request.method=='POST' else {}
+    if request.method=='POST':
+        verify_csrf()
+        try:
+            workflow.book(sid,dict(request.form),actor())
+            return redirect(url_for('main.bookings'))
+        except RecordError as exc:
+            errors.append(str(exc))
+    return render_template('new_booking.html',**sidebar_context(),**auth_context(),active_page='bookings',
+        services=conn.execute('SELECT * FROM services WHERE studio_id=?',(sid,)).fetchall(),
+        bays=conn.execute('SELECT * FROM bays WHERE studio_id=?',(sid,)).fetchall(),
+        dates=[(datetime.now().date()+timedelta(days=i)).isoformat() for i in range(14)],
+        time_slots=TIME_SLOTS,errors=errors,form=form,vehicle_choices=workflow.choices(sid),
+        request_key=request.form.get('request_key') or secrets.token_hex(24))
 
 
 @bp.route("/bookings/slots")
@@ -571,6 +519,14 @@ def new_estimate():
     conn = get_db()
 
     if request.method == "POST":
+        from .routes.job_record_routes import verify_csrf
+        from .services.repositories.vehicle_workflow import VehicleWorkflow
+        from .services.repositories.job_records import RecordError
+        verify_csrf()
+        try:
+            identity=VehicleWorkflow(connection=conn).identity(conn,sid,request.form.get('vehicle_id'),request.form.get('customer_id'))
+        except RecordError as exc:
+            return str(exc),400
         try:
             f = request.form
 
@@ -579,7 +535,7 @@ def new_estimate():
             customer_name  = ""
             customer_email = ""
             customer_phone = ""
-            vehicle        = f.get("vehicle", "").strip()
+            vehicle        = identity["make_model"]
 
             if customer_id_raw:
                 cust = conn.execute(
@@ -623,14 +579,14 @@ def new_estimate():
                 INSERT INTO estimates
                 (studio_id, customer_name, customer_email, customer_phone,
                  vehicle, status, subtotal, tax_percent, tax_amount, total,
-                 notes, internal_notes, customer_id, services_summary)
-                VALUES (?,?,?,?,?,'Draft',?,?,?,?,?,?,?,?)
+                 notes, internal_notes, customer_id, services_summary, vehicle_id)
+                VALUES (?,?,?,?,?,'Draft',?,?,?,?,?,?,?,?,?)
             """, (sid, customer_name, customer_email, customer_phone, vehicle,
                   subtotal, tax_pct, tax_amount, total,
                   f.get("notes", "").strip(),
                   f.get("internal_notes", "").strip(),
                   customer_id_raw or None,
-                  services_summary))
+                  services_summary, identity["id"]))
             estimate_id = cur.lastrowid
 
             for it in items:
@@ -644,6 +600,7 @@ def new_estimate():
             logger.info(f"Exiting new_estimate — created estimate {estimate_id}")
             return redirect(url_for("main.estimate_detail", estimate_id=estimate_id))
         except Exception as e:
+            conn.rollback()
             logger.error(f"Error in new_estimate: {e}", exc_info=True)
             return redirect(url_for("main.estimates"))
 
@@ -699,6 +656,7 @@ def estimate_lookup(estimate_id):
         "customer_phone":   est["customer_phone"],
         "customer_email":   est["customer_email"],
         "vehicle":          est["vehicle"],
+        "vehicle_id":       est["vehicle_id"],
         "services_summary": est["services_summary"] or "",
         "total":            est["total"],
         "total_display":    f"${est['total']/100:.2f}",
@@ -1292,8 +1250,8 @@ def customer_lookup(customer_id):
         return jsonify({"error": "Customer not found"}), 404
 
     vehicles = conn.execute(
-        "SELECT id, make_model, year FROM vehicles WHERE customer_id=? ORDER BY created_at DESC",
-        (customer_id,)
+        "SELECT id, make_model, year, license_plate, vin FROM vehicles WHERE customer_id=? AND studio_id=? ORDER BY created_at DESC",
+        (customer_id, sid)
     ).fetchall()
 
     return jsonify({
@@ -1302,7 +1260,7 @@ def customer_lookup(customer_id):
         "phone":    customer["phone"],
         "email":    customer["email"] or "",
         "vehicles": [
-            {"id": v["id"], "make_model": v["make_model"], "year": v["year"] or ""}
+            {"id": v["id"], "make_model": v["make_model"], "year": v["year"] or "", "plate": v["license_plate"] or "", "vin": v["vin"] or ""}
             for v in vehicles
         ],
     })

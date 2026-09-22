@@ -16,6 +16,7 @@
 
 {% block content %}
 <form method="POST" id="estimateForm">
+<input type="hidden" name="csrf" value="{{work_records_csrf}}">
 
   <!-- Customer lookup -->
   <div class="field">
@@ -32,7 +33,7 @@
   <!-- Vehicle — shown after lookup -->
   <div class="field" id="vehicle-row" style="display:none;">
     <label class="lbl">Vehicle *</label>
-    <select id="field_vehicle_select" name="vehicle">
+    <select id="field_vehicle_select" name="vehicle_id">
       <option value="">— Select vehicle —</option>
     </select>
   </div>
@@ -139,6 +140,8 @@ addRow();
 
 function lookupCustomer() {
   const id = document.getElementById('lookupId').value.trim();
+  document.getElementById('field_customer_id').value = '';
+  document.getElementById('field_vehicle_select').replaceChildren(new Option('— Select vehicle —',''));
   if (!id) return;
   fetch('/customers/' + id + '/lookup')
     .then(r => r.ok ? r.json() : Promise.reject())
@@ -148,9 +151,10 @@ function lookupCustomer() {
       sel.innerHTML = '<option value="">— Select vehicle —</option>';
       c.vehicles.forEach(v => {
         const label = v.year ? v.year + ' ' + v.make_model : v.make_model;
-        sel.innerHTML += `<option value="${v.make_model}">${label}</option>`;
+        const option = document.createElement("option");
+        option.value = v.id; option.textContent = `#${v.id} · ${label} · ${v.plate || v.vin || "Identity details missing"}`; sel.append(option);
       });
-      if (c.vehicles.length > 0) sel.options[1].selected = true;
+      // Require an explicit choice; the first same-model vehicle may be wrong.
       sel.required = true;
       document.getElementById('vehicle-row').style.display = 'block';
       toast('✓ ' + c.name + ' — ' + c.vehicles.length + ' vehicle(s)', 'ok');

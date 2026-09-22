@@ -126,3 +126,33 @@ def legacy_material_scan():
     except RecordError as exc:
         return jsonify(error=str(exc)),400
     return jsonify(success=True,message=f"Material recorded for job #{jobs[0]['id']}.")
+
+
+@bp.route('/identity/<kind>/<int:record_id>',methods=['GET','POST'])
+@roles_required('admin','general_manager')
+def record_identity(kind,record_id):
+    from ..services.repositories.vehicle_workflow import VehicleWorkflow
+    if kind not in ('bookings','estimates'):abort(404)
+    repo=VehicleWorkflow();sid=session['studio_id']
+    record=repo.fetch_one(f'SELECT * FROM {kind} WHERE id=? AND studio_id=?',(record_id,sid))
+    if not record:abort(404)
+    if request.method=='POST':
+        verify_csrf()
+        try:repo.link_record(sid,kind,record_id,number(request.form.get('vehicle_id')),actor())
+        except RecordError as exc:flash(str(exc),'error')
+        else:flash('Verified vehicle linked.','success')
+        return redirect(request.path,code=303)
+    choices=[v for v in repo.choices(sid) if record['customer_id'] is None or v['customer_id']==record['customer_id']]
+    return render_template('record_identity.html',**common(),kind=kind,record=record,choices=choices,csrf=csrf_token())
+
+
+@bp.post('/bookings/<int:bid>/job')
+@roles_required('admin','general_manager')
+def booking_job(bid):
+    from ..services.repositories.vehicle_workflow import VehicleWorkflow
+    verify_csrf()
+    try:jid=VehicleWorkflow().convert_booking(session['studio_id'],bid,actor())
+    except RecordError as exc:
+        flash(str(exc),'error')
+        return redirect(url_for('job_records.record_identity',kind='bookings',record_id=bid),code=303)
+    return redirect(url_for('job_records.detail',jid=jid),code=303)

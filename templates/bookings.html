@@ -24,7 +24,7 @@
             <div style="font-weight:500;">{{ b.customer_name }}</div>
             <div style="font-size:11px;color:rgba(255,255,255,0.3);">{{ b.customer_phone }}</div>
           </td>
-          <td>{{ b.vehicle }}</td>
+          <td>{{ b.vehicle }}{% if current_role in ["admin","general_manager"] %}<br><a href="/work-records/identity/bookings/{{b.id}}">{{ "Vehicle / create job" if b.vehicle_id else "Verify vehicle / create job" }}</a>{% endif %}</td>
           <td>{{ b.service_name }}</td>
           <td>{{ b.date }}</td>
           <td>{{ b.time_slot }}</td>

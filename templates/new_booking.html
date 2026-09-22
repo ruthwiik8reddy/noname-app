@@ -21,6 +21,8 @@
 {% endif %}
 
 <form method="POST" id="bookingForm">
+<input type="hidden" name="csrf" value="{{work_records_csrf}}"><input type="hidden" name="request_key" value="{{request_key}}">
+<div class="field"><label for="verified_vehicle">Verified vehicle (recommended)</label><select id="verified_vehicle" name="vehicle_id" onchange="const o=this.selectedOptions[0]; if(o.value){document.getElementById('field_customer_name').value=o.dataset.name;document.getElementById('field_customer_phone').value=o.dataset.phone;document.getElementById('field_vehicle').value=o.dataset.model;}"><option value="">Unverified description only</option>{% for v in vehicle_choices %}<option value="{{v.id}}" data-name="{{v.name}}" data-phone="{{v.phone or ''}}" data-model="{{v.make_model}}" {% if form.get('vehicle_id')|string==v.id|string %}selected{% endif %}>#{{v.id}} · {{v.make_model}} · {{v.license_plate or v.vin or 'Identity details missing'}} · {{v.name}}</option>{% endfor %}</select><p class="help">An approved estimate carries its verified vehicle automatically. Description-only bookings need verification before creating a job.</p></div>
 
   <!-- Estimate ID lookup -->
   <div class="field">
@@ -30,7 +32,7 @@
              onkeydown="if(event.key==='Enter'){event.preventDefault();lookupEstimate();}">
       <button type="button" class="btn btn-secondary btn-sm" onclick="lookupEstimate()">Search</button>
     </div>
-    <input type="hidden" name="estimate_id" id="field_estimate_id">
+    <input type="hidden" name="estimate_id" id="field_estimate_id" value="{{form.get('estimate_id','')}}">
   </div>
 
   <div class="form-row">
@@ -155,6 +157,7 @@ function lookupEstimate() {
     .then(r => r.ok ? r.json() : Promise.reject())
     .then(e => {
       document.getElementById('field_estimate_id').value    = e.id;
+      document.getElementById('verified_vehicle').value = e.vehicle_id || '';
       document.getElementById('field_customer_name').value  = e.customer_name;
       document.getElementById('field_customer_phone').value = e.customer_phone;
       document.getElementById('field_vehicle').value        = e.vehicle;

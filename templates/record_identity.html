@@ -1,0 +1,9 @@
+{% extends '_base.html' %}
+{% block title %}Verified vehicle · {{kind}} #{{record.id}}{% endblock %}
+{% block page_head %}<div class="page-head"><div><h1 class="page-title">Vehicle identity · {{kind}} #{{record.id}}</h1><p class="page-sub">{{record.customer_name}} · {{record.vehicle}} · {{record.status}}</p></div></div>{% endblock %}
+{% block content %}
+{% for message in get_flashed_messages() %}<p role="status">{{message}}</p>{% endfor %}
+<section class="card" style="padding:24px"><p>{{'Verified vehicle #'~record.vehicle_id if record.vehicle_id else 'No verified vehicle is linked yet.'}}</p><form method="post"><input type="hidden" name="csrf" value="{{csrf}}"><label>Verify this vehicle<select name="vehicle_id" required><option value="">Choose explicitly</option>{% for v in choices %}<option value="{{v.id}}" {% if v.id==record.vehicle_id %}selected{% endif %}>#{{v.id}} · {{v.make_model}} · {{v.license_plate or v.vin or 'Identity details missing'}} · {{v.name}}</option>{% endfor %}</select></label><button class="btn btn-primary">Save verified link</button></form><p>Existing downstream records must agree. Descriptions alone never establish vehicle identity.</p>
+{% if record.vehicle_id %}<p><a href="/work-records/vehicles/{{record.vehicle_id}}">Open vehicle history</a></p>{% endif %}
+{% if kind=='bookings' %}<form method="post" action="/work-records/bookings/{{record.id}}/job"><input type="hidden" name="csrf" value="{{csrf}}"><button class="btn btn-primary">Create or open job</button></form><p>Uses the approved estimate's service subtotal, excluding tax, or the booked service's current price when no estimate is linked.</p><a href="/bookings">Back to bookings</a>{% else %}<a href="/estimates/{{record.id}}">Back to estimate</a><p>To book approved work, open <a href="/bookings/new">New booking</a> and load estimate #{{record.id}}.</p>{% endif %}</section>
+{% endblock %}

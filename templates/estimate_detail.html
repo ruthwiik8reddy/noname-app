@@ -2,6 +2,7 @@
 {% block title %}EST-{{ est.id }} — {{ studio }}{% endblock %}
 
 {% block content %}
+{% if current_role in ["admin","general_manager"] %}<p><a href="/work-records/identity/estimates/{{est.id}}">{{ "Verified vehicle #"~est.vehicle_id if est.vehicle_id else "Link a verified vehicle" }} →</a></p>{% endif %}
 <div class="page-head">
     <div>
       <p class="est-id">EST-{{ est.id }}</p>

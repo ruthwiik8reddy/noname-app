@@ -566,6 +566,8 @@ def init_db():
     migrate_intelligence(Config.DB_PATH)
     from .migrate_job_records import migrate as migrate_job_records
     migrate_job_records(Config.DB_PATH)
+    from .migrate_vehicle_workflow import migrate as migrate_vehicle_workflow
+    migrate_vehicle_workflow(Config.DB_PATH)
 
 
 def get_studio_inventory(studio_id: int):

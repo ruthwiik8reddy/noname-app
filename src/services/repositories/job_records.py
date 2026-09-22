@@ -38,6 +38,10 @@ class JobRecords(BaseRepository):
         with self._conn() as conn, conn:
             conn.execute('BEGIN IMMEDIATE')
             job=self._job(conn,sid,jid)
+            if job.get('booking_id'):
+                source=conn.execute('SELECT vehicle_id FROM bookings WHERE studio_id=? AND id=?',(sid,job['booking_id'])).fetchone()
+                if not source or source['vehicle_id']!=vid:
+                    raise RecordError('This job must retain the vehicle from its source booking.')
             vehicle=conn.execute('''SELECT v.* FROM vehicles v JOIN customers c ON c.id=v.customer_id AND c.studio_id=v.studio_id
                                    WHERE v.studio_id=? AND v.id=?''',(sid,vid)).fetchone()
             if not vehicle:
@@ -210,4 +214,6 @@ class JobRecords(BaseRepository):
         jobs=self.fetch_all('SELECT id,service,status,completed_at FROM jobs WHERE studio_id=? AND vehicle_id=? ORDER BY id DESC',(sid,vid))
         inspections=self.fetch_all('''SELECT d.id,d.job_id,d.status,d.created_at,d.summary FROM dvi_inspections d
           JOIN jobs j ON j.id=d.job_id AND j.studio_id=d.studio_id WHERE j.studio_id=? AND j.vehicle_id=? ORDER BY d.id DESC''',(sid,vid))
-        return dict(vehicle=vehicle,jobs=jobs,inspections=inspections)
+        return dict(vehicle=vehicle,jobs=jobs,inspections=inspections,
+                    estimates=self.fetch_all('SELECT id,status,created_at FROM estimates WHERE studio_id=? AND vehicle_id=? ORDER BY id DESC',(sid,vid)),
+                    bookings=self.fetch_all('SELECT id,status,date FROM bookings WHERE studio_id=? AND vehicle_id=? ORDER BY id DESC',(sid,vid)))
