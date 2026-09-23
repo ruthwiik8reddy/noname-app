@@ -9,7 +9,7 @@
       {% if est.status == 'Approved' %}
         <span class="badge status-completed"><span class="dot"></span>Approved</span>
       {% elif est.status == 'Sent' %}
-        <span class="badge badge-blue"><span class="dot"></span>Sent to customer</span>
+        <span class="badge badge-blue"><span class="dot"></span>Ready to share</span>
       {% elif est.status == 'Revision Requested' %}
         <span class="badge badge-revision"><span class="dot"></span>Revision Requested</span>
       {% else %}
@@ -17,9 +17,9 @@
       {% endif %}
     </div>
     <div class="actions">
-      {% if est.status == 'Draft' %}
+      {% if current_role in ['admin','general_manager'] and est.status != 'Approved' %}
       <form method="POST" action="/estimates/{{ est.id }}/send" style="display:inline;">
-        <button type="submit" class="btn btn-gold">Send to Customer</button>
+        <input type="hidden" name="csrf" value="{{work_records_csrf}}"><button type="submit" class="btn btn-gold">Prepare approval link</button>
       </form>
       {% endif %}
       <a href="/estimates" class="btn btn-ghost">← Back</a>
@@ -71,14 +71,7 @@
     </div>
   </div>
 
-  <!-- Customer approval link -->
-  {% if est.status in ['Sent', 'Approved', 'Revision Requested'] %}
-  <div class="approve-link-box">
-    <p>Customer approval link — share this with the customer:</p>
-    <span class="approve-link" id="approveLink">{{ request.host_url }}estimates/{{ est.id }}/approve</span>
-    <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('approveLink').textContent); this.textContent='Copied!'">Copy</button>
-  </div>
-  {% endif %}
+  {% if current_role in ['admin','general_manager'] %}<p><a href="/approvals/manage/{{est.id}}">Manage secure approval links and versions</a></p>{% endif %}
 
   <!-- Signature -->
   {% if est.signature %}

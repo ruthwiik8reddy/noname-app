@@ -7,6 +7,7 @@
     <a href="/bookings/new" class="btn btn-primary">+ New Booking</a>
   </div>
 
+  {% for category,message in get_flashed_messages(with_categories=true) %}<p role="status">{{message}}</p>{% endfor %}
   <div class="table-wrap">
     {% if bookings %}
     <table class="data">
@@ -27,12 +28,12 @@
           <td>{{ b.vehicle }}{% if current_role in ["admin","general_manager"] %}<br><a href="/work-records/identity/bookings/{{b.id}}">{{ "Vehicle / create job" if b.vehicle_id else "Verify vehicle / create job" }}</a>{% endif %}</td>
           <td>{{ b.service_name }}</td>
           <td>{{ b.date }}</td>
-          <td>{{ b.time_slot }}</td>
+          <td>{{ b.time_slot }}{% if b.duration_minutes %}<br>{{b.duration_minutes}} min{% else %}<br>Legacy duration{% endif %}</td>
           <td style="color:rgba(255,255,255,0.4);">{{ b.bay_name or '—' }}</td>
           <td style="color:#C8A96E;">${{ b.service_price }}</td>
           <td>
             <form method="POST" action="/bookings/{{ b.id }}/status" class="status-form" style="display:flex;align-items:center;gap:4px;">
-              <select name="status" onchange="this.form.submit()">
+              <input type="hidden" name="csrf" value="{{work_records_csrf}}"><select name="status" onchange="this.form.submit()">
                 {% for st in ['Pending','Confirmed','Completed','Cancelled'] %}
                 <option {% if b.status == st %}selected{% endif %}>{{ st }}</option>
                 {% endfor %}

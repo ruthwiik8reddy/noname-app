@@ -1,6 +1,15 @@
 import logging
 import logging.handlers
 import os
+import re
+
+
+class ApprovalTokenFilter(logging.Filter):
+    def filter(self,record):
+        record.msg=re.sub(r"/approvals/[A-Za-z0-9_-]{43}(?![A-Za-z0-9_-])", "/approvals/[redacted]", record.getMessage())
+        record.args=()
+        return True
+
 
 def configure_logging(log_dir="logs", log_file="app.log", level=logging.INFO,
                       max_bytes=10 * 1024 * 1024, backup_count=5):
@@ -20,10 +29,12 @@ def configure_logging(log_dir="logs", log_file="app.log", level=logging.INFO,
         '%(asctime)s - %(levelname)s - %(threadName)s - %(name)s - %(funcName)s - %(message)s'
     )
     handler.setFormatter(formatter)
+    handler.addFilter(ApprovalTokenFilter())
 
     # Console handler
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
+    console_handler.addFilter(ApprovalTokenFilter())
 
     # Root logger
     logger = logging.getLogger()

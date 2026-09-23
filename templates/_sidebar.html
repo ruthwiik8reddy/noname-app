@@ -21,6 +21,7 @@
     <div class="nav-group-label">Overview</div>
     {% if session.get('role') in ['admin','general_manager'] %}
     <a href="/intelligence/" {% if active_page == "intelligence" %}class="active"{% endif %}>Business intelligence</a>
+    <a href="/followups/" {% if active_page == "followups" %}class="active"{% endif %}>Customer follow-ups</a>
     {% endif %}
     {% if "command" in nav_items %}
     <a href="/command" {% if active_page == "command" %}class="active"{% endif %}>

@@ -83,6 +83,8 @@ def mutate(jid,operation):
                           f.get('reason','Used on job'),number(f.get('return_of')) if operation=='return' else None)
         elif operation=='correct-cost':
             repo.correct_cost(sid,jid,f.get('kind'),number(f.get('entry_id')),f.get('rate'),actor(),f.get('reason'))
+        elif operation=='correct-time':
+            repo.correct_time(sid,jid,number(f.get('timer_id')),f.get('start'),f.get('end'),f.get('expected_start'),f.get('expected_end'),actor(),f.get('reason'))
         elif operation=='review':
             if f.get('confirmed')!='yes':
                 raise RecordError('Confirm that all labor and material records have been checked.')

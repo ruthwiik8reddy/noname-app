@@ -202,37 +202,46 @@ def new_booking():
 
 
 @bp.route("/bookings/slots")
-@login_required
+@staff_or_admin_required
 def available_slots():
     logger.info("Entering available_slots()")
     sid    = session["studio_id"]
     date   = request.args.get("date")
     bay_id = request.args.get("bay_id")
-    conn   = get_db()
-    booked = conn.execute(
-        "SELECT time_slot FROM bookings "
-        "WHERE studio_id=? AND date=? AND bay_id=? AND status != 'Cancelled'",
-        (sid, date, bay_id)
-    ).fetchall()
-    return jsonify({"booked": [r["time_slot"] for r in booked]})
+    from .services.repositories.scheduling import ensure_available,duration_minutes
+    from .services.repositories.job_records import RecordError,number
+    conn=get_db()
+    try:
+        bay_id=number(bay_id)
+        if not conn.execute('SELECT id FROM bays WHERE studio_id=? AND id=?',(sid,bay_id)).fetchone():
+            raise RecordError('Bay not found.')
+        service=conn.execute('SELECT duration_hr FROM services WHERE studio_id=? AND id=?',(sid,number(request.args.get('service_id')))).fetchone()
+        if not service:raise RecordError('Select a service to check its full duration.')
+        minutes=duration_minutes(service['duration_hr'])
+        from .services.repositories.scheduling import interval
+        interval(date,TIME_SLOTS[0],minutes)
+        booked=[]
+        for slot in TIME_SLOTS:
+            try:ensure_available(conn,sid,bay_id,date,slot,minutes)
+            except RecordError:booked.append(slot)
+        return jsonify(booked=booked,duration_minutes=minutes)
+    except RecordError as exc:return jsonify(error=str(exc)),400
+
 
 
 @bp.route("/bookings/<int:booking_id>/status", methods=["POST"])
 @staff_or_admin_required
 def update_booking_status(booking_id):
-    logger.info(f"Entering update_booking_status(booking_id={booking_id})")
-    try:
-        conn = get_db()
-        conn.execute(
-            "UPDATE bookings SET status=? WHERE id=? AND studio_id=?",
-            (request.form.get("status"), booking_id, session["studio_id"])
-        )
-        conn.commit()
-        logger.info(f"Exiting update_booking_status — booking {booking_id} status updated")
-    except Exception as e:
-        logger.error(f"Error in update_booking_status(booking_id={booking_id}): {e}", exc_info=True)
-        return redirect(url_for("main.bookings"))
-    return redirect(url_for("main.bookings"))
+    from .routes.job_record_routes import verify_csrf,actor
+    from .services.repositories.vehicle_workflow import VehicleWorkflow
+    from .services.repositories.job_records import RecordError
+    verify_csrf()
+    try:VehicleWorkflow().reservation_status(session['studio_id'],booking_id,request.form.get('status'),actor())
+    except RecordError as exc:
+        from flask import flash
+        flash(str(exc),'error')
+    return redirect(url_for('main.bookings'),code=303)
+
 
 
 # ── Jobs ──────────────────────────────────────────────────────────────────────
@@ -692,60 +701,14 @@ def estimate_detail(estimate_id):
 @bp.route("/estimates/<int:estimate_id>/send", methods=["POST"])
 @staff_or_admin_required
 def send_estimate(estimate_id):
-    logger.info(f"Entering send_estimate(estimate_id={estimate_id})")
-    try:
-        conn = get_db()
-        conn.execute(
-            "UPDATE estimates SET status='Sent' WHERE id=? AND studio_id=?",
-            (estimate_id, session["studio_id"])
-        )
-        conn.commit()
-        logger.info(f"Exiting send_estimate — estimate {estimate_id} marked as Sent")
-    except Exception as e:
-        logger.error(f"Error in send_estimate(estimate_id={estimate_id}): {e}", exc_info=True)
-    return redirect(url_for("main.estimate_detail", estimate_id=estimate_id))
+    from .routes.job_record_routes import verify_csrf
+    verify_csrf()
+    return redirect(url_for('approvals.manage',eid=estimate_id),code=303)
 
 
-@bp.route("/estimates/<int:estimate_id>/approve", methods=["GET", "POST"])
+@bp.route('/estimates/<int:estimate_id>/approve',methods=['GET','POST'])
 def approve_estimate(estimate_id):
-    """Public route — no login required. Customer opens this link."""
-    logger.info(f"Entering approve_estimate(estimate_id={estimate_id}, method={request.method})")
-    conn = get_db()
-    est = conn.execute(
-        "SELECT e.*, s.name as studio_name FROM estimates e "
-        "JOIN studios s ON e.studio_id=s.id WHERE e.id=?",
-        (estimate_id,)
-    ).fetchone()
-    if not est:
-        return "Estimate not found", 404
-
-    if request.method == "POST":
-        try:
-            action    = request.form.get("action")
-            signature = request.form.get("signature", "").strip()
-            if action == "approve" and signature:
-                conn.execute(
-                    "UPDATE estimates SET status='Approved', signature=?, "
-                    "approved_at=datetime('now') WHERE id=?",
-                    (signature, estimate_id)
-                )
-            elif action == "revision":
-                conn.execute(
-                    "UPDATE estimates SET status='Revision Requested' WHERE id=?",
-                    (estimate_id,)
-                )
-            conn.commit()
-            logger.info(f"Exiting approve_estimate — estimate {estimate_id} action={action}")
-            return render_template("approve_success.html",
-                est=est, revision=(action == "revision"))
-        except Exception as e:
-            logger.error(f"Error in approve_estimate(estimate_id={estimate_id}): {e}", exc_info=True)
-            return "An error occurred", 500
-
-    items = conn.execute(
-        "SELECT * FROM estimate_items WHERE estimate_id=?", (estimate_id,)
-    ).fetchall()
-    return render_template("approve_estimate.html", est=est, items=items)
+    return 'This approval link is no longer available. Ask the studio for a new secure link.',410
 
 
 # ── Notes (internal vs client) ────────────────────────────────────────────────

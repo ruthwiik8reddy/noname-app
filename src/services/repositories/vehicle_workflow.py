@@ -3,6 +3,7 @@ from datetime import date, time, datetime
 import hashlib
 import json
 from .job_records import JobRecords, RecordError, number
+from .scheduling import duration_minutes, ensure_available
 
 
 class VehicleWorkflow(JobRecords):
@@ -37,18 +38,18 @@ class VehicleWorkflow(JobRecords):
             if prior:
                 if prior['request_hash']!=payload_hash:raise RecordError('This submission was already saved with different details. Start a new booking.')
                 return prior['id']
-            service=conn.execute('SELECT id FROM services WHERE id=? AND studio_id=?',(service_id,sid)).fetchone()
+            service=conn.execute('SELECT id,duration_hr FROM services WHERE id=? AND studio_id=?',(service_id,sid)).fetchone()
             if not service:raise RecordError('Select a service in this studio.')
-            if bay_id and not conn.execute('SELECT id FROM bays WHERE id=? AND studio_id=?',(bay_id,sid)).fetchone():
-                raise RecordError('Select a bay in this studio.')
-            if bay_id and conn.execute("SELECT id FROM bookings WHERE studio_id=? AND bay_id=? AND date=? AND time_slot=? AND lower(status) NOT IN ('cancelled','canceled','rejected')",(sid,bay_id,appointment.isoformat(),slot_label)).fetchone():
-                raise RecordError('That bay already has a booking at this time.')
+            minutes=duration_minutes(service['duration_hr'])
+            ensure_available(conn,sid,bay_id,appointment.isoformat(),slot_label,minutes)
             estimate_id=number(form['estimate_id']) if form.get('estimate_id') else None
             vehicle_id=number(form['vehicle_id']) if form.get('vehicle_id') else None
             customer_id=None
             if estimate_id:
                 estimate=conn.execute('SELECT * FROM estimates WHERE id=? AND studio_id=?',(estimate_id,sid)).fetchone()
                 if not estimate or estimate['status']!='Approved':raise RecordError('Choose an approved estimate from this studio.')
+                from .approvals import Approvals
+                Approvals(connection=conn).verify_approved(conn,sid,estimate_id)
                 if not estimate['vehicle_id']:raise RecordError('Link a verified vehicle to the estimate before booking it.')
                 if vehicle_id and vehicle_id!=estimate['vehicle_id']:raise RecordError('The selected vehicle differs from the approved estimate.')
                 vehicle_id=estimate['vehicle_id'];customer_id=estimate['customer_id']
@@ -61,9 +62,9 @@ class VehicleWorkflow(JobRecords):
                 matches=conn.execute('SELECT id FROM customers WHERE studio_id=? AND phone=?',(sid,phone)).fetchall()
                 if len(matches)>1:raise RecordError('Multiple customers share this phone. Select their verified vehicle instead.')
                 customer_id=matches[0]['id'] if matches else conn.execute('INSERT INTO customers(studio_id,name,phone) VALUES(?,?,?)',(sid,name,phone)).lastrowid
-            booking=conn.execute('''INSERT INTO bookings(studio_id,customer_name,customer_phone,vehicle,service_id,bay_id,date,time_slot,notes,status,customer_id,estimate_id,vehicle_id,request_key,request_hash)
-                VALUES(?,?,?,?,?,?,?,?,?,'Pending',?,?,?,?,?)''',
-                (sid,name,phone,description,service_id,bay_id,appointment.isoformat(),slot_label,str(form.get('notes',''))[:2000],customer_id,estimate_id,vehicle_id,form['request_key'],payload_hash)).lastrowid
+            booking=conn.execute('''INSERT INTO bookings(studio_id,customer_name,customer_phone,vehicle,service_id,bay_id,date,time_slot,notes,status,customer_id,estimate_id,vehicle_id,request_key,request_hash,duration_minutes)
+                VALUES(?,?,?,?,?,?,?,?,?,'Pending',?,?,?,?,?,?)''',
+                (sid,name,phone,description,service_id,bay_id,appointment.isoformat(),slot_label,str(form.get('notes',''))[:2000],customer_id,estimate_id,vehicle_id,form['request_key'],payload_hash,minutes)).lastrowid
             self._audit(conn,sid,None,'booking_created',actor,{'booking_id':booking,'vehicle_id':vehicle_id,'estimate_id':estimate_id})
             return booking
 
@@ -102,6 +103,8 @@ class VehicleWorkflow(JobRecords):
                 estimate=conn.execute('SELECT * FROM estimates WHERE studio_id=? AND id=?',(sid,booking['estimate_id'])).fetchone()
                 if not estimate or estimate['status']!='Approved' or estimate['vehicle_id']!=v['id'] or estimate['customer_id']!=v['customer_id']:
                     raise RecordError('The approved estimate no longer matches this booking.')
+                from .approvals import Approvals
+                Approvals(connection=conn).verify_approved(conn,sid,booking['estimate_id'])
                 name=estimate['services_summary'] or name
                 # Work selling price excludes tax. SQLite preserves fractional dollar values despite INTEGER affinity.
                 price=estimate['subtotal']/100
@@ -111,3 +114,22 @@ class VehicleWorkflow(JobRecords):
             conn.execute("UPDATE bookings SET status='Confirmed' WHERE studio_id=? AND id=?",(sid,bid))
             self._audit(conn,sid,job,'booking_converted',actor,{'booking_id':bid,'estimate_id':booking['estimate_id'],'vehicle_id':v['id']})
             return job
+
+    def reservation_status(self,sid,bid,status,actor):
+        transitions={'Pending':{'Confirmed','Cancelled'},'Confirmed':{'Completed','Cancelled'},
+                     'Cancelled':{'Pending','Confirmed'},'Completed':set()}
+        with self._conn() as conn,conn:
+            conn.execute('BEGIN IMMEDIATE')
+            row=conn.execute('SELECT * FROM bookings WHERE studio_id=? AND id=?',(sid,bid)).fetchone()
+            if not row:raise RecordError('Booking not found.')
+            if status==row['status']:return
+            if status not in transitions.get(row['status'],set()):
+                raise RecordError('This booking status transition is not allowed.')
+            if status in ('Pending','Confirmed'):
+                if conn.execute('SELECT id FROM jobs WHERE studio_id=? AND booking_id=?',(sid,bid)).fetchone():
+                    raise RecordError('This booking already has a job. Review its work record instead of reactivating it.')
+                service=conn.execute('SELECT duration_hr FROM services WHERE studio_id=? AND id=?',(sid,row['service_id'])).fetchone()
+                minutes=row['duration_minutes'] or duration_minutes(service['duration_hr'] if service else None)
+                ensure_available(conn,sid,row['bay_id'],row['date'],row['time_slot'],minutes,bid)
+            conn.execute('UPDATE bookings SET status=? WHERE studio_id=? AND id=?',(status,sid,bid))
+            self._audit(conn,sid,None,'booking_status',actor,{'booking_id':bid,'previous':row['status'],'status':status})

@@ -568,6 +568,12 @@ def init_db():
     migrate_job_records(Config.DB_PATH)
     from .migrate_vehicle_workflow import migrate as migrate_vehicle_workflow
     migrate_vehicle_workflow(Config.DB_PATH)
+    from .migrate_followups import migrate as migrate_followups
+    migrate_followups(Config.DB_PATH)
+    from .migrate_scheduling import migrate as migrate_scheduling
+    migrate_scheduling(Config.DB_PATH)
+    from .migrate_approvals import migrate as migrate_approvals
+    migrate_approvals(Config.DB_PATH)
 
 
 def get_studio_inventory(studio_id: int):

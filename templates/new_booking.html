@@ -62,7 +62,7 @@
     <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:10px;">
       {% for svc in services %}
       <label class="svc-pick" style="display:block; padding:14px; cursor:pointer; border:1.5px solid var(--line); border-radius:var(--r-sm); background:var(--white); transition: border-color .15s, background .15s;"
-             onclick="this.querySelector('input').checked=true; document.querySelectorAll('.svc-pick').forEach(c=>{c.style.borderColor='var(--line)';c.style.background='var(--white)'}); this.style.borderColor='var(--violet-600)'; this.style.background='var(--violet-50)';">
+             onclick="this.querySelector('input').checked=true; document.querySelectorAll('.svc-pick').forEach(c=>{c.style.borderColor='var(--line)';c.style.background='var(--white)'}); this.style.borderColor='var(--violet-600)'; this.style.background='var(--violet-50)'; refreshSlots();">
         <input type="radio" name="service_id" value="{{ svc.id }}" {% if form.get('service_id')|string == svc.id|string %}checked{% endif %} required style="display:none;">
         <div style="font-size:13px; font-weight:600; color:var(--gray-900);">{{ svc.name }}</div>
         <div style="font-size:12px; color:var(--gray-500); margin-top:3px;">{{ svc.duration_hr }} hrs</div>
@@ -106,7 +106,7 @@
       </label>
       {% endfor %}
     </div>
-    <p class="help">Select a bay and date to see availability. Strikethrough = already booked.</p>
+    <p class="help">Select a service, bay and date to check the whole service duration. Strikethrough means it overlaps a reservation. Times use the studio’s local clock.</p>
   </div>
 
   <div class="field">
@@ -123,32 +123,28 @@
 
 {% block scripts %}
 <script>
-function refreshSlots() {
-  const date  = document.getElementById('date_select').value;
-  const bayId = document.getElementById('bay_select').value;
-  if (!date || !bayId) return;
-  fetch(`/bookings/slots?date=${date}&bay_id=${bayId}`)
-    .then(r => r.json())
-    .then(data => {
-      document.querySelectorAll('.slot-btn').forEach(el => {
-        const radio = el.querySelector('input[type=radio]');
-        const slot  = radio.value;
-        if (data.booked.includes(slot)) {
-          el.classList.add('booked');
-          el.style.textDecoration = 'line-through';
-          el.style.opacity = '.35';
-          el.style.cursor = 'not-allowed';
-          radio.disabled = true;
-        } else {
-          el.classList.remove('booked');
-          el.style.textDecoration = '';
-          el.style.opacity = '';
-          el.style.cursor = 'pointer';
-          radio.disabled = false;
-        }
-      });
-    });
+let slotRequest=0;
+async function refreshSlots() {
+  const sequence=++slotRequest;
+  const date=document.getElementById('date_select').value;
+  const bayId=document.getElementById('bay_select').value;
+  const service=document.querySelector('input[name=service_id]:checked')?.value;
+  const apply=(blocked)=>document.querySelectorAll('.slot-btn').forEach(el=>{
+    const radio=el.querySelector('input'); const unavailable=blocked.includes(radio.value);
+    el.classList.toggle('booked',unavailable);radio.disabled=unavailable;
+    if(unavailable)radio.checked=false;
+    el.style.textDecoration=unavailable?'line-through':'';
+    el.style.opacity=unavailable?'.35':'';el.style.cursor=unavailable?'not-allowed':'pointer';
+  });
+  if(!date||!bayId||!service){apply([]);return;}
+  try{
+    const response=await fetch('/bookings/slots?'+new URLSearchParams({date,bay_id:bayId,service_id:service}));
+    const data=await response.json();if(sequence!==slotRequest)return;
+    if(!response.ok)throw Error(data.error||'Availability could not be checked.');
+    apply(data.booked);
+  }catch(error){if(sequence===slotRequest){apply([...document.querySelectorAll('input[name=time_slot]')].map(r=>r.value));toast(error.message,'error');}}
 }
+refreshSlots();
 
 function lookupEstimate() {
   const id = document.getElementById('lookupEstId').value.trim();

@@ -174,6 +174,33 @@ class JobRecords(BaseRepository):
             self._audit(conn,sid,jid,'cost_corrected',actor,{'kind':kind,'entry_id':entry_id,
                 'previous_rate':row['hourly_cents'] if kind=='labor' else row['unit_cost_cents'],'new_rate':rate,'reason':reason})
 
+    def correct_time(self,sid,jid,timer_id,start,end,expected_start,expected_end,actor,reason,now=None):
+        from datetime import datetime,timezone
+        if not isinstance(reason,str) or not reason.strip() or len(reason)>500:
+            raise RecordError('Explain why this timer needs correction.')
+        try:
+            begin=datetime.fromisoformat(str(start));finish=datetime.fromisoformat(str(end))
+            if begin.tzinfo is None:begin=begin.replace(tzinfo=timezone.utc)
+            if finish.tzinfo is None:finish=finish.replace(tzinfo=timezone.utc)
+            begin=int(begin.timestamp());finish=int(finish.timestamp())
+            current=int(time.time() if now is None else now)
+            if begin<0 or finish<=begin or finish>current or finish-begin>604800:raise ValueError()
+        except (ValueError,TypeError,OverflowError):
+            raise RecordError('Use valid UTC start/end times, ending in the past, with a duration up to seven days.')
+        with self._conn() as conn,conn:
+            conn.execute('BEGIN IMMEDIATE')
+            row=conn.execute('SELECT * FROM job_labor WHERE studio_id=? AND job_id=? AND id=?',(sid,jid,timer_id)).fetchone()
+            if not row or row['ended_at'] is None:
+                raise RecordError('Stop the timer before correcting its recorded time.')
+            if str(row['started_at'])!=str(expected_start) or str(row['ended_at'])!=str(expected_end):
+                raise RecordError('This timer changed. Reload before correcting it.')
+            if conn.execute('''SELECT id FROM job_labor WHERE studio_id=? AND staff_id=? AND id!=?
+                AND started_at<? AND coalesce(ended_at,?)>?''',(sid,row['staff_id'],timer_id,finish,current,begin)).fetchone():
+                raise RecordError('The corrected interval overlaps another timer for this staff member.')
+            conn.execute('UPDATE job_labor SET started_at=?,ended_at=? WHERE id=?',(begin,finish,timer_id))
+            self._audit(conn,sid,jid,'time_corrected',actor,{'timer_id':timer_id,'previous_start':row['started_at'],
+                'previous_end':row['ended_at'],'started_at':begin,'ended_at':finish,'reason':reason.strip()})
+
     def detail(self,sid,jid,now=None):
         now=int(time.time() if now is None else now)
         with self._conn() as conn:
@@ -183,7 +210,10 @@ class JobRecords(BaseRepository):
             materials=[dict(r) for r in conn.execute('SELECT * FROM job_material_entries WHERE studio_id=? AND job_id=? ORDER BY id',(sid,jid))]
             plan=conn.execute('SELECT * FROM job_cost_plans WHERE studio_id=? AND job_id=?',(sid,jid)).fetchone()
             vehicle=conn.execute('SELECT * FROM vehicles WHERE studio_id=? AND id=?',(sid,job['vehicle_id'])).fetchone()
+        from datetime import datetime,timezone
         for entry in labor:
+            entry['start_utc']=datetime.fromtimestamp(entry['started_at'],timezone.utc).strftime('%Y-%m-%dT%H:%M:%S')
+            entry['end_utc']=datetime.fromtimestamp(entry['ended_at'],timezone.utc).strftime('%Y-%m-%dT%H:%M:%S') if entry['ended_at'] is not None else ''
             entry['seconds']=max(0,(entry['ended_at'] if entry['ended_at'] is not None else now)-entry['started_at'])
             entry['cost_cents']=None if entry['hourly_cents'] is None else rounded(Decimal(entry['seconds'])*entry['hourly_cents']/3600)
         unknown=sum(r['cost_cents'] is None for r in labor+materials)
@@ -215,5 +245,6 @@ class JobRecords(BaseRepository):
         inspections=self.fetch_all('''SELECT d.id,d.job_id,d.status,d.created_at,d.summary FROM dvi_inspections d
           JOIN jobs j ON j.id=d.job_id AND j.studio_id=d.studio_id WHERE j.studio_id=? AND j.vehicle_id=? ORDER BY d.id DESC''',(sid,vid))
         return dict(vehicle=vehicle,jobs=jobs,inspections=inspections,
+                    followups=self.fetch_all('SELECT id,purpose,status,outcome,booking_id,created_at FROM followups WHERE studio_id=? AND vehicle_id=? ORDER BY id DESC',(sid,vid)),
                     estimates=self.fetch_all('SELECT id,status,created_at FROM estimates WHERE studio_id=? AND vehicle_id=? ORDER BY id DESC',(sid,vid)),
                     bookings=self.fetch_all('SELECT id,status,date FROM bookings WHERE studio_id=? AND vehicle_id=? ORDER BY id DESC',(sid,vid)))
