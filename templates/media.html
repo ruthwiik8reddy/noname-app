@@ -37,7 +37,7 @@
           {% if item.caption %}<div class="media-car" style="color:rgba(255,255,255,0.3);">{{ item.caption }}</div>{% endif %}
           <div class="media-meta">{{ item.uploaded_by }} · {{ item.uploaded_at[:10] }}</div>
           {% if is_admin or item.uploaded_by == current_name %}
-          <form method="POST" action="/media/{{ item.id }}/delete" onsubmit="return confirm('Delete this photo?')">
+          <form method="POST" action="/media/{{ item.id }}/delete" onsubmit="return confirm('Delete this photo?')"><input type="hidden" name="csrf" value="{{work_records_csrf}}">
             <button type="submit" class="delete-btn">Delete</button>
           </form>
           {% endif %}

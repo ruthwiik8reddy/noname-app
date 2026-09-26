@@ -68,7 +68,7 @@ def initialize_db():
     cursor.execute("SELECT COUNT(*) FROM studios")
     studio_count = cursor.fetchone()[0]
     conn.close()
-    if studio_count == 0:
+    if studio_count == 0 and Config.SEED_DEMO and not Config.PRODUCTION:
         seed_db()
 
 

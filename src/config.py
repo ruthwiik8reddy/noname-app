@@ -1,4 +1,6 @@
 import os
+import secrets
+from datetime import timedelta
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -12,9 +14,9 @@ load_dotenv()
 
 
 class Config:
-    SECRET_KEY      = os.getenv("SECRET_KEY", "autofiera-secret-key")
+    SECRET_KEY      = os.getenv("SECRET_KEY") or secrets.token_hex(32)
     DB_PATH         = os.getenv("DATABASE_URL", os.path.join(BASE_DIR, "studios.db"))
-    DEBUG           = os.getenv("FLASK_DEBUG", "1") == "1"
+    DEBUG           = os.getenv("FLASK_DEBUG", "0") == "1"
     TEMPLATE_FOLDER = os.path.join(BASE_DIR, "templates")
     STATIC_FOLDER   = os.path.join(BASE_DIR, "static")
 
@@ -65,3 +67,27 @@ class Config:
     TWILIO_AUTH_TOKEN   = os.getenv("TWILIO_AUTH_TOKEN", "")
     TWILIO_FROM_NUMBER  = os.getenv("TWILIO_FROM_NUMBER", "")
     APP_BASE_URL        = os.getenv("APP_BASE_URL", "http://localhost:5000")
+
+    PRODUCTION = os.getenv('APP_ENV','development') == 'production'
+    SEED_DEMO = os.getenv('SEED_DEMO','0') == '1'
+    PRIVATE_UPLOAD_ROOT = os.getenv('PRIVATE_UPLOAD_ROOT',os.path.join(os.path.dirname(DB_PATH),'private_uploads'))
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    SESSION_COOKIE_SECURE = PRODUCTION
+    PERMANENT_SESSION_LIFETIME = timedelta(hours=8)
+
+    @classmethod
+    def validate(cls):
+        if cls.PRODUCTION:
+            from pathlib import Path
+            from urllib.parse import urlsplit
+            key=os.getenv('SECRET_KEY','')
+            if len(key)<32 or key in ('autofiera-secret-key',) or cls.DEBUG or cls.SEED_DEMO:
+                raise RuntimeError('Production requires a strong configured SECRET_KEY, debug off and demo seeding off.')
+            if urlsplit(cls.APP_BASE_URL).scheme!='https':
+                raise RuntimeError('Production APP_BASE_URL must use HTTPS.')
+            if Path(cls.PRIVATE_UPLOAD_ROOT).resolve().is_relative_to(Path(cls.STATIC_FOLDER).resolve()):
+                raise RuntimeError('Private uploads must be outside the static directory.')
+            legacy=Path(cls.STATIC_FOLDER)/'uploads'
+            if legacy.exists() and any(p.is_file() and p.name!='.gitkeep' for p in legacy.rglob('*')):
+                raise RuntimeError('Move legacy customer uploads out of static storage before production startup.')

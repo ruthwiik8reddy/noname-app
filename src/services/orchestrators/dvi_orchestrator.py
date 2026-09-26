@@ -81,12 +81,8 @@ class DVIOrchestrator(BaseOrchestrator):
     # ── storage ───────────────────────────────────────────────────────────
 
     def upload_dir(self, studio_id: int) -> str:
-        base = self._upload_base or os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-            "..",
-            "static",
-            "uploads",
-        )
+        from ...config import Config
+        base = self._upload_base or Config.PRIVATE_UPLOAD_ROOT
         path = os.path.abspath(os.path.join(base, f"studio_{studio_id}", "dvi"))
         os.makedirs(path, exist_ok=True)
         return path

@@ -48,6 +48,10 @@ def manage(eid):
 @bp.route('/<token>',methods=['GET','POST'])
 def public(token):
     repo=Approvals();session.setdefault('approval_csrf',secrets.token_urlsafe(32));error=None
+    if session.get('role')=='customer':
+        try:owned=repo.read(token)
+        except RecordError:abort(404)
+        if session.get('studio_id')!=owned['version']['studio_id'] or session.get('user_id')!=owned['est']['customer_id']:abort(404)
     if request.method=='POST':
         expected=session.get('approval_csrf','');received=request.form.get('csrf','')
         if not expected or not secrets.compare_digest(expected,received):abort(403)
@@ -56,4 +60,5 @@ def public(token):
         else:return redirect(url_for('approvals.public',token=token),code=303)
     try:data=repo.read(token)
     except RecordError:return 'This approval link is unavailable. Please request a new link from the studio.',410
+    if session.get('role')=='customer' and (session.get('studio_id')!=data['version']['studio_id'] or session.get('user_id')!=data['est']['customer_id']):abort(404)
     return make_response(render_template('approval_public.html',**data,error=error,csrf=session['approval_csrf']),400 if error else 200)

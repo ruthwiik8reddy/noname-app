@@ -146,6 +146,7 @@ def attempt_login(username: str, password: str, conn) -> dict | None:
 
 def set_session(payload: dict):
     session.clear()
+    session.permanent=True
     for key, value in payload.items():
         session[key] = value
 

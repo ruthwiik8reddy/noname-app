@@ -574,6 +574,8 @@ def init_db():
     migrate_scheduling(Config.DB_PATH)
     from .migrate_approvals import migrate as migrate_approvals
     migrate_approvals(Config.DB_PATH)
+    from .migrate_portal import migrate as migrate_portal
+    migrate_portal(Config.DB_PATH)
 
 
 def get_studio_inventory(studio_id: int):

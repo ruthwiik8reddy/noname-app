@@ -56,7 +56,7 @@ JOB_STATUSES = ["Pending", "In Progress", "Completed"]
 
 ALLOWED_MEDIA_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp", "mp4", "mov", "avi"}
 VIDEO_EXTENSIONS = {"mp4", "mov", "avi"}
-UPLOAD_BASE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "uploads")
+UPLOAD_BASE = Config.PRIVATE_UPLOAD_ROOT
 
 
 def sidebar_context():
@@ -83,7 +83,7 @@ def index():
 @bp.route("/login", methods=["GET", "POST"])
 def login():
     if session.get("logged_in"):
-        return redirect(url_for("main.dashboard"))
+        return redirect('/portal/' if session.get('role')=='customer' else url_for("main.dashboard"))
 
     error = None
     if request.method == "POST":
@@ -101,7 +101,8 @@ def login():
                     set_session(payload)
                     logger.info(f"Login successful: {username} (role={payload.get('role')})")
                     next_url = request.args.get("next") or url_for("main.dashboard")
-                    return redirect(next_url)
+                    from .security import safe_next
+                    return redirect('/portal/' if payload.get('role')=='customer' else safe_next(next_url))
                 logger.warning(f"Login failed: invalid credentials for {username}")
                 error = "Invalid username or password."
             except Exception as e:
@@ -1027,24 +1028,10 @@ def delete_media(media_id):
     return redirect(url_for("main.media_gallery"))
 
 
-@bp.route("/uploads/studio_<int:studio_id>/<filename>")
+@bp.route("/uploads/studio_<int:studio_id>/<path:filename>")
 def serve_upload(studio_id, filename):
-    logger.info(f"Entering serve_upload(studio_id={studio_id}, filename={filename})")
-    # Allow logged-in staff, or requests that carry a valid tracking token
-    # (customer DVI pages load media this way — no staff session needed).
-    if not session.get("logged_in"):
-        token = request.args.get("token", "").strip()
-        if token:
-            conn = get_db()
-            job = conn.execute(
-                "SELECT id FROM jobs WHERE tracking_token=? AND studio_id=?",
-                (token, studio_id)
-            ).fetchone()
-            if not job:
-                abort(403)
-        else:
-            abort(403)
-    return send_from_directory(_studio_upload_dir(studio_id), filename)
+    from .security import private_media
+    return private_media(studio_id,filename)
 
 
 # ── Customer CRM ──────────────────────────────────────────────────────────────
@@ -1480,7 +1467,8 @@ def _get_job_customer(conn, job) -> dict | None:
 
 
 def _send_job_status_sms(conn, studio_id: int, job_id: int, new_status: str) -> None:
-    """Send an SMS status update if the job has a linked customer with a phone number."""
+    """Legacy tracking links are retired. Reviewed follow-ups handle communication."""
+    return
     job = conn.execute(
         "SELECT * FROM jobs WHERE id=? AND studio_id=?", (job_id, studio_id)
     ).fetchone()

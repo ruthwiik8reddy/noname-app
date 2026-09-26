@@ -80,7 +80,7 @@ async function uploadPhoto(key){
   if(!fileEl.files.length){alert('Choose a photo first');return;}
   const fd=new FormData();fd.append('photo',fileEl.files[0]);fd.append('tag',tag);
   try{
-    const r=await fetch('/jobs/{{ job.id }}/inspection-upload/'+key,{method:'POST',body:fd});
+    const r=await fetch('/jobs/{{ job.id }}/inspection-upload/'+key,{method:'POST',headers:{'X-CSRF-Token':{{work_records_csrf|tojson}}},body:fd});
     const d=await r.json();
     if(d.ok){
       const wrap=document.getElementById('thumbs-'+key);

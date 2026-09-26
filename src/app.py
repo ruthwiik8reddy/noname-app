@@ -9,6 +9,7 @@ from .seed import initialize_db
 
 
 def create_app():
+    Config.validate()
     # Logging first, so schema/migration output during startup is captured.
     configure_logging()
 
@@ -21,6 +22,8 @@ def create_app():
         static_folder=Config.STATIC_FOLDER,
     )
     app.config.from_object(Config)
+    from .security import install_security
+    install_security(app)
 
     # 16 MB — DVI uploads are multi-photo bursts straight off a phone camera.
     app.config.setdefault("MAX_CONTENT_LENGTH", 16 * 1024 * 1024)

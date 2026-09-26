@@ -125,7 +125,7 @@
     document.getElementById('uploadMsg').textContent = `Uploading ${files.length} photo(s)…`;
 
     try {
-      const res = await fetch(`/dvi/inspection/${INSPECTION}/photos`, { method: 'POST', body: fd });
+      const res = await fetch(`/dvi/inspection/${INSPECTION}/photos`, { method: 'POST', headers: {'X-CSRF-Token': {{work_records_csrf|tojson}}}, body: fd });
       fill.style.width = '100%';
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Upload failed');

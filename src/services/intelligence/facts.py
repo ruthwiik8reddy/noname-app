@@ -170,6 +170,10 @@ class IntelligenceFacts(BaseRepository):
                                'Check time, materials, pricing and any rework before changing quotes.',
                                ['reviewed_contribution'],'/work-records/jobs/'+str(negative[0]['job_id']),'warning')
 
+                if conn.execute("SELECT 1 FROM sqlite_master WHERE name='job_labor'").fetchone():
+                    from .operations import add_operations
+                    add_operations(conn,studio_id,start,end,today,fact)
+
                 missing = rows("SELECT id, status, completed_at, customer_id FROM jobs WHERE studio_id=? AND "
                                "(NOT EXISTS (SELECT 1 FROM customers c WHERE c.id=jobs.customer_id AND c.studio_id=jobs.studio_id) OR (lower(status)='completed' AND date(completed_at) IS NULL))")
                 fact('data_quality', 'quality', 'Jobs with incomplete reporting data', len(missing), 'jobs',
@@ -189,7 +193,7 @@ class IntelligenceFacts(BaseRepository):
                     limitations=[
                         'Job prices are treated as whole USD and estimate totals as cents, matching the existing application.',
                         'Cash collection, profit and payment reconciliation require a transaction ledger.',
-                        'Actual bay utilization and technician speed require reliable working-time records.',
+                        'Recorded hours and budget variances are not attendance, actual bay utilization, technician speed or quality.',
                         'Vehicle condition comparisons require stable vehicle links across visits and reviewed inspection evidence.',
-                        'Stock coverage and rebooking rules are indicative; they are not trained forecasts.',
+                        'Stock coverage, rebooking rules and weekly moving-average scenarios are indicative, not trained forecasts.',
                     ])

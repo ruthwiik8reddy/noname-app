@@ -6,7 +6,7 @@ import re
 
 class ApprovalTokenFilter(logging.Filter):
     def filter(self,record):
-        record.msg=re.sub(r"/approvals/[A-Za-z0-9_-]{43}(?![A-Za-z0-9_-])", "/approvals/[redacted]", record.getMessage())
+        record.msg=re.sub(r"/(?:approvals|portal/activate)/[A-Za-z0-9_-]{43}(?![A-Za-z0-9_-])", "/private-link/[redacted]", record.getMessage())
         record.args=()
         return True
 

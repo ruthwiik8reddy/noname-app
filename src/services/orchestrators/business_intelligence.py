@@ -13,11 +13,11 @@ from ..intelligence.facts import IntelligenceFacts
 
 logger = logging.getLogger(__name__)
 TOPICS = {
-    'revenue': ('revenue', 'sales', 'money', 'ticket', 'earned', 'service mix', 'contribution', 'direct cost'),
+    'revenue': ('revenue', 'sales', 'money', 'ticket', 'earned', 'service mix', 'contribution', 'direct cost', 'forecast', 'projection', 'margin', 'profitability'),
     'estimates': ('estimate', 'quote', 'approval', 'pipeline'),
     'inventory': ('stock', 'inventory', 'product', 'supply', 'run out'),
     'customers': ('customer', 'rebook', 'return', 'churn'),
-    'operations': ('technician', 'assign', 'workload', 'job', 'bottleneck'),
+    'operations': ('technician', 'assign', 'workload', 'job', 'bottleneck', 'labor', 'hours', 'productivity', 'budget'),
     'leads': ('lead', 'conversion', 'won'),
     'quality': ('data', 'missing', 'accurate', 'quality'),
 }
@@ -44,6 +44,11 @@ class BusinessIntelligence(BaseOrchestrator):
         general = any(w in lower for w in ('brief', 'priority', 'priorities', 'focus', 'attention', 'business', 'perform'))
         if general and not topics:
             selected = ['job_value', 'value_change', 'stale_estimates', 'unassigned', 'rebooking', 'low_stock', 'data_quality']
+        preferred=[]
+        if any(w in lower for w in ('forecast','projection')):preferred=['weekly_value_scenario']
+        elif any(w in lower for w in ('labor','hours','productivity','budget')):preferred=[i for i in facts if i.startswith('staff_recorded_hours_')]+['labor_budget_variance','period_recorded_labor','cost_review_coverage']
+        elif any(w in lower for w in ('profitability','service contribution','margin')):preferred=[i for i in facts if i.startswith('service_contribution_')]+['reviewed_contribution','cost_review_coverage']
+        if preferred:selected=list(dict.fromkeys([i for i in preferred if i in facts]+selected))[:8]
         suggested = [a['id'] for a in actions.values() if set(a['fact_ids']) & set(selected)][:5]
         source, model, reason = 'deterministic', '', 'AI unavailable; showing matching verified facts.'
 

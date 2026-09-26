@@ -32,7 +32,7 @@ INSPECTION_PANELS = [
     ("door-l","Left Doors"), ("door-r","Right Doors"),
 ]
 PANEL_LABELS = dict(INSPECTION_PANELS)
-UPLOAD_BASE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "uploads")
+UPLOAD_BASE = _c.Config.PRIVATE_UPLOAD_ROOT
 
 
 def _updir(sid):
