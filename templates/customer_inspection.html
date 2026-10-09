@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Autofiera | Live Diagnostics</title>
+<title>BayQ | Live Diagnostics</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=0">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -130,7 +130,7 @@ body{font-family:'Inter',-apple-system,sans-serif;background:transparent;color:v
 <div class="overlay" id="overlay" onclick="toggleAI()"></div>
 
 <section class="hero-section reveal">
-  <div class="hero-eyebrow" id="svc-label">Autofiera Diagnostics</div>
+  <div class="hero-eyebrow" id="svc-label">BayQ Diagnostics</div>
   <div class="live-badge"><span class="live-dot"></span><span class="live-text" id="status-badge">Live</span></div>
   <h1 class="hero-title">{{ car }}</h1>
   <div class="hero-reg">{{ reg }}</div>
@@ -176,7 +176,7 @@ body{font-family:'Inter',-apple-system,sans-serif;background:transparent;color:v
 
 <section class="warranty-section" id="warranty-sec">
   <div class="w-card">
-    <div class="w-header"><div><div class="w-title">Warranty Certificate</div><div class="w-sub">Autofiera Detailing Studio</div></div><div class="w-seal">🛡️</div></div>
+    <div class="w-header"><div><div class="w-title">Warranty Certificate</div><div class="w-sub">BayQ Detailing Studio</div></div><div class="w-seal">🛡️</div></div>
     <div class="w-grid">
       <div class="w-field"><div class="wf-lbl">Vehicle</div><div class="wf-val">{{ car }}</div></div>
       <div class="w-field"><div class="wf-lbl">Registration</div><div class="wf-val">{{ reg }}</div></div>
@@ -184,20 +184,20 @@ body{font-family:'Inter',-apple-system,sans-serif;background:transparent;color:v
       <div class="w-field"><div class="wf-lbl">Protection Applied</div><div class="wf-val" id="w-svc">—</div></div>
     </div>
     <div class="w-validity"><div class="w-yrs" id="w-yrs">—</div><div class="w-yrs-lbl">Year Warranty</div></div>
-    <div class="w-footer">Autofiera Detailing Studio</div>
+    <div class="w-footer">BayQ Detailing Studio</div>
   </div>
 </section>
 
 <div class="ai-fab" onclick="toggleAI()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></div>
 <div class="ai-win" id="ai-win">
-  <div class="ai-hdr"><span>Autofiera AI Concierge</span><div class="ai-x" onclick="toggleAI()">✕</div></div>
+  <div class="ai-hdr"><span>BayQ AI Concierge</span><div class="ai-x" onclick="toggleAI()">✕</div></div>
   <div class="ai-msgs" id="ai-msgs"><div class="msg msg-a">Hello! I have the complete diagnostic profile for <strong style="color:var(--gold)">{{ car }}</strong>. Ask me anything.</div></div>
   <div class="chips" id="chips">
     <div class="chip" onclick="fs('What is the overall paint health of my car?')">Paint health</div>
     <div class="chip" onclick="fs('What treatments are being applied?')">Treatment plan</div>
     <div class="chip" onclick="fs('How long will the coating last?')">Durability</div>
   </div>
-  <div class="ai-inp"><div class="inp-wrap"><input type="text" id="ai-in" placeholder="Ask Autofiera AI…" onkeypress="if(event.key==='Enter')sendMsg()"><button onclick="sendMsg()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></button></div></div>
+  <div class="ai-inp"><div class="inp-wrap"><input type="text" id="ai-in" placeholder="Ask BayQ AI…" onkeypress="if(event.key==='Enter')sendMsg()"><button onclick="sendMsg()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></button></div></div>
 </div>
 
 <script>
@@ -228,7 +228,7 @@ function loadWarranty(){
 }
 function initFlow(){
   const f=flows[cSvc]||flows['Ceramic Coating'];
-  document.getElementById('svc-label').textContent='Autofiera | '+cSvc;
+  document.getElementById('svc-label').textContent='BayQ | '+cSvc;
   const isReady=cStatus==='Ready'||cStatus==='Completed';
   document.getElementById('status-badge').textContent=isReady?'✓ Ready for Pickup':'Live · '+cStatus;
   bgv.src=f.vids[cStatus]||f.vids['Inspection'];forcePlay();

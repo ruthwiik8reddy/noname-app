@@ -74,7 +74,7 @@ def install_security(app):
     def boundary():
         g.request_id=uuid.uuid4().hex
         if request.path.startswith('/customer/tracking/'):
-            return 'Legacy tracking links have been retired. Sign in to the customer portal.',410
+            return '<h1>This tracking link has been replaced</h1><p><a href="/portal/">Open the customer portal</a> to sign in. If you do not have an account, ask your studio for an invitation.</p>',410
         if request.path.endswith('/send-tracking-sms'):
             return 'Legacy tracking messages are disabled. Use the reviewed follow-up workflow.',410
         if request.endpoint=='static':

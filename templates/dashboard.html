@@ -128,6 +128,8 @@
 {% for j in jobs %}{% if j.status == 'Completed' %}{% set _ = done.append(j) %}{% endif %}{% endfor %}
 
 {% if done %}
+<details class="optional-panel card">
+<summary>Recently completed · {{ done|length }} jobs</summary>
 <div class="section-head">
   <span class="section-title">Recently completed</span>
   <a href="/jobs" class="btn btn-ghost btn-sm">View all</a>
@@ -155,6 +157,7 @@
     </table>
   </div>
 </div>
+</details>
 {% endif %}
 
 {% endblock %}

@@ -19,11 +19,6 @@
   <nav class="sidebar-nav">
 
     <div class="nav-group-label">Overview</div>
-    {% if session.get('role') in ['admin','general_manager'] %}
-    <a href="/intelligence/" {% if active_page == "intelligence" %}class="active"{% endif %}>Business intelligence</a>
-    <a href="/followups/" {% if active_page == "followups" %}class="active"{% endif %}>Customer follow-ups</a>
-    <a href="/portal-admin/" {% if active_page == "portal_admin" %}class="active"{% endif %}>Customer portal / warranties</a>
-    {% endif %}
     {% if "command" in nav_items %}
     <a href="/command" {% if active_page == "command" %}class="active"{% endif %}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6 4.6 1.9-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M18 15l.8 2.2 2.2.8-2.2.8L18 21l-.8-2.2-2.2-.8 2.2-.8z"/></svg>
@@ -74,10 +69,11 @@
       Estimates
     </a>
     {% endif %}
-    <a href="/ai-estimate" {% if active_page == "ai-estimate" %}class="active"{% endif %}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6 4.6 1.9-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M18 15l.8 2.2 2.2.8-2.2.8L18 21l-.8-2.2-2.2-.8 2.2-.8z"/></svg>
-      Quick Quote
-    </a>
+    <details class="nav-dropdown" {% if active_page in ['ai-estimate','analytics'] %}open{% endif %}>
+      <summary>AI estimates</summary>
+      <a href="/ai-estimate" {% if active_page == 'ai-estimate' %}class="active" aria-current="page"{% endif %}>Quick quote</a>
+      {% if 'analytics' in nav_items %}<a href="/analytics/" {% if active_page == 'analytics' %}class="active" aria-current="page"{% endif %}>Stock &amp; material estimates</a>{% endif %}
+    </details>
     {% if "customers" in nav_items %}
     <a href="/customers" {% if active_page == "customers" %}class="active"{% endif %}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V20"/><circle cx="9.5" cy="7.5" r="3.5"/><path d="M21 20v-1.5a4 4 0 0 0-3-3.85M16.5 4.2a3.5 3.5 0 0 1 0 6.6"/></svg>
@@ -85,17 +81,20 @@
     </a>
     {% endif %}
 
+    {% if session.get('role') in ['admin','general_manager'] %}
+    <details class="nav-dropdown" {% if active_page in ['intelligence','followups','portal_admin'] %}open{% endif %}>
+      <summary>CRM &amp; insights</summary>
+      <a href="/portal-admin/" {% if active_page == 'portal_admin' %}class="active"{% endif %}>Customer portal &amp; warranties</a>
+      <a href="/followups/" {% if active_page == 'followups' %}class="active"{% endif %}>Customer follow-ups</a>
+      <a href="/intelligence/" {% if active_page == 'intelligence' %}class="active"{% endif %}>Business intelligence</a>
+    </details>
+    {% endif %}
+
     <div class="nav-group-label">Supply</div>
     {% if "inventory" in nav_items %}
     <a href="/inventory" {% if active_page == "inventory" %}class="active"{% endif %}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8.5v7a2 2 0 0 1-1.05 1.76l-7 3.6a2 2 0 0 1-1.9 0l-7-3.6A2 2 0 0 1 3 15.5v-7a2 2 0 0 1 1.05-1.76l7-3.6a2 2 0 0 1 1.9 0l7 3.6A2 2 0 0 1 21 8.5z"/><path d="M3.3 7.5L12 12l8.7-4.5M12 21V12"/></svg>
       Inventory
-    </a>
-    {% endif %}
-    {% if "analytics" in nav_items %}
-    <a href="/analytics/" {% if active_page == "analytics" %}class="active"{% endif %}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18M7 20v-6M12 20V8M17 20v-9"/><path d="M4.5 10.5l4-4 3.5 3 6-6.5"/></svg>
-      AI Estimator
     </a>
     {% endif %}
     {% if "products" in nav_items %}

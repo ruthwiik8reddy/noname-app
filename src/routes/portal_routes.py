@@ -18,8 +18,10 @@ def private(response):
 
 
 @bp.get('/')
-@roles_required('customer')
+@roles_required('customer','admin','general_manager')
 def index():
+    if session.get('role') in ('admin','general_manager'):
+        return redirect(url_for('portal_admin.desk'))
     try:data=Portal().records(session['studio_id'],session['user_id'])
     except RecordError:abort(404)
     return render_template('portal.html',**data,csrf=csrf_token(),request_key=secrets.token_hex(24),today=date.today().isoformat())
@@ -76,7 +78,7 @@ def desk():
         verify_csrf();f=request.form
         try:
             if f.get('action')=='invite':
-                token=repo.invite(sid,number(f.get('customer_id')),actor());invite_link=url_for('portal.activate',token=token)
+                token=repo.invite(sid,number(f.get('customer_id')),actor());invite_link=url_for('portal.activate',token=token,_external=True)
             elif f.get('action')=='revoke-invites':repo.revoke_invites(sid,number(f.get('customer_id')),actor())
             elif f.get('action')=='issue':
                 if f.get('confirmed')!='yes':raise RecordError('Confirm that you checked eligibility and the displayed coverage terms.')
@@ -95,6 +97,8 @@ def desk():
         except RecordError as exc:flash(str(exc),'error')
     values=common();values['active_page']='portal_admin'
     return render_template('portal_admin.html',**values,csrf=csrf_token(),request_key=secrets.token_hex(24),invite_link=invite_link,
+        selected_customer_id=request.values.get('customer_id',type=int),
+        portal_login_url=url_for('main.login',next='/portal/',_external=True),
         customers=repo.fetch_all('SELECT id,name,username FROM customers WHERE studio_id=? ORDER BY name',(sid,)),
         jobs=repo.fetch_all("SELECT id,car,service FROM jobs WHERE studio_id=? AND status='Completed' AND vehicle_id IS NOT NULL AND customer_id IS NOT NULL ORDER BY id DESC",(sid,)),
         warranties=repo.fetch_all('SELECT * FROM vehicle_warranties WHERE studio_id=? ORDER BY id DESC',(sid,)),

@@ -8,8 +8,8 @@
       <h1 class="page-title">Paint Inspection</h1>
       <p class="page-sub">{{ job.car }} — {{ job.service }} · Enter health &amp; treatment per panel</p>
     </div>
-    {% if job.tracking_token %}
-    <a href="/customer/tracking/{{ job.tracking_token }}/dvi" target="_blank" class="preview-link">Preview customer view →</a>
+    {% if job.customer_id and session.get('role') in ['admin','general_manager'] %}
+    <a href="/portal-admin/?customer_id={{ job.customer_id }}" class="preview-link">Customer portal access →</a>
     {% endif %}
   </div>
 

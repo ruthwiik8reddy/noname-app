@@ -196,7 +196,7 @@ def ai_estimate_page():
     ).fetchall()
     return render_template("ai_estimate.html",
         **_c.sidebar_context(), **_c.auth_context(),
-        products=products, active_page="estimates")
+        products=products, active_page="ai-estimate")
 
 
 @bp.route("/ai-estimate/query", methods=["POST"])

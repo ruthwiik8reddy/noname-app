@@ -819,3 +819,12 @@ select {
 [data-theme="dark"] .stat.accent { background: linear-gradient(135deg, var(--violet-500), var(--violet-700)); }
 [data-theme="dark"] .violet-text { color: var(--violet-400); }
 [data-theme="dark"] .num.strong, [data-theme="dark"] td.num.strong { color: var(--violet-400); }
+
+/* Compact, keyboard-accessible navigation and optional dashboard panels. */
+.nav-dropdown { margin: 4px 0; }
+.nav-dropdown > summary { cursor: pointer; padding: 11px 12px; border-radius: var(--r-sm); color: var(--gray-600); font-size: 13px; font-weight: 600; }
+.nav-dropdown > summary:hover { background: var(--gray-100); }
+.nav-dropdown > summary:focus-visible, .optional-panel > summary:focus-visible { outline: 2px solid var(--violet-500); outline-offset: 2px; }
+.nav-dropdown > a { margin-left: 12px; }
+.optional-panel > summary { cursor: pointer; padding: 16px 20px; font-weight: 600; }
+.optional-panel { margin-top: 20px; }

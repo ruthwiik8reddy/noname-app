@@ -38,6 +38,27 @@ class PortalBoundaryTests(unittest.TestCase):
         self.assertEqual(client.get('/portal/').status_code,200)
         self.assertEqual(client.get('/portal/estimates/999').status_code,404)
 
+    def test_portal_entry_routes_managers_without_exposing_customer_records(self):
+        for role in ('admin','general_manager'):
+            response=self.client(role=role).get('/portal/')
+            self.assertEqual(response.status_code,302)
+            self.assertEqual(response.location,'/portal-admin/')
+        self.assertEqual(self.client(role='technician').get('/portal/').status_code,403)
+        response=self.app().test_client().get('/portal/')
+        self.assertEqual(response.status_code,302)
+        self.assertIn('/login?next=',response.location)
+
+    def test_crm_invitation_link_is_complete_and_customer_selection_is_scoped(self):
+        client=self.client(role='admin')
+        page=client.get('/portal-admin/?customer_id=1')
+        self.assertEqual(page.status_code,200)
+        self.assertIn(b'value="1" selected',page.data)
+        page=client.post('/portal-admin/',data={'csrf':'token','action':'invite','customer_id':'1'})
+        self.assertEqual(page.status_code,200)
+        self.assertIn(b'http://localhost/portal/activate/',page.data)
+        page=client.post('/portal-admin/',data={'csrf':'token','action':'invite','customer_id':'2'})
+        self.assertNotIn(b'id="inviteLink"',page.data)
+
     def test_records_require_current_vehicle_owner(self):
         self.repo.link_vehicle(1,1,1,'owner');repo=Portal(connection=self.conn)
         self.assertEqual(len(repo.records(1,1)['jobs']),1)

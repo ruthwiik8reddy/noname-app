@@ -67,8 +67,8 @@
           <td class="num strong">${{ '{:,.0f}'.format(job.price or 0) }}</td>
           <td class="nowrap" style="text-align:right">
             <a class="btn btn-ghost btn-sm" href="/dispatch/job/{{ job.id }}">Manage</a>
-            {% if job.tracking_token %}
-            <a class="btn btn-ghost btn-sm" href="/customer/tracking/{{ job.tracking_token }}" target="_blank" title="Customer tracking link">
+            {% if job.customer_id and session.get('role') in ['admin','general_manager'] %}
+            <a class="btn btn-ghost btn-sm" href="/portal-admin/?customer_id={{ job.customer_id }}" title="Manage customer portal access" aria-label="Manage customer portal access">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6M10 14L21 3"/></svg>
             </a>
             {% endif %}

@@ -43,16 +43,12 @@
     <label class="lbl">Services & Line Items *</label>
 
     {% if services %}
-    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;">
-      <span style="font-size:11px; color:var(--gray-400); padding:5px 0;">Quick add:</span>
-      {% for svc in services %}
-      <button type="button" class="btn btn-ghost btn-sm"
-              onclick="addRow('{{ svc.name }}', '{{ svc.name }} service', 1, {{ svc.price }})"
-              style="font-size:11px; padding:4px 10px;">
-        {{ svc.name }} — ${{ svc.price }}
-      </button>
-      {% endfor %}
-    </div>
+    <label class="lbl" for="servicePicker">Add a service</label>
+    <select id="servicePicker" onchange="if(this.value){addRow(this.value, this.value + ' service');this.value='';}">
+      <option value="">Choose a service…</option>
+      {% for svc in services %}<option value="{{ svc.name }}">{{ svc.name }}</option>{% endfor %}
+    </select>
+    <p class="help">Select a service, then enter the agreed unit price.</p>
     {% endif %}
 
     <div class="table-scroll">
@@ -104,12 +100,18 @@ let rowCount = 0;
 
 function addRow(name='', desc='', qty=1, price='') {
   const tbody = document.getElementById('itemsBody');
+  if (name && tbody.rows.length === 1) {
+    const blank = tbody.rows[0];
+    if (!blank.querySelector('[name=item_name]').value && !blank.querySelector('[name=item_desc]').value && !blank.querySelector('[name=item_price]').value) blank.remove();
+  }
   const tr = document.createElement('tr');
+  const escapeValue = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  name = escapeValue(name); desc = escapeValue(desc);
   tr.innerHTML = `
-    <td><input type="text" name="item_name" value="${name}" placeholder="e.g. Ceramic Coating" oninput="recalc()" style="min-width:140px;"></td>
+    <td><input type="text" name="item_name" required value="${name}" placeholder="e.g. Ceramic Coating" oninput="recalc()" style="min-width:140px;"></td>
     <td><input type="text" name="item_desc" value="${desc}" placeholder="Optional"></td>
     <td><input type="number" name="item_qty" value="${qty}" min="1" style="width:60px" oninput="recalc()"></td>
-    <td><input type="number" name="item_price" value="${price}" min="0" step="0.01" placeholder="0.00" oninput="recalc()"></td>
+    <td><input type="number" name="item_price" value="${price}" required min="0" step="0.01" placeholder="0.00" oninput="recalc()"></td>
     <td class="num" id="row_total_${rowCount}" style="font-weight:600; color:var(--violet-600);">$0.00</td>
     <td><button type="button" onclick="this.closest('tr').remove();recalc()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;">×</button></td>
   `;

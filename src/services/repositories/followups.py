@@ -143,7 +143,7 @@ class Followups(VehicleWorkflow):
                 detail={'body':row['body'],'destination':row['destination'],'channel':row['channel']}
             elif operation=='contacted':
                 if row['status']!='Approved' or data.get('confirmed')!='yes':
-                    raise RecordError('Approve the draft and confirm that you already contacted this recipient outside Autofiera.')
+                    raise RecordError('Approve the draft and confirm that you already contacted this recipient outside BayQ.')
                 self._ready(conn,row)
                 reference=bounded(data.get('reference'),'External contact reference')
                 floor=conn.execute('SELECT coalesce(max(id),0) FROM bookings WHERE studio_id=?',(sid,)).fetchone()[0]

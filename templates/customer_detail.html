@@ -3,6 +3,7 @@
 
 {% block content %}
 <a href="/customers" class="back-link">← Back to Customers</a>
+{% if session.get('role') in ['admin','general_manager'] %}<a class="btn btn-secondary" href="/portal-admin/?customer_id={{customer.id}}">Customer portal access</a>{% endif %}
   <div class="page-head">
     <div>
       <p class="cust-name">{{ customer.name }}</p>

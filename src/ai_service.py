@@ -1,5 +1,5 @@
 # """
-# ai_service.py — AI routing for Autofiera assistant (100% Local / Ollama)
+# ai_service.py — AI routing for BayQ assistant (100% Local / Ollama)
 # ----------------------------------------------------
 # Architecture: LocalRouter decides the route, AIService dispatches.
 
@@ -174,7 +174,7 @@
 
 # class PromptBuilder:
 #     SYSTEM = (
-#         "You are an AI assistant built into Autofiera, a detailing studio management platform. "
+#         "You are an AI assistant built into BayQ, a detailing studio management platform. "
 #         "You help studio owners and staff with questions about their business, services, and industry knowledge. "
 #         "Be concise, practical, and professional. "
 #         "When referencing studio data, cite it clearly. "
@@ -474,7 +474,7 @@
 
 
 """
-ai_service.py — AI routing for Autofiera assistant (100% Local / Ollama)
+ai_service.py — AI routing for BayQ assistant (100% Local / Ollama)
 ----------------------------------------------------
 Architecture: LocalRouter decides the route, AIService dispatches.
 
@@ -650,7 +650,7 @@ class UserMemoryStore:
 
 class PromptBuilder:
     SYSTEM = (
-        "You are an AI assistant built into Autofiera, a detailing studio management platform. "
+        "You are an AI assistant built into BayQ, a detailing studio management platform. "
         "You help studio owners and staff with questions about their business, services, and industry knowledge. "
         "Be concise, practical, and professional. "
         "When referencing studio data, cite it clearly. "
