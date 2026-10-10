@@ -67,6 +67,33 @@
           <td class="num strong">${{ '{:,.0f}'.format(job.price or 0) }}</td>
           <td class="nowrap" style="text-align:right">
             <a class="btn btn-ghost btn-sm" href="/dispatch/job/{{ job.id }}">Manage</a>
+            {% if session.get('role') in ['admin','general_manager','service_advisor'] %}
+              {% if job.tracking_token %}
+              <button type="button"
+                class="btn btn-ghost btn-sm track-copy-btn"
+                data-token="{{ job.tracking_token }}"
+                title="Copy customer tracking link"
+                aria-label="Copy customer tracking link">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                </svg>
+              </button>
+              {% else %}
+              <form method="POST" action="/jobs/{{ job.id }}/send-tracking-sms" style="display:inline">
+                <input type="hidden" name="redirect_to" value="/jobs">
+                <button type="submit"
+                  class="btn btn-ghost btn-sm"
+                  title="Generate tracking link"
+                  aria-label="Generate tracking link">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                  </svg>
+                </button>
+              </form>
+              {% endif %}
+            {% endif %}
             {% if job.customer_id and session.get('role') in ['admin','general_manager'] %}
             <a class="btn btn-ghost btn-sm" href="/portal-admin/?customer_id={{ job.customer_id }}" title="Manage customer portal access" aria-label="Manage customer portal access">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6M10 14L21 3"/></svg>
@@ -133,6 +160,28 @@
       btn.classList.add('on');
       status = btn.dataset.filter;
       apply();
+    });
+  })();
+
+  /* Tracking link copy-to-clipboard */
+  (function () {
+    const base = window.location.origin;
+    document.querySelectorAll('.track-copy-btn').forEach(btn => {
+      btn.addEventListener('click', function () {
+        const token = this.dataset.token;
+        const url   = base + '/customer/tracking/' + token;
+        navigator.clipboard.writeText(url).then(() => {
+          const orig = this.innerHTML;
+          this.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
+          this.style.color = 'var(--green)';
+          setTimeout(() => {
+            this.innerHTML = orig;
+            this.style.color = '';
+          }, 2000);
+        }).catch(() => {
+          window.prompt('Copy this link:', url);
+        });
+      });
     });
   })();
 </script>
