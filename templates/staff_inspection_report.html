@@ -9,7 +9,7 @@
       <p class="page-sub">{{ job.car }} — {{ job.service }} · Enter thickness, treatment &amp; photos per panel</p>
     </div>
     {% if job.customer_id and session.get('role') in ['admin','general_manager'] %}
-    <a href="/portal-admin/?customer_id={{ job.customer_id }}" class="preview-link">Customer portal access →</a>
+    <a href="/portal-admin/?customer_id={{ job.customer_id }}" class="preview-link">Customer tracking links →</a>
     {% endif %}
   </div>
 

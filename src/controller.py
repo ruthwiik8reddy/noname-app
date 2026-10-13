@@ -102,7 +102,8 @@ def login():
                     logger.info(f"Login successful: {username} (role={payload.get('role')})")
                     next_url = request.args.get("next") or url_for("main.dashboard")
                     from .security import safe_next
-                    return redirect('/portal/' if payload.get('role')=='customer' else safe_next(next_url))
+                    destination=safe_next(next_url)
+                    return redirect((destination if destination.startswith('/portal/') else '/portal/') if payload.get('role')=='customer' else destination)
                 logger.warning(f"Login failed: invalid credentials for {username}")
                 error = "Invalid username or password."
             except Exception as e:
@@ -1094,7 +1095,7 @@ def new_customer():
                 if existing:
                     customer_id = existing["id"]
                 else:
-                    username = f"cust_{sid}_{phone}".replace(" ", "")
+                    username = None
                     cur = conn.execute(
                         "INSERT INTO customers (studio_id, name, phone, email, notes, username, password) "
                         "VALUES (?,?,?,?,?,?,?)",
@@ -1109,6 +1110,8 @@ def new_customer():
                     )
 
                 conn.commit()
+                from flask import flash
+                flash("Customer saved successfully.", "success")
                 logger.info(f"Exiting new_customer — created/found customer {customer_id}")
                 return redirect(url_for("main.customer_detail", customer_id=customer_id))
         except Exception as e:

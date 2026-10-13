@@ -828,3 +828,19 @@ select {
 .nav-dropdown > a { margin-left: 12px; }
 .optional-panel > summary { cursor: pointer; padding: 16px 20px; font-weight: 600; }
 .optional-panel { margin-top: 20px; }
+
+.profile-details { display:grid;grid-template-columns:110px minmax(0,1fr);gap:14px;margin:22px 0; }
+.profile-details dt { color:var(--gray-500); } .profile-details dd { margin:0;overflow-wrap:anywhere; }
+.record-row { padding:18px 0;border-bottom:1px solid var(--line); } .record-row p { margin:6px 0; }
+.stack-form { display:grid;gap:16px;padding:16px 0; } .stack-form label { display:grid;gap:7px;min-width:0; }
+.follow-card { padding:24px;margin-bottom:20px; }
+.follow-card h2 { font-size:18px;margin-bottom:12px; } .follow-card p { line-height:1.7;margin:10px 0;color:var(--gray-600); }
+.follow-card form { display:flex;gap:16px;flex-wrap:wrap;align-items:end;margin:18px 0; }
+.follow-card label { display:flex;flex-direction:column;gap:8px;flex:1;min-width:180px; }
+.follow-card input,.follow-card select,.follow-card textarea { width:100%;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--white);color:var(--gray-900); }
+.follow-card pre { white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;line-height:1.7;background:var(--gray-50);padding:20px;border-radius:10px; }
+.follow-card details { margin-top:16px; } .follow-card summary { cursor:pointer;font-weight:600; }
+.follow-candidate { padding:18px;border:1px solid var(--line);border-radius:12px;margin-top:12px;display:flex;justify-content:space-between;gap:20px;align-items:center;flex-wrap:wrap; }
+.follow-candidate form { margin:0; } .follow-candidate p { margin:5px 0; }
+.workflow-steps { display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px; } .workflow-steps span { border:1px solid var(--line);border-radius:20px;padding:8px 14px;color:var(--gray-500); } .workflow-steps .current { background:var(--violet-100);color:var(--violet-700);font-weight:600; }
+@media(max-width:640px){.follow-card{padding:16px}.follow-candidate form{width:100%}.profile-details{grid-template-columns:1fr;gap:6px}.profile-details dd{margin-bottom:12px}}

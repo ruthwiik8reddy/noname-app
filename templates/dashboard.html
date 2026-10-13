@@ -15,10 +15,6 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
       New booking
     </a>
-    <a class="btn btn-primary" href="/dispatch/">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7" height="16" rx="1.5"/><rect x="14" y="4" width="7" height="10" rx="1.5"/></svg>
-      Dispatch board
-    </a>
   </div>
 </div>
 {% endblock %}
@@ -100,14 +96,13 @@
     {% if bookings %}
     <div class="table-scroll">
       <table class="data">
-        <thead><tr><th>Customer</th><th>Vehicle</th><th>When</th><th class="right">Value</th></tr></thead>
+        <thead><tr><th>Customer</th><th>Vehicle</th><th>When</th></tr></thead>
         <tbody>
           {% for b in bookings %}
           <tr>
             <td class="strong">{{ b.customer_name }}</td>
             <td>{{ b.vehicle }}</td>
             <td class="dim nowrap">{{ b.date }} · {{ b.time_slot }}</td>
-            <td class="num strong">${{ '{:,.0f}'.format(b.service_price or 0) }}</td>
           </tr>
           {% endfor %}
         </tbody>

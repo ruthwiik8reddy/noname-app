@@ -16,121 +16,32 @@
     <div class="meta">{{ city or '' }}</div>
   </div>
 
-  <nav class="sidebar-nav">
-
+  <nav class="sidebar-nav" aria-label="Main navigation">
+    {% macro link(key,url,label) %}{% if key in nav_items %}<a href="{{url}}" {% if active_page==key %}class="active" aria-current="page"{% endif %}>{{label}}</a>{% endif %}{% endmacro %}
     <div class="nav-group-label">Overview</div>
-    {% if "command" in nav_items %}
-    <a href="/command" {% if active_page == "command" %}class="active"{% endif %}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6 4.6 1.9-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M18 15l.8 2.2 2.2.8-2.2.8L18 21l-.8-2.2-2.2-.8 2.2-.8z"/></svg>
-      Command
-    </a>
-    {% endif %}
-    <a href="/dashboard" {% if active_page == "dashboard" %}class="active"{% endif %}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
-      Dashboard
-    </a>
-
-    <div class="nav-group-label">Operations</div>
-    {% if "dispatch" in nav_items %}
-    <a href="/dispatch/" {% if active_page == "dispatch" %}class="active"{% endif %}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 13l2 2 4-4"/></svg>
-      Dispatch
-    </a>
-    {% endif %}
-    {% if "jobs" in nav_items %}
-    <a href="/jobs" {% if active_page == "jobs" %}class="active"{% endif %}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14M6.5 17l1.2-5.2a2 2 0 0 1 1.95-1.55h4.7a2 2 0 0 1 1.95 1.55L17.5 17"/><circle cx="7.5" cy="17.5" r="1.6"/><circle cx="16.5" cy="17.5" r="1.6"/></svg>
-      Jobs
-    </a>
-    {% endif %}
-    {% if "dvi" in nav_items %}
-    <a href="/dvi/" {% if active_page == "dvi" %}class="active"{% endif %}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L8 6H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3.2"/></svg>
-      Inspections
-    </a>
-    {% endif %}
-    {% if "bookings" in nav_items %}
-    <a href="/bookings" {% if active_page == "bookings" %}class="active"{% endif %}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-      Bookings
-    </a>
-    {% endif %}
-
-    <div class="nav-group-label">Revenue</div>
-    {% if "leads" in nav_items %}
-    <a href="/leads" {% if active_page == "leads" %}class="active"{% endif %}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20v-1.5A3.5 3.5 0 0 1 6.5 15h4A3.5 3.5 0 0 1 14 18.5V20"/><circle cx="8.5" cy="8" r="3.5"/><path d="M17 11l2 2 4-4"/></svg>
-      Leads
-    </a>
-    {% endif %}
-    {% if "estimates" in nav_items %}
-    <a href="/estimates" {% if active_page == "estimates" %}class="active"{% endif %}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
-      Estimates
-    </a>
-    {% endif %}
-    <details class="nav-dropdown" {% if active_page in ['ai-estimate','analytics'] %}open{% endif %}>
-      <summary>AI estimates</summary>
-      <a href="/ai-estimate" {% if active_page == 'ai-estimate' %}class="active" aria-current="page"{% endif %}>Quick quote</a>
-      {% if 'analytics' in nav_items %}<a href="/analytics/" {% if active_page == 'analytics' %}class="active" aria-current="page"{% endif %}>Stock &amp; material estimates</a>{% endif %}
-    </details>
-    {% if "customers" in nav_items %}
-    <a href="/customers" {% if active_page == "customers" %}class="active"{% endif %}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V20"/><circle cx="9.5" cy="7.5" r="3.5"/><path d="M21 20v-1.5a4 4 0 0 0-3-3.85M16.5 4.2a3.5 3.5 0 0 1 0 6.6"/></svg>
-      Customers
-    </a>
-    {% endif %}
-
+    {% if session.get('role') in ['admin','general_manager'] %}<a href="/intelligence/" {% if active_page=='intelligence' %}class="active" aria-current="page"{% endif %}>Business intelligence</a>{% endif %}
+    {{link('dashboard','/dashboard','Dashboard')}}
+    <div class="nav-group-label">Customers &amp; sales</div>
+    {{link('leads','/leads','Leads')}}
+    {{link('customers','/customers','Customers')}}
     {% if session.get('role') in ['admin','general_manager'] %}
-    <details class="nav-dropdown" {% if active_page in ['intelligence','followups','portal_admin'] %}open{% endif %}>
-      <summary>CRM &amp; insights</summary>
-      <a href="/portal-admin/" {% if active_page == 'portal_admin' %}class="active"{% endif %}>Customer portal &amp; warranties</a>
-      <a href="/followups/" {% if active_page == 'followups' %}class="active"{% endif %}>Customer follow-ups</a>
-      <a href="/intelligence/" {% if active_page == 'intelligence' %}class="active"{% endif %}>Business intelligence</a>
-    </details>
+    <a href="/followups/" {% if active_page=='followups' %}class="active"{% endif %}>Customer follow-ups</a>
+    <a href="/portal-admin/" {% if active_page=='portal_admin' %}class="active"{% endif %}>Customer tracking</a>
     {% endif %}
-
-    <div class="nav-group-label">Supply</div>
-    {% if "inventory" in nav_items %}
-    <a href="/inventory" {% if active_page == "inventory" %}class="active"{% endif %}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8.5v7a2 2 0 0 1-1.05 1.76l-7 3.6a2 2 0 0 1-1.9 0l-7-3.6A2 2 0 0 1 3 15.5v-7a2 2 0 0 1 1.05-1.76l7-3.6a2 2 0 0 1 1.9 0l7 3.6A2 2 0 0 1 21 8.5z"/><path d="M3.3 7.5L12 12l8.7-4.5M12 21V12"/></svg>
-      Inventory
-    </a>
-    {% endif %}
-    {% if "products" in nav_items %}
-    <a href="/products" {% if active_page == "products" %}class="active"{% endif %}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18"/></svg>
-      Products
-    </a>
-    {% endif %}
-
-    {% if "agents" in nav_items %}
-    <div class="nav-group-label">Automation</div>
-    <a href="/agents/" {% if active_page == "agents" %}class="active"{% endif %}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2.5"/><path d="M12 8V4M9 4h6"/><circle cx="9" cy="14" r="1.2"/><circle cx="15" cy="14" r="1.2"/></svg>
-      Agents
-    </a>
-    {% endif %}
-
-    <div class="nav-group-label">Studio</div>
-    {% if "media" in nav_items %}
-    <a href="/media" {% if active_page == "media" %}class="active"{% endif %}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.8"/><path d="M21 15.5l-4.5-4.5L6 20"/></svg>
-      Media
-    </a>
-    {% endif %}
-    {% if "staff" in nav_items %}
-    <a href="/staff" {% if active_page == "staff" %}class="active"{% endif %}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M17 20v-1.6a3.6 3.6 0 0 0-3.6-3.6H8.6A3.6 3.6 0 0 0 5 18.4V20"/><circle cx="11" cy="7.5" r="3.6"/><path d="M19 11h4M21 9v4"/></svg>
-      Staff
-    </a>
-    {% endif %}
-    {% if "settings" in nav_items %}
-    <a href="/account" {% if active_page == "account" %}class="active"{% endif %}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .32 1.77l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.6 1.6 0 0 0 15 19.4a1.6 1.6 0 0 0-.97 1.47V21a2 2 0 0 1-4 0v-.09A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.77.32l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.6 1.6 0 0 0 4.6 15a1.6 1.6 0 0 0-1.47-.97H3a2 2 0 0 1 0-4h.09A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.32-1.77l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.6 1.6 0 0 0 9 4.6h.08A1.6 1.6 0 0 0 10 3.13V3a2 2 0 0 1 4 0v.09A1.6 1.6 0 0 0 15 4.6a1.6 1.6 0 0 0 1.77-.32l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.6 1.6 0 0 0 19.4 9v.08a1.6 1.6 0 0 0 1.47.92H21a2 2 0 0 1 0 4h-.09a1.6 1.6 0 0 0-1.51.99z"/></svg>
-      Settings
-    </a>
-    {% endif %}
+    {% if 'estimates' in nav_items %}<details class="nav-dropdown" {% if active_page in ['estimates','ai-estimate'] %}open{% endif %}><summary>Estimates</summary>{{link('estimates','/estimates','All estimates')}}<a href="/ai-estimate" {% if active_page=='ai-estimate' %}class="active"{% endif %}>AI quick quote</a></details>{% endif %}
+    <div class="nav-group-label">Workshop</div>
+    {{link('bookings','/bookings','Bookings')}}
+    {{link('dispatch','/dispatch/','Dispatch')}}
+    {{link('jobs','/jobs','Jobs')}}
+    {{link('dvi','/dvi/','Inspections')}}
+    <div class="nav-group-label">Stock</div>
+    {% if 'inventory' in nav_items %}<details class="nav-dropdown" {% if active_page in ['inventory','analytics'] %}open{% endif %}><summary>Inventory</summary>{{link('inventory','/inventory','Stock & usage')}}{{link('analytics','/analytics/','Stock forecast & reorder timing')}}</details>{% endif %}
+    {{link('products','/products','Product catalog')}}
+    <div class="nav-group-label">Administration</div>
+    {{link('media','/media','Media')}}
+    {{link('staff','/staff','Staff')}}
+    {{link('agents','/agents/','Agents')}}
+    {{link('settings','/account','Settings')}}
   </nav>
 
   <div class="sidebar-foot">

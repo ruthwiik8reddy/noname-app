@@ -25,8 +25,8 @@ class Config:
     OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
 
     # Multimodal model for Digital Vehicle Inspection (Phase 2).
-    # Install with: ollama pull llava   (or llava:13b / bakllava for better accuracy)
-    OLLAMA_VISION_MODEL = os.getenv("OLLAMA_VISION_MODEL", "llava")
+    # Install with: ollama pull llava:7b   (or llava:13b / bakllava for better accuracy)
+    OLLAMA_VISION_MODEL = os.getenv("OLLAMA_VISION_MODEL", "llava:7b")
 
     # Local inference is slow — vision especially. Generous, but bounded.
     OLLAMA_TEXT_TIMEOUT   = int(os.getenv("OLLAMA_TEXT_TIMEOUT", "90"))

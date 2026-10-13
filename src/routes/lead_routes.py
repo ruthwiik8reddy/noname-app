@@ -46,39 +46,7 @@ def _actor() -> str:
 @bp.route("/command")
 @roles_required("admin", "general_manager")
 def command_center():
-    studio_id = session["studio_id"]
-    base = BaseRepository()
-
-    jobs = {
-        r["status"]: int(r["n"]) for r in base.fetch_all(
-            "SELECT status, COUNT(*) n FROM jobs WHERE studio_id=? GROUP BY status", (studio_id,)
-        )
-    }
-    revenue_month = float(base.fetch_scalar(
-        "SELECT COALESCE(SUM(price),0) FROM jobs WHERE studio_id=? AND status='Completed' "
-        "AND completed_at >= date('now','start of month')", (studio_id,), default=0))
-
-    # 14-day completion trend — the sparkline on the dashboard.
-    trend = base.fetch_all(
-        """
-        SELECT date(completed_at) AS day, COUNT(*) AS jobs, COALESCE(SUM(price),0) AS revenue
-        FROM jobs
-        WHERE studio_id=? AND status='Completed' AND completed_at >= date('now','-13 days')
-        GROUP BY date(completed_at) ORDER BY day
-        """,
-        (studio_id,),
-    )
-
-    return render_template(
-        "command.html",
-        **_sidebar(), **auth_context(),
-        active_page="command",
-        jobs=jobs,
-        revenue_month=revenue_month,
-        trend=trend,
-        lead_stats=LeadRepository().stats(studio_id),
-        counts=AgentRepository().counts_by_severity(studio_id),
-    )
+    return redirect(url_for('intelligence.index'))
 
 
 @bp.route("/command/api/pulse")

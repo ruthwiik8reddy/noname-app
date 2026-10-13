@@ -26,7 +26,7 @@ def create_app():
     install_security(app)
 
     # 16 MB — DVI uploads are multi-photo bursts straight off a phone camera.
-    app.config.setdefault("MAX_CONTENT_LENGTH", 16 * 1024 * 1024)
+    app.config["MAX_CONTENT_LENGTH"] = app.config.get("MAX_CONTENT_LENGTH") or 16 * 1024 * 1024
 
     # Legacy monolith blueprint.
     app.register_blueprint(bp)

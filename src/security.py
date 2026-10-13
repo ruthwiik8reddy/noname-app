@@ -74,7 +74,7 @@ def install_security(app):
     def boundary():
         g.request_id=uuid.uuid4().hex
         if request.path.startswith('/customer/tracking/'):
-            return '<h1>This tracking link has been replaced</h1><p><a href="/portal/">Open the customer portal</a> to sign in. If you do not have an account, ask your studio for an invitation.</p>',410
+            return '<h1>This tracking link has been replaced</h1><p>Ask your studio for a new private job tracking link. No account is needed.</p>',410
         if request.path.endswith('/send-tracking-sms'):
             return 'Legacy tracking messages are disabled. Use the reviewed follow-up workflow.',410
         if request.endpoint=='static':
@@ -90,7 +90,7 @@ def install_security(app):
         if request.endpoint=='dvi.serve_photo':
             return private_media(request.view_args['studio_id'],'dvi/'+request.view_args['filename'])
         if session.get('role')=='customer' and session.get('logged_in'):
-            allowed=request.endpoint in ('main.login','main.logout','static','approvals.public') or str(request.endpoint).startswith('portal.')
+            allowed=request.endpoint in ('main.login','main.logout','static','approvals.public','portal_admin.public_tracking','portal_admin.public_status') or str(request.endpoint).startswith('portal.')
             if not allowed:abort(403)
         # Existing media mutation paths now require both CSRF and job assignment.
         if request.method=='POST' and (request.path.startswith('/media/') or '/inspection-upload/' in request.path or re.fullmatch(r'/dvi/inspection/\d+/photos',request.path)):

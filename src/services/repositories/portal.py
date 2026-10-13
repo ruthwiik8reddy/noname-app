@@ -17,7 +17,7 @@ class Portal(Followups):
         now=int(time.time() if now is None else now);token=secrets.token_urlsafe(32)
         with self._conn() as conn,conn:
             conn.execute('BEGIN IMMEDIATE');customer=self._customer(conn,sid,cid)
-            if customer['username'] or customer['password']:raise RecordError('This customer already has an account. Invitations cannot reset existing credentials.')
+            if customer['password']:raise RecordError('This customer already has an account. Invitations cannot reset existing credentials.')
             conn.execute('UPDATE portal_invites SET revoked_at=? WHERE studio_id=? AND customer_id=? AND used_at IS NULL AND revoked_at IS NULL',(now,sid,cid))
             conn.execute('INSERT INTO portal_invites(studio_id,customer_id,token_hash,expires_at,actor) VALUES(?,?,?,?,?)',(sid,cid,hashlib.sha256(token.encode()).hexdigest(),now+172800,str(actor)))
             self.audit(conn,sid,cid,'invite_created',actor,{'expires_at':now+172800})
@@ -47,8 +47,8 @@ class Portal(Followups):
         with self._conn() as conn,conn:
             conn.execute('BEGIN IMMEDIATE');invite=self._invite(conn,token,now)
             customer=self._customer(conn,invite['studio_id'],invite['customer_id'])
-            if customer['username'] or customer['password']:raise RecordError('An account already exists.')
-            if any(conn.execute(f'SELECT 1 FROM {table} WHERE lower(username)=?',(username,)).fetchone() for table in ('studios','staff','customers')):
+            if customer['password']:raise RecordError('An account already exists.')
+            if any(conn.execute(f'SELECT 1 FROM {table} WHERE lower(username)=?' + (' AND id<>?' if table=='customers' else ''), (username,invite['customer_id']) if table=='customers' else (username,)).fetchone() for table in ('studios','staff','customers')):
                 raise RecordError('That username is unavailable.')
             conn.execute('UPDATE customers SET username=?,password=? WHERE studio_id=? AND id=?',(username,password_hash,invite['studio_id'],invite['customer_id']))
             conn.execute('UPDATE portal_invites SET used_at=? WHERE id=?',(now,invite['id']))

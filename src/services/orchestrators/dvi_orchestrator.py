@@ -78,6 +78,16 @@ class DVIOrchestrator(BaseOrchestrator):
             self._provider = LLMProviderFactory.vision_provider()
         return self._provider  # type: ignore[return-value]
 
+    def ai_available(self):
+        if not super().ai_available():
+            return False
+        provider = self.provider
+        if hasattr(provider, 'installed_models') and hasattr(provider, 'vision_model'):
+            name = provider.vision_model
+            installed = provider.installed_models()
+            return name in installed or (':' not in name and name + ':latest' in installed)
+        return True
+
     # ── storage ───────────────────────────────────────────────────────────
 
     def upload_dir(self, studio_id: int) -> str:
@@ -138,14 +148,25 @@ class DVIOrchestrator(BaseOrchestrator):
                 rejected.append({"filename": original, "reason": "Photo limit reached"})
                 continue
 
-            ext = original.rsplit(".", 1)[1].lower()
+            ext = "jpg"
             filename = secure_filename(f"dvi_{inspection_id}_{panel}_{uuid.uuid4().hex[:10]}.{ext}")
             filepath = os.path.join(directory, filename)
             try:
-                storage.save(filepath)
+                from PIL import Image, ImageOps
+                from pillow_heif import register_heif_opener
+                register_heif_opener()
+                # Decode real pixels, apply camera orientation, and bound inference size.
+                with Image.open(storage.stream) as image:
+                    if image.width * image.height > 40_000_000:
+                        raise ValueError("Image exceeds 40 megapixels")
+                    image.load()
+                    normalized = ImageOps.exif_transpose(image).convert('RGB')
+                    normalized.thumbnail((1600, 1600))
+                    normalized.save(filepath, 'JPEG', quality=90)
+
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Failed saving DVI photo %s: %s", original, exc)
-                rejected.append({"filename": original, "reason": "Could not be saved"})
+                rejected.append({"filename": original, "reason": "Could not read this image. Use a valid JPG, PNG, WebP or HEIC photo under 40 megapixels."})
                 continue
 
             photo_id = self.repo.add_photo(
@@ -185,7 +206,7 @@ class DVIOrchestrator(BaseOrchestrator):
         if not self.ai_available():
             raise LLMUnavailableError(
                 "The local vision model is unreachable. Start Ollama (`ollama serve`) and make sure "
-                "the vision model is installed (`ollama pull llava`)."
+                f"the configured vision model is installed ({getattr(self.provider, 'vision_model', 'vision')})."
             )
 
         job = self.jobs.get(studio_id, inspection["job_id"]) or {}
@@ -345,6 +366,9 @@ class DVIOrchestrator(BaseOrchestrator):
             degraded, degraded_reason = True, str(exc)
             summary = self._fallback_summary(findings, lines, score, total_display)
 
+        if not findings:
+            # An empty model result does not establish the vehicle's overall health.
+            summary = self._fallback_summary(findings, lines, score, total_display)
         model_used = str(summary.get("_meta", {}).get("model", "unknown"))
         self.repo.save_summary(
             inspection_id=inspection_id,
@@ -381,9 +405,9 @@ class DVIOrchestrator(BaseOrchestrator):
     ) -> Dict[str, Any]:
         if not findings:
             return {
-                "customer_summary": "We inspected your vehicle and found no significant paint defects. "
-                                    "It's in excellent condition.",
-                "condition_headline": "Excellent condition",
+                "customer_summary": "No defects were flagged in the supplied photos. "
+                                    "A technician should check photo coverage and inspect the vehicle before confirming its condition.",
+                "condition_headline": "No defects flagged in photos",
                 "recommendations": [],
                 "technician_notes": [],
                 "_generated_by": "deterministic_fallback",

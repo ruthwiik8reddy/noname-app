@@ -16,10 +16,6 @@
       <input type="search" id="q" placeholder="Search vehicle, service, tech…"
              style="width:250px; padding-left:33px;" autocomplete="off">
     </div>
-    <a class="btn btn-primary" href="/dispatch/">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7" height="16" rx="1.5"/><rect x="14" y="4" width="7" height="10" rx="1.5"/></svg>
-      Dispatch board
-    </a>
   </div>
 </div>
 {% endblock %}
@@ -68,7 +64,7 @@
           <td class="nowrap" style="text-align:right">
             <a class="btn btn-ghost btn-sm" href="/dispatch/job/{{ job.id }}">Manage</a>
             {% if job.customer_id and session.get('role') in ['admin','general_manager'] %}
-            <a class="btn btn-ghost btn-sm" href="/portal-admin/?customer_id={{ job.customer_id }}" title="Manage customer portal access" aria-label="Manage customer portal access">
+            <a class="btn btn-ghost btn-sm" href="/portal-admin/?customer_id={{ job.customer_id }}" title="Manage tracking links" aria-label="Manage tracking links">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6M10 14L21 3"/></svg>
             </a>
             {% endif %}

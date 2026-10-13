@@ -41,8 +41,8 @@ def authorize(jid,starting=False):
     return job
 
 
-def common():
-    return dict(**auth_context(),studio=session.get('studio'),city=session.get('city'),owner=session.get('owner'),active_page='dispatch')
+def common(active_page="jobs"):
+    return dict(**auth_context(),studio=session.get('studio'),city=session.get('city'),owner=session.get('owner'),active_page=active_page)
 
 
 @bp.get('/jobs/<int:jid>')
@@ -105,7 +105,7 @@ def vehicle(vid):
         data=JobRecords().timeline(session['studio_id'],vid)
     except RecordError:
         abort(404)
-    return render_template('vehicle_history.html',**common(),**data)
+    return render_template('vehicle_history.html',**common('customers'),**data)
 
 
 def legacy_material_scan():
@@ -145,7 +145,7 @@ def record_identity(kind,record_id):
         else:flash('Verified vehicle linked.','success')
         return redirect(request.path,code=303)
     choices=[v for v in repo.choices(sid) if record['customer_id'] is None or v['customer_id']==record['customer_id']]
-    return render_template('record_identity.html',**common(),kind=kind,record=record,choices=choices,csrf=csrf_token())
+    return render_template('record_identity.html',**common(kind),kind=kind,record=record,choices=choices,csrf=csrf_token())
 
 
 @bp.post('/bookings/<int:bid>/job')

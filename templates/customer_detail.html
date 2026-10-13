@@ -1,91 +1,12 @@
-{% extends "_base.html" %}
-{% block title %}{{ customer.name }} — {{ studio }}{% endblock %}
-
+{% extends '_base.html' %}
+{% block title %}{{customer.name}} — {{studio}}{% endblock %}
+{% block page_head %}<div class="page-head"><div><a class="muted" href="/customers">← Customers</a><h1 class="page-title">{{customer.name}}</h1><p class="page-sub">Customer #{{customer.id}} · Contact details, vehicles and visit history</p></div><div class="page-actions">{% if current_role in ['admin','general_manager'] %}<a class="btn btn-secondary" href="/portal-admin/?customer_id={{customer.id}}">Tracking links</a>{% endif %}<a class="btn btn-primary" href="/bookings/new">New booking</a></div></div>{% endblock %}
 {% block content %}
-<a href="/customers" class="back-link">← Back to Customers</a>
-{% if session.get('role') in ['admin','general_manager'] %}<a class="btn btn-secondary" href="/portal-admin/?customer_id={{customer.id}}">Customer portal access</a>{% endif %}
-  <div class="page-head">
-    <div>
-      <p class="cust-name">{{ customer.name }}</p>
-      <p class="cust-meta">{{ customer.phone }} {% if customer.email %}· {{ customer.email }}{% endif %}</p>
-    </div>
-  </div>
-
-  <div class="two-col">
-    <div class="card">
-      <p class="card-title">Vehicles ({{ vehicles|length }})</p>
-      {% for v in vehicles %}
-      <div class="vehicle-item">
-        <div class="vehicle-name">{{ v.make_model }}</div>
-        <div class="vehicle-sub">
-          {% if v.year %}{{ v.year }} · {% endif %}
-          {% if v.color %}{{ v.color }} · {% endif %}
-          {% if v.license_plate %}{{ v.license_plate }}{% endif %}
-        </div>
-      </div>
-      {% else %}
-      <div class="empty-mini">No vehicles on file</div>
-      {% endfor %}
-
-      <form class="add-vehicle-form" method="POST" action="/customers/{{ customer.id }}/vehicles/new">
-        <input type="text" name="make_model" placeholder="Add another vehicle..." required>
-        <button type="submit">Add</button>
-      </form>
-    </div>
-
-    <div class="card">
-      <p class="card-title">Notes</p>
-      <p class="notes-text">{{ customer.notes or "No notes added yet." }}</p>
-    </div>
-  </div>
-
-  <p class="section-title">Booking History</p>
-  <div class="table-wrap">
-    {% if bookings %}
-    <table class="data">
-      <thead><tr><th>Vehicle</th><th>Service</th><th>Date</th><th>Status</th></tr></thead>
-      <tbody>
-        {% for b in bookings %}
-        <tr>
-          <td>{{ b.vehicle }}</td>
-          <td>{{ b.service_name }}</td>
-          <td>{{ b.date }} {{ b.time_slot }}</td>
-          <td>
-            {% if b.status == 'Completed' %}<span class="badge status-completed">Completed</span>
-            {% elif b.status == 'Confirmed' %}<span class="badge badge-blue">Confirmed</span>
-            {% else %}<span class="badge status-pending">{{ b.status }}</span>{% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <div class="empty-mini">No bookings yet</div>
-    {% endif %}
-  </div>
-
-  <p class="section-title">Estimate History</p>
-  <div class="table-wrap">
-    {% if estimates %}
-    <table class="data">
-      <thead><tr><th>Vehicle</th><th>Total</th><th>Status</th><th>Date</th></tr></thead>
-      <tbody>
-        {% for e in estimates %}
-        <tr>
-          <td>{{ e.vehicle }}</td>
-          <td style="color:#C8A96E;">${{ "%.2f"|format(e.total/100) }}</td>
-          <td>
-            {% if e.status == 'Approved' %}<span class="badge status-completed">Approved</span>
-            {% elif e.status == 'Sent' %}<span class="badge badge-blue">Sent</span>
-            {% else %}<span class="badge status-pending">{{ e.status }}</span>{% endif %}
-          </td>
-          <td>{{ e.created_at[:10] }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <div class="empty-mini">No estimates yet</div>
-    {% endif %}
-  </div>
+{% for category,message in get_flashed_messages(with_categories=true) %}<div class="alert" role="status">{{message}}</div>{% endfor %}
+<div class="grid grid-2" style="align-items:start;gap:20px">
+<section class="card card-pad"><h2 class="card-title">Contact details</h2><dl class="profile-details"><dt>Phone</dt><dd>{{customer.phone or 'Not provided'}}</dd><dt>Email</dt><dd>{{customer.email or 'Not provided'}}</dd></dl><h3 class="card-title">Notes</h3><p class="muted" style="white-space:pre-wrap;overflow-wrap:anywhere;margin-top:12px">{{customer.notes or 'No notes yet.'}}</p></section>
+<section class="card card-pad"><h2 class="card-title">Vehicles <span class="badge">{{vehicles|length}}</span></h2>{% for v in vehicles %}<div class="record-row"><strong>{{v.make_model}}</strong><p class="muted">{{v.year or ''}} {{v.color or ''}} · {{v.license_plate or 'No registration recorded'}}</p>{% if current_role in ['admin','general_manager'] %}<a href="/work-records/vehicles/{{v.id}}">View service history →</a>{% endif %}</div>{% else %}<p class="empty">No vehicles yet. Add the customer's first vehicle below.</p>{% endfor %}<details class="optional-panel"><summary>Add a vehicle</summary><form method="post" action="/customers/{{customer.id}}/vehicles/new" class="stack-form"><input type="hidden" name="csrf" value="{{work_records_csrf}}"><label>Make / model<input name="make_model" required placeholder="e.g. BMW 3 Series"></label><div class="form-row"><label>Registration<input name="license_plate"></label><label>Year<input name="year" inputmode="numeric"></label></div><button class="btn btn-secondary">Save vehicle</button></form></details></section>
+</div>
+<section class="card mt-16"><div class="card-head"><h2 class="card-title">Bookings</h2><span class="muted">{{bookings|length}} records</span></div><div class="table-scroll"><table class="data"><thead><tr><th>Vehicle</th><th>Service</th><th>Appointment</th><th>Status</th></tr></thead><tbody>{% for b in bookings %}<tr><td>{{b.vehicle}}</td><td>{{b.service_name}}</td><td>{{b.date}} · {{b.time_slot}}</td><td><span class="badge">{{b.status}}</span></td></tr>{% else %}<tr><td colspan="4" class="empty">No bookings recorded.</td></tr>{% endfor %}</tbody></table></div></section>
+<section class="card mt-16"><div class="card-head"><h2 class="card-title">Estimates</h2></div><div class="table-scroll"><table class="data"><thead><tr><th>Estimate</th><th>Vehicle</th><th>Total</th><th>Status</th><th>Created</th></tr></thead><tbody>{% for e in estimates %}<tr><td><a href="/estimates/{{e.id}}">#{{e.id}}</a></td><td>{{e.vehicle}}</td><td>${{'%.2f'|format(e.total/100)}}</td><td><span class="badge">{{e.status}}</span></td><td>{{(e.created_at or '')[:10]}}</td></tr>{% else %}<tr><td colspan="5" class="empty">No estimates recorded.</td></tr>{% endfor %}</tbody></table></div></section>
 {% endblock %}

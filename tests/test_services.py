@@ -482,6 +482,41 @@ class DVIPipelineTests(DatabaseBackedTest):
         "technician_notes": ["Two-stage correction on the hood."],
     })
 
+    def test_upload_normalizes_real_pixels_and_rejects_disguised_files(self):
+        from io import BytesIO
+        from PIL import Image
+        from werkzeug.datastructures import FileStorage
+        image=BytesIO();Image.new('RGB',(2000,1000),'gray').save(image,'PNG');image.seek(0)
+        result=self._orchestrator([]).add_photos(1,self.inspection_id,[FileStorage(image,filename='panel.png'),FileStorage(BytesIO(b'not an image'),filename='fake.jpg')],'hood','tester')
+        self.assertEqual(len(result['saved']),1)
+        self.assertEqual(len(result['rejected']),1)
+        photo=self.dvi.get_photo(1,result['saved'][0]['id'])
+        with Image.open(photo['filepath']) as normalized:
+            self.assertEqual(normalized.format,'JPEG')
+            self.assertEqual(normalized.size,(1600,800))
+
+    def test_heic_upload_becomes_a_browser_and_model_readable_jpeg(self):
+        from io import BytesIO
+        from PIL import Image
+        from pillow_heif import register_heif_opener
+        from werkzeug.datastructures import FileStorage
+        register_heif_opener()
+        stream=BytesIO();Image.new('RGB',(64,64),'gray').save(stream,'HEIF');stream.seek(0)
+        result=self._orchestrator([]).add_photos(1,self.inspection_id,[FileStorage(stream,filename='phone.heic')],'hood','tester')
+        self.assertEqual(len(result['saved']),1)
+        self.assertTrue(result['saved'][0]['filename'].endswith('.jpg'))
+
+    def test_vision_readiness_checks_the_configured_model(self):
+        from unittest.mock import Mock
+        orch=self._orchestrator([])
+        orch._provider=Mock()
+        orch._provider.is_available.return_value=True
+        orch._provider.vision_model='llava:7b'
+        orch._provider.installed_models.return_value=['llama3.1:8b']
+        self.assertFalse(orch.ai_available())
+        orch._provider.installed_models.return_value=['llava:7b']
+        self.assertTrue(orch.ai_available())
+
     def test_full_pipeline(self):
         result = self._orchestrator([self.VISION_OK, self.SUMMARY_OK]).analyze(1, self.inspection_id)
 
@@ -514,6 +549,8 @@ class DVIPipelineTests(DatabaseBackedTest):
         result = self._orchestrator([clean, summary]).analyze(1, self.inspection_id)
 
         self.assertEqual(result["findings"], [])
+        self.assertIn("No defects were flagged in the supplied photos", result["summary"]["customer_summary"])
+        self.assertEqual(result["summary"]["recommendations"], [])
         self.assertEqual(result["total_upcharge_cents"], 0)
         self.assertEqual(result["condition_score"], 10.0)
 

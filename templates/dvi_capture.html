@@ -10,11 +10,11 @@
   </div>
   <div class="page-actions">
     <span class="ai-pill {{ 'ai-on' if ai_online else 'ai-off' }}">
-      <span class="dot"></span>{{ 'Vision model ready' if ai_online else 'Vision model offline' }}
+      <span class="dot"></span>{{ 'Vision model installed' if ai_online else 'Vision model unavailable' }}
     </span>
     <button class="btn btn-primary" id="analyzeBtn" {% if not photos %}disabled{% endif %}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6 4.6 1.9-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg>
-      Analyse photos
+      Scan photos
     </button>
   </div>
 </div>
@@ -37,10 +37,12 @@
       <div class="dropzone mt-16" id="drop">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5-5 5 5M12 5v13"/></svg>
         <div class="t">Take photos or drop them here</div>
-        <div class="d">JPG, PNG, WebP or HEIC · up to 24 per inspection</div>
-        <input type="file" id="file" accept="image/*" capture="environment" multiple hidden>
+        <div class="d">JPG, PNG, WebP or HEIC · 16 MB per upload · up to 24 photos</div>
+        <input type="file" id="file" accept=".jpg,.jpeg,.png,.webp,.heic" capture="environment" multiple hidden>
       </div>
 
+      <label style="display:flex;gap:8px;align-items:center;margin-top:16px"><input type="checkbox" id="autoScan" checked> Scan automatically after upload</label>
+      <p class="help">Photos are saved first. Scanning checks for visible defects and opens a report for your review.</p>
       <div id="uploadBar" class="hidden mt-16">
         <div class="bar"><i class="violet" id="uploadFill" style="width:0"></i></div>
         <div class="faint mt-8" style="font-size:12.5px" id="uploadMsg">Uploading…</div>
@@ -84,8 +86,7 @@
     </ul>
     <div class="divider"></div>
     <div class="muted" style="font-size:12.5px; line-height:1.7">
-      Analysis runs one model pass per photo on your own machine. Expect
-      <strong>15–40 seconds each</strong> — nothing leaves this computer.
+      Scanning runs on the configured vision server. Time depends on photo count and server speed. Keep this page open until the report is ready.
     </div>
   </aside>
 </div>
@@ -97,6 +98,7 @@
 {% block scripts %}
 <script>
   const INSPECTION = {{ inspection.id }};
+  let busy = false;
   const STUDIO = {{ inspection.studio_id }};
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -113,7 +115,10 @@
   file.addEventListener('change', () => upload(file.files));
 
   async function upload(files) {
-    if (!files || !files.length) return;
+    if (!files || !files.length || busy) return;
+    busy = true;
+    document.getElementById('analyzeBtn').disabled = true;
+    file.disabled = true;
     const fd = new FormData();
     for (const f of files) fd.append('photos', f);
     fd.append('panel', document.getElementById('panel').value);
@@ -127,19 +132,22 @@
     try {
       const res = await fetch(`/dvi/inspection/${INSPECTION}/photos`, { method: 'POST', headers: {'X-CSRF-Token': {{work_records_csrf|tojson}}}, body: fd });
       fill.style.width = '100%';
-      const data = await res.json();
+      if (res.redirected) throw new Error('Your session expired. Sign in and try again.');
+      const data = await res.json().catch(() => ({error: res.status === 413 ? 'Upload is too large. Choose fewer photos (16 MB per upload).' : 'Upload could not be completed. Refresh the page and try again.'}));
       if (!res.ok) throw new Error(data.error || 'Upload failed');
 
       (data.saved || []).forEach(addTile);
       (data.rejected || []).forEach(r => toast(`${r.filename}: ${r.reason}`, 'err'));
       if (data.saved.length) toast(`${data.saved.length} photo(s) added`, 'ok');
 
-      updateCount();
+      busy=false; file.disabled=false; updateCount();
+      if(data.saved.length && document.getElementById('autoScan').checked) await scanPhotos();
       setTimeout(() => { bar.classList.add('hidden'); fill.style.width = '0'; }, 550);
     } catch (e) {
       bar.classList.add('hidden');
       toast(e.message, 'err');
     }
+    busy=false; file.disabled=false; updateCount();
     file.value = '';
   }
 
@@ -170,19 +178,23 @@
     const n = document.querySelectorAll('#grid .photo-tile').length;
     document.getElementById('photoCount').textContent = `${n} photo${n === 1 ? '' : 's'}`;
     document.getElementById('noPhotos').classList.toggle('hidden', n > 0);
-    document.getElementById('analyzeBtn').disabled = n === 0;
+    document.getElementById('analyzeBtn').disabled = busy || n === 0;
+    document.querySelectorAll('#grid .rm').forEach(button => button.disabled = busy);
   }
 
   /* ── Analysis ────────────────────────────────────────────────────────── */
-  document.getElementById('analyzeBtn').addEventListener('click', async function () {
+  async function scanPhotos() {
+    if(busy)return;
+    busy=true; file.disabled=true; updateCount();
+    const button=document.getElementById('analyzeBtn');
     const n = document.querySelectorAll('#grid .photo-tile').length;
-    this.disabled = true;
-    this.innerHTML = '<span class="spinner" style="border-color:rgba(255,255,255,.35);border-top-color:#fff"></span> Analysing…';
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner" style="border-color:rgba(255,255,255,.35);border-top-color:#fff"></span> Analysing…';
 
     document.getElementById('result').innerHTML = `
       <div class="card card-pad">
         <div class="flex gap-10"><span class="spinner"></span>
-          <span class="muted">Running the vision model over ${n} photo(s). This takes 15–40 seconds each.</span></div>
+          <span class="muted">Scanning ${n} photo(s) for visible defects. Keep this page open; processing may take a few minutes.</span></div>
       </div>`;
 
     try {
@@ -196,10 +208,11 @@
           <div><strong>${e.status === 503 ? 'Vision model unreachable' : 'Analysis failed'}</strong>
           <div style="margin-top:3px">${esc(e.message)}</div></div>
         </div>`;
-      this.disabled = false;
-      this.innerHTML = 'Analyse photos';
-    }
-  });
+      button.disabled = false;
+      button.innerHTML = 'Scan photos';
+    } finally {busy=false; file.disabled=false; updateCount();}
+  }
+  document.getElementById('analyzeBtn').addEventListener('click', scanPhotos);
 
   updateCount();
 </script>

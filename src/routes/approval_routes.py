@@ -41,7 +41,7 @@ def manage(eid):
     for version in versions:
         version['expiry_display']=datetime.fromtimestamp(version['expires_at'],timezone.utc).strftime('%d %b %Y, %H:%M UTC')
         version['expired']=version['expires_at']<=time.time()
-    return render_template('approval_manage.html',**common(),estimate=estimate,link=link,csrf=csrf_token(),versions=versions)
+    return render_template('approval_manage.html',**common("estimates"),estimate=estimate,link=link,csrf=csrf_token(),versions=versions)
 
 
 

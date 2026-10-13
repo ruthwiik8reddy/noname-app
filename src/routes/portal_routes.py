@@ -1,8 +1,8 @@
 import secrets
-from datetime import date
 from flask import Blueprint,abort,flash,redirect,render_template,request,session,url_for
 from ..auth import roles_required
 from ..services.repositories.portal import Portal
+from ..services.repositories.tracking_links import TrackingLinks
 from ..services.repositories.job_records import RecordError,number
 from .job_record_routes import actor,common,csrf_token,verify_csrf
 
@@ -13,73 +13,31 @@ admin_bp=Blueprint('portal_admin',__name__,url_prefix='/portal-admin')
 @bp.after_request
 @admin_bp.after_request
 def private(response):
-    response.headers['Cache-Control']='no-store';response.headers['Referrer-Policy']='no-referrer'
+    response.headers['X-Robots-Tag']='noindex, nofollow';response.headers['Cache-Control']='no-store';response.headers['Referrer-Policy']='no-referrer'
     return response
 
 
-@bp.get('/')
-@roles_required('customer','admin','general_manager')
-def index():
-    if session.get('role') in ('admin','general_manager'):
+@bp.route('/',methods=['GET','POST'])
+@bp.route('/<path:unused>',methods=['GET','POST'])
+def retired_portal(unused=None):
+    if request.path == '/portal/' and session.get('role') in ('admin','general_manager'):
         return redirect(url_for('portal_admin.desk'))
-    try:data=Portal().records(session['studio_id'],session['user_id'])
-    except RecordError:abort(404)
-    return render_template('portal.html',**data,csrf=csrf_token(),request_key=secrets.token_hex(24),today=date.today().isoformat())
-
-
-@bp.get('/estimates/<int:eid>')
-@roles_required('customer')
-def estimate(eid):
-    try:data=Portal().estimate(session['studio_id'],session['user_id'],eid)
-    except RecordError:abort(404)
-    return render_template('portal_estimate.html',**data)
-
-
-@bp.get('/jobs/<int:jid>/photos')
-@roles_required('customer')
-def photos(jid):
-    from ..security import authorize_job
-    repo=Portal();sid=session['studio_id']
-    job=repo.fetch_one('SELECT * FROM jobs WHERE studio_id=? AND id=?',(sid,jid));authorize_job(job,True)
-    media=repo.fetch_all('SELECT id,filename,stage,caption,media_type FROM media WHERE studio_id=? AND job_id=? AND customer_visible=1 ORDER BY id',(sid,jid))
-    return render_template('portal_photos.html',job=job,media=media,sid=sid)
-
-
-@bp.post('/warranties/<int:wid>/claim')
-@roles_required('customer')
-def claim(wid):
-    verify_csrf()
-    try:Portal().claim(session['studio_id'],session['user_id'],wid,request.form.get('description'),request.form.get('request_key'))
-    except RecordError as exc:flash(str(exc),'error')
-    else:flash('Your request has been recorded for the studio to review.','success')
-    return redirect(url_for('portal.index'),code=303)
-
-
-@bp.route('/activate/<token>',methods=['GET','POST'])
-def activate(token):
-    repo=Portal();session.setdefault('activation_csrf',secrets.token_urlsafe(32));error=None
-    try:
-        import time
-        with repo._conn() as conn:repo._invite(conn,token,int(time.time()))
-    except RecordError:return 'Invitation unavailable or expired. Ask your studio for a new invitation.',410
-    if request.method=='POST':
-        if not secrets.compare_digest(session['activation_csrf'],request.form.get('csrf','')):abort(403)
-        try:repo.accept_invite(token,request.form.get('username'),request.form.get('password'))
-        except RecordError as exc:error=str(exc)
-        else:return redirect(url_for('main.login',next='/portal/'),code=303)
-    return render_template('portal_activate.html',csrf=session['activation_csrf'],error=error),400 if error else 200
+    return 'Customer accounts are no longer used. Ask your studio for a private job tracking link.',410
 
 
 @admin_bp.route('/',methods=['GET','POST'])
 @roles_required('admin','general_manager')
 def desk():
-    repo=Portal();sid=session['studio_id'];invite_link=None
+    repo=Portal();sid=session['studio_id'];tracking_link=None
     if request.method=='POST':
         verify_csrf();f=request.form
         try:
-            if f.get('action')=='invite':
-                token=repo.invite(sid,number(f.get('customer_id')),actor());invite_link=url_for('portal.activate',token=token,_external=True)
-            elif f.get('action')=='revoke-invites':repo.revoke_invites(sid,number(f.get('customer_id')),actor())
+            if f.get('action')=='create-link':
+                token=TrackingLinks().create(sid,number(f.get('job_id')),actor())
+                tracking_link=url_for('portal_admin.public_tracking',token=token,_external=True)
+            elif f.get('action')=='revoke-link':
+                TrackingLinks().revoke(sid,number(f.get('job_id')))
+                flash('Tracking link revoked.','success')
             elif f.get('action')=='issue':
                 if f.get('confirmed')!='yes':raise RecordError('Confirm that you checked eligibility and the displayed coverage terms.')
                 repo.issue_warranty(sid,number(f.get('job_id')),dict(f),actor(),f.get('request_key'));flash('Warranty issued.','success')
@@ -96,10 +54,30 @@ def desk():
             else:abort(400)
         except RecordError as exc:flash(str(exc),'error')
     values=common();values['active_page']='portal_admin'
-    return render_template('portal_admin.html',**values,csrf=csrf_token(),request_key=secrets.token_hex(24),invite_link=invite_link,
+    return render_template('portal_admin.html',**values,csrf=csrf_token(),request_key=secrets.token_hex(24),tracking_link=tracking_link,
         selected_customer_id=request.values.get('customer_id',type=int),
-        portal_login_url=url_for('main.login',next='/portal/',_external=True),
-        customers=repo.fetch_all('SELECT id,name,username FROM customers WHERE studio_id=? ORDER BY name',(sid,)),
+
+        tracking_jobs=repo.fetch_all("""SELECT j.id,j.car,j.status,
+            (SELECT datetime(MAX(t.expires_at),'unixepoch') FROM job_tracking_links t
+             WHERE t.studio_id=j.studio_id AND t.job_id=j.id AND t.revoked_at IS NULL
+             AND t.expires_at>strftime('%s','now')) AS link_expires
+            FROM jobs j WHERE j.studio_id=? AND (? IS NULL OR j.customer_id=?)
+            ORDER BY j.id DESC LIMIT 100""",(sid,request.values.get('customer_id',type=int),request.values.get('customer_id',type=int))),
         jobs=repo.fetch_all("SELECT id,car,service FROM jobs WHERE studio_id=? AND status='Completed' AND vehicle_id IS NOT NULL AND customer_id IS NOT NULL ORDER BY id DESC",(sid,)),
         warranties=repo.fetch_all('SELECT * FROM vehicle_warranties WHERE studio_id=? ORDER BY id DESC',(sid,)),
         claims=repo.fetch_all('SELECT * FROM warranty_claims WHERE studio_id=? ORDER BY id DESC',(sid,)))
+
+
+@admin_bp.get('/link/<token>')
+def public_tracking(token):
+    job=TrackingLinks().resolve(token)
+    if not job:
+        return render_template('tracking_link.html',job=None),410
+    return render_template('tracking_link.html',job=job,token=token)
+
+
+@admin_bp.get('/link/<token>/status')
+def public_status(token):
+    from flask import jsonify
+    job=TrackingLinks().resolve(token)
+    return (jsonify(job),200) if job else (jsonify(error='Tracking link unavailable.'),410)

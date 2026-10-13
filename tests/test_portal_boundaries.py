@@ -35,29 +35,73 @@ class PortalBoundaryTests(unittest.TestCase):
         client=self.client()
         for url in ('/dashboard','/jobs','/media','/portal-admin/'):
             self.assertEqual(client.get(url).status_code,403,url)
-        self.assertEqual(client.get('/portal/').status_code,200)
-        self.assertEqual(client.get('/portal/estimates/999').status_code,404)
+        self.assertEqual(client.get('/portal/').status_code,410)
+        self.assertEqual(client.get('/portal/estimates/999').status_code,410)
 
     def test_portal_entry_routes_managers_without_exposing_customer_records(self):
         for role in ('admin','general_manager'):
             response=self.client(role=role).get('/portal/')
             self.assertEqual(response.status_code,302)
             self.assertEqual(response.location,'/portal-admin/')
-        self.assertEqual(self.client(role='technician').get('/portal/').status_code,403)
+        self.assertEqual(self.client(role='technician').get('/portal/').status_code,410)
         response=self.app().test_client().get('/portal/')
-        self.assertEqual(response.status_code,302)
-        self.assertIn('/login?next=',response.location)
+        self.assertEqual(response.status_code,410)
 
-    def test_crm_invitation_link_is_complete_and_customer_selection_is_scoped(self):
+    def test_tracking_link_management_requires_staff_csrf_and_scoped_job(self):
         client=self.client(role='admin')
-        page=client.get('/portal-admin/?customer_id=1')
+        self.assertEqual(client.get('/portal-admin/?customer_id=1').status_code,200)
+        self.assertEqual(client.post('/portal-admin/',data={'action':'create-link','job_id':'1'}).status_code,403)
+        page=client.post('/portal-admin/',data={'csrf':'token','action':'create-link','job_id':'1'})
+        self.assertIn(b'http://localhost/portal-admin/link/',page.data)
+        self.assertNotIn(b'Create invitation',page.data)
+        other=self.client(role='admin',sid=2)
+        page=other.post('/portal-admin/',data={'csrf':'token','action':'create-link','job_id':'1'})
+        self.assertNotIn(b'id="trackingLink"',page.data)
+        self.assertEqual(client.post('/portal-admin/',data={'csrf':'token','action':'invite','customer_id':'1'}).status_code,400)
+
+    def test_placeholder_username_can_activate_but_existing_credentials_cannot_reset(self):
+        self.conn.execute("UPDATE customers SET username='cust_1_placeholder',password='' WHERE id=1")
+        self.conn.commit()
+        repo=Portal(connection=self.conn)
+        token=repo.invite(1,1,'owner')
+        repo.accept_invite(token,'cust_1_placeholder','Test-Password1!')
+        with self.assertRaises(RecordError):repo.invite(1,1,'owner')
+
+    def test_public_tracking_is_scoped_and_reflects_current_status(self):
+        from src.services.repositories.tracking_links import TrackingLinks
+        self.repo.link_vehicle(1,1,1,'owner')
+        repo=TrackingLinks(connection=self.conn)
+        token=repo.create(1,1,'owner');url='/portal-admin/link/'+token
+        client=self.app().test_client()
+        page=client.get(url)
         self.assertEqual(page.status_code,200)
-        self.assertIn(b'value="1" selected',page.data)
-        page=client.post('/portal-admin/',data={'csrf':'token','action':'invite','customer_id':'1'})
-        self.assertEqual(page.status_code,200)
-        self.assertIn(b'http://localhost/portal/activate/',page.data)
-        page=client.post('/portal-admin/',data={'csrf':'token','action':'invite','customer_id':'2'})
-        self.assertNotIn(b'id="inviteLink"',page.data)
+        self.assertNotIn(b'Sign in',page.data)
+        self.assertEqual(page.headers['Cache-Control'],'no-store')
+        self.assertEqual(page.headers['Referrer-Policy'],'no-referrer')
+        self.conn.execute("UPDATE jobs SET status='In Progress' WHERE id=1");self.conn.commit()
+        response=client.get(url+'/status')
+        self.assertEqual(response.json['status'],'In Progress')
+        self.assertEqual(set(response.json),{'id','car','service','status','completed_at'})
+        self.assertEqual(self.client().get(url).status_code,200)
+        self.assertEqual(client.get('/portal-admin/link/1').status_code,410)
+        self.conn.execute('UPDATE vehicles SET customer_id=2 WHERE id=1');self.conn.commit()
+        self.assertEqual(client.get(url+'/status').status_code,410)
+
+    def test_tracking_rotation_revocation_expiry_and_hash_storage(self):
+        from src.services.repositories.tracking_links import TrackingLinks
+        repo=TrackingLinks(connection=self.conn)
+        first=repo.create(1,1,'owner',now=100)
+        self.assertIsNotNone(repo.resolve(first,now=101))
+        self.assertIsNone(repo.resolve(first,now=100+30*86400))
+        second=repo.create(1,1,'owner',now=102)
+        self.assertIsNone(repo.resolve(first,now=103))
+        repo.revoke(2,1)
+        self.assertIsNotNone(repo.resolve(second,now=103))
+        repo.revoke(1,1)
+        self.assertIsNone(repo.resolve(second,now=103))
+        stored=str([tuple(r) for r in self.conn.execute('SELECT * FROM job_tracking_links')])
+        self.assertNotIn(first,stored);self.assertNotIn(second,stored)
+        self.assertEqual(self.app().test_client().get('/portal/activate/'+first).status_code,410)
 
     def test_records_require_current_vehicle_owner(self):
         self.repo.link_vehicle(1,1,1,'owner');repo=Portal(connection=self.conn)

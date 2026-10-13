@@ -6,6 +6,12 @@ def migrate(path):
         if 'customer_visible' not in {r[1] for r in conn.execute('PRAGMA table_info(media)')}:
             conn.execute('ALTER TABLE media ADD COLUMN customer_visible INTEGER NOT NULL DEFAULT 0')
         conn.executescript('''
+        CREATE TABLE IF NOT EXISTS job_tracking_links (
+          id INTEGER PRIMARY KEY,studio_id INTEGER NOT NULL,job_id INTEGER NOT NULL,
+          customer_id INTEGER,vehicle_id INTEGER,token_hash TEXT NOT NULL UNIQUE,
+          expires_at INTEGER NOT NULL,revoked_at INTEGER,actor TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')));
+        CREATE INDEX IF NOT EXISTS ix_tracking_job ON job_tracking_links(studio_id,job_id);
         CREATE TABLE IF NOT EXISTS portal_invites (
           id INTEGER PRIMARY KEY,studio_id INTEGER NOT NULL,customer_id INTEGER NOT NULL,
           token_hash TEXT NOT NULL UNIQUE,expires_at INTEGER NOT NULL,used_at INTEGER,revoked_at INTEGER,
