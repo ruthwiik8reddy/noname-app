@@ -1,0 +1,266 @@
+{% extends "_base.html" %}
+{% block title %}Invoice style — {{ studio }}{% endblock %}
+
+{% block head %}
+<style>
+  .compare { display:grid; grid-template-columns: 1fr 1fr; gap:18px; }
+  @media (max-width: 1100px) { .compare { grid-template-columns: 1fr; } }
+  .pane-title { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--gray-500); margin-bottom:8px; }
+  .original { width:100%; border:1px solid var(--gray-200); border-radius:8px; background:#fff; }
+  .preview { width:100%; height:1050px; border:1px solid var(--gray-200); border-radius:8px; background:#F3F4F6; }
+  .swatch-row { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+  .swatch { width:22px; height:22px; border-radius:5px; border:1px solid rgba(0,0,0,.15); cursor:pointer; }
+  .color-field { display:flex; gap:8px; align-items:center; }
+  .color-field input[type=color] { width:42px; height:34px; padding:2px; border-radius:6px; }
+  .labels-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:10px; }
+  .mode-grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+  @media (max-width: 800px) { .mode-grid { grid-template-columns: 1fr; } }
+  .mode-card { border:1px solid var(--gray-200); border-radius:10px; padding:14px 16px; }
+  .mode-card.on { border-color: var(--violet-600); box-shadow: 0 0 0 1px var(--violet-600) inset; }
+  .mode-card.off { opacity: .75; }
+  .dropzone { border:2px dashed var(--gray-300); border-radius:10px; padding:28px; text-align:center; }
+  .dropzone.drag { border-color: var(--violet-600); background: rgba(124,58,237,.05); }
+</style>
+{% endblock %}
+
+{% block page_head %}
+<div class="page-head rise">
+  <div>
+    <h1 class="page-title">Invoice style</h1>
+    <p class="page-sub">Upload an invoice you already send. New invoices will copy its layout, colours and wording.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost" href="{{ url_for('invoices.invoice_list') }}">← Invoices</a>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+{% if error %}<div class="alert alert-danger" style="margin-bottom:16px">{{ error }}</div>{% endif %}
+{% if saved == 'learned' %}
+  <div class="alert {{ 'alert-warn' if ai_offline else 'alert-success' }}" style="margin-bottom:16px">
+    {% if ai_offline %}<strong>Colours read; layout and wording need a quick check.</strong>
+    {% else %}<strong>Style learned from your invoice.</strong> Compare the two side by side and adjust anything that's off.{% endif %}
+    {% for n in notes %}<div style="margin-top:4px">{{ n }}</div>{% endfor %}
+  </div>
+{% elif saved == 'mode' %}
+  <div class="alert alert-success" style="margin-bottom:16px">Saved. New invoices will use the {{ 'exact copy of your invoice' if tpl.mode == 'exact' else 'rebuilt style' }}.</div>
+{% elif saved == 'style' %}
+  <div class="alert alert-success" style="margin-bottom:16px">Style saved. Every new invoice will use it.</div>
+{% endif %}
+
+<!-- 1. Upload -->
+<div class="card card-pad" style="margin-bottom:20px">
+  <div class="section-title" style="margin-bottom:10px">1 · Your existing invoice</div>
+  <form method="POST" action="{{ url_for('invoices.template_upload') }}" enctype="multipart/form-data" id="uploadForm">
+    <label class="dropzone" id="dropzone" style="display:block; cursor:pointer">
+      <input type="file" name="invoice" id="invoiceFile" accept=".pdf,.png,.jpg,.jpeg,.webp" style="display:none">
+      <div class="strong">Drop a PDF or photo of your invoice here, or click to choose</div>
+      <div class="muted" style="font-size:12.5px; margin-top:4px">
+        A clean PDF works best. Photos should be flat, well-lit and show the whole page.
+        Customer details on it are ignored — only your design and business details are kept.
+      </div>
+      <div class="strong" id="chosen" style="margin-top:10px"></div>
+    </label>
+    <div style="margin-top:12px; display:flex; gap:10px; align-items:center">
+      <button class="btn btn-primary" type="submit" id="scanBtn">Scan & learn style</button>
+      <span class="muted" id="scanHint" style="font-size:12.5px">Reading takes up to a minute with a local model.</span>
+    </div>
+  </form>
+</div>
+
+{% if tpl %}
+<!-- How invoices will look -->
+<div class="card card-pad" style="margin-bottom:20px">
+  <div class="section-title" style="margin-bottom:12px">2 · How new invoices will look</div>
+  <div class="mode-grid">
+    <form method="POST" action="{{ url_for('invoices.template_mode') }}" class="mode-card {{ 'on' if tpl.mode == 'exact' }} {{ 'off' if not tpl.exact }}">
+      <input type="hidden" name="mode" value="exact">
+      <div class="strong">Exact copy of your invoice <span class="badge badge-violet" style="margin-left:6px">Recommended</span></div>
+      <p class="muted" style="font-size:12.5px; margin:6px 0 10px">
+        Your own invoice is the page. Logo, letterhead, colours, wording and footer stay exactly as they are —
+        only the customer, number, date, items and totals are swapped in, in a font matched to yours.
+      </p>
+      {% if tpl.exact %}
+        {% if tpl.mode == 'exact' %}<span class="badge badge-green">In use</span>
+        {% else %}<button class="btn btn-primary btn-sm" type="submit">Use exact copy</button>{% endif %}
+      {% else %}
+        <div class="faint" style="font-size:12.5px">Not available for this upload{% if tpl.exact_note %}: {{ tpl.exact_note }}{% endif %}</div>
+      {% endif %}
+    </form>
+    <form method="POST" action="{{ url_for('invoices.template_mode') }}" class="mode-card {{ 'on' if tpl.mode != 'exact' }}">
+      <input type="hidden" name="mode" value="rebuilt">
+      <div class="strong">Rebuilt in your style</div>
+      <p class="muted" style="font-size:12.5px; margin:6px 0 10px">
+        A clean new layout using your colours and wording. Fully editable below, and works with any upload.
+      </p>
+      {% if tpl.mode != 'exact' %}<span class="badge badge-green">In use</span>
+      {% else %}<button class="btn btn-secondary btn-sm" type="submit">Use rebuilt style</button>{% endif %}
+    </form>
+  </div>
+  {% if tpl.exact %}
+  <details style="margin-top:14px">
+    <summary class="muted" style="cursor:pointer; font-size:12.5px">See what's kept from your invoice</summary>
+    <p class="faint" style="font-size:12px; margin:8px 0">Your invoice with the job-specific parts removed. Everything you see here appears on every new invoice exactly as it is.</p>
+    <img src="{{ url_for('invoices.template_blank') }}" alt="Your invoice with customer details removed" style="width:100%; max-width:520px; border:1px solid var(--gray-200); border-radius:8px">
+  </details>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- 3. Compare -->
+<div class="compare" style="margin-bottom:20px">
+  <div>
+    <div class="pane-title">Your original</div>
+    {% if tpl and tpl.source_file %}
+      <img class="original" src="{{ url_for('invoices.template_source') }}" alt="Your uploaded invoice">
+      <div class="faint" style="font-size:12px; margin-top:6px">{{ tpl.source_name }}</div>
+    {% else %}
+      <div class="card card-pad muted" style="text-align:center; padding:60px 20px">Nothing uploaded yet.</div>
+    {% endif %}
+  </div>
+  <div>
+    <div class="pane-title">{{ 'Your invoice, filled in by BayQ' if tpl and tpl.mode == 'exact' and tpl.exact else 'BayQ invoice in your style' }}
+      <span class="faint" style="text-transform:none; letter-spacing:0">({{ 'sample data — this is the real PDF' if tpl and tpl.mode == 'exact' and tpl.exact else 'sample data, updates as you edit' }})</span></div>
+    <iframe class="preview" id="preview" name="preview" src="{{ url_for('invoices.template_preview') }}" title="Invoice preview"
+            data-exact="{{ '1' if tpl and tpl.mode == 'exact' and tpl.exact else '0' }}"></iframe>
+  </div>
+</div>
+
+<!-- 3. Tune -->
+<form method="POST" action="{{ url_for('invoices.template_save_style') }}" enctype="multipart/form-data" id="styleForm" class="card card-pad">
+  <div class="section-title" style="margin-bottom:6px">4 · Fine-tune</div>
+  {% if tpl and tpl.mode == 'exact' and tpl.exact %}
+  <p class="muted" style="font-size:12.5px; margin-bottom:14px">
+    You're using the exact copy, so only the <b>invoice number prefix</b>, <b>currency</b> and <b>date format</b> below apply.
+    The rest is for the rebuilt style.
+  </p>
+  {% else %}<div style="margin-bottom:14px"></div>{% endif %}
+
+  <div class="form-row">
+    <div class="field">
+      <label class="lbl">Layout</label>
+      <select name="layout">
+        {% for l in layouts %}<option value="{{ l }}" {% if style.layout == l %}selected{% endif %}>{{ {'classic':'Classic — logo left, title right','banner':'Banner — coloured band on top','centered':'Centered header','minimal':'Minimal — lines only'}[l] }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label class="lbl">Font</label>
+      <select name="font">{% for f in fonts %}<option value="{{ f }}" {% if style.font == f %}selected{% endif %}>{{ {'sans':'Sans-serif','serif':'Serif','mono':'Monospace'}[f] }}</option>{% endfor %}</select>
+    </div>
+    <div class="field">
+      <label class="lbl">Item table</label>
+      <select name="table_style">{% for t in table_styles %}<option value="{{ t }}" {% if style.table_style == t %}selected{% endif %}>{{ t|capitalize }}</option>{% endfor %}</select>
+    </div>
+  </div>
+
+  <div class="form-row">
+    {% for key, label in [('accent_color','Accent'),('header_bg','Header band'),('table_header_bg','Table header'),('text_color','Text')] %}
+    <div class="field">
+      <label class="lbl">{{ label }} colour</label>
+      <div class="color-field">
+        <input type="color" name="{{ key }}" value="{{ style[key] }}">
+        <code class="muted" style="font-size:12px">{{ style[key] }}</code>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="form-row">
+    <div class="field"><label class="lbl">Title</label><input type="text" name="title_text" value="{{ style.title_text }}" maxlength="40"></div>
+    <div class="field"><label class="lbl">Invoice number prefix</label><input type="text" name="number_prefix" value="{{ style.number_prefix }}" maxlength="12"></div>
+    <div class="field"><label class="lbl">Currency symbol</label><input type="text" name="currency_symbol" value="{{ style.currency_symbol }}" maxlength="4"></div>
+    <div class="field">
+      <label class="lbl">Date format</label>
+      <select name="date_format">{% for d in date_formats %}<option {% if style.date_format == d %}selected{% endif %}>{{ d }}</option>{% endfor %}</select>
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="field">
+      <label class="lbl">Business name</label>
+      <input type="text" name="business_name" value="{{ style.business_name }}" maxlength="120">
+      <label class="lbl" style="margin-top:12px">Business details <span class="faint">(one per line)</span></label>
+      <textarea name="business_lines" rows="4">{{ style.business_lines|join('\n') }}</textarea>
+    </div>
+    <div class="field">
+      <label class="lbl">Logo</label>
+      <input type="file" name="logo" accept=".png,.jpg,.jpeg">
+      <p class="help">PNG or JPG. Leave empty to keep the current one.</p>
+      <label style="display:flex; gap:8px; align-items:center; margin-top:10px"><input type="checkbox" name="show_logo" {% if style.show_logo %}checked{% endif %}> Show logo</label>
+      <label style="display:flex; gap:8px; align-items:center; margin-top:6px"><input type="checkbox" name="show_quantity" {% if style.show_quantity %}checked{% endif %}> Show quantity & rate columns</label>
+      <label style="display:flex; gap:8px; align-items:center; margin-top:6px"><input type="checkbox" name="show_vehicle" {% if style.show_vehicle %}checked{% endif %}> Show vehicle</label>
+      <label class="lbl" style="margin-top:12px">Customer block on the</label>
+      <select name="bill_to_side"><option value="left" {% if style.bill_to_side=='left' %}selected{% endif %}>Left</option><option value="right" {% if style.bill_to_side=='right' %}selected{% endif %}>Right</option></select>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="lbl">Wording <span class="faint">(as printed on your invoice)</span></label>
+    <div class="labels-grid">
+      {% for key, default in label_keys.items() %}
+      <div><span class="faint" style="font-size:11.5px">{{ default }}</span>
+        <input type="text" name="label_{{ key }}" value="{{ style.labels[key] }}" maxlength="40"></div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="field"><label class="lbl">Payment instructions</label><textarea name="payment_instructions" rows="3">{{ style.payment_instructions }}</textarea></div>
+    <div class="field"><label class="lbl">Terms & conditions</label><textarea name="terms_text" rows="3">{{ style.terms_text }}</textarea></div>
+  </div>
+  <div class="field"><label class="lbl">Footer</label><input type="text" name="footer_text" value="{{ style.footer_text }}"></div>
+
+  <!-- Hidden fields carried through unchanged -->
+  <input type="hidden" name="muted_color" value="{{ style.muted_color }}">
+  <input type="hidden" name="header_text_color" value="{{ style.header_text_color }}">
+  <input type="hidden" name="table_header_text" value="{{ style.table_header_text }}">
+  <input type="hidden" name="title_size" value="{{ style.title_size }}">
+  <input type="hidden" name="logo_position" value="{{ style.logo_position }}">
+
+  <div style="display:flex; gap:12px; margin-top:12px">
+    <button class="btn btn-primary" type="submit">Save style</button>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const file = document.getElementById('invoiceFile');
+  const zone = document.getElementById('dropzone');
+  const chosen = document.getElementById('chosen');
+  const form = document.getElementById('uploadForm');
+  const btn = document.getElementById('scanBtn');
+
+  file.addEventListener('change', () => { chosen.textContent = file.files[0] ? file.files[0].name : ''; });
+  ['dragenter', 'dragover'].forEach(e => zone.addEventListener(e, ev => { ev.preventDefault(); zone.classList.add('drag'); }));
+  ['dragleave', 'drop'].forEach(e => zone.addEventListener(e, ev => { ev.preventDefault(); zone.classList.remove('drag'); }));
+  zone.addEventListener('drop', ev => {
+    if (ev.dataTransfer.files.length) { file.files = ev.dataTransfer.files; chosen.textContent = file.files[0].name; }
+  });
+  form.addEventListener('submit', ev => {
+    if (!file.files.length) { ev.preventDefault(); chosen.textContent = 'Choose a file first.'; return; }
+    btn.disabled = true; btn.textContent = 'Reading your invoice…';
+  });
+
+  // Live preview: post the unsaved form to the preview endpoint, debounced.
+  const styleForm = document.getElementById('styleForm');
+  const preview = document.getElementById('preview');
+  let timer = null;
+  function refresh() {
+    if (preview.dataset.exact === '1') return;   // exact copy: the preview is the real PDF, refreshed on save
+    const data = new FormData(styleForm);
+    data.delete('logo');
+    fetch('{{ url_for("invoices.template_preview") }}', { method: 'POST', body: data, credentials: 'same-origin' })
+      .then(r => r.ok ? r.text() : null)
+      .then(html => { if (html) preview.srcdoc = html; });
+  }
+  styleForm.addEventListener('input', ev => {
+    if (ev.target.type === 'color') ev.target.nextElementSibling.textContent = ev.target.value.toUpperCase();
+    clearTimeout(timer); timer = setTimeout(refresh, 350);
+  });
+  styleForm.addEventListener('change', () => { clearTimeout(timer); timer = setTimeout(refresh, 150); });
+})();
+</script>
+{% endblock %}

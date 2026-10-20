@@ -29,6 +29,12 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
       Dashboard
     </a>
+    {% if "assistant" in nav_items %}
+    <a href="/assistant/" {% if active_page == "assistant" %}class="active"{% endif %}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M9 10h.01M12 10h.01M15 10h.01"/></svg>
+      Studio Assistant
+    </a>
+    {% endif %}
 
     <div class="nav-group-label">Operations</div>
     {% if "dispatch" in nav_items %}
@@ -77,6 +83,12 @@
     <a href="/customers" {% if active_page == "customers" %}class="active"{% endif %}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V20"/><circle cx="9.5" cy="7.5" r="3.5"/><path d="M21 20v-1.5a4 4 0 0 0-3-3.85M16.5 4.2a3.5 3.5 0 0 1 0 6.6"/></svg>
       Customers
+    </a>
+    {% endif %}
+    {% if "invoices" in nav_items %}
+    <a href="/invoices/" {% if active_page == "invoices" %}class="active"{% endif %}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+      Invoices
     </a>
     {% endif %}
 

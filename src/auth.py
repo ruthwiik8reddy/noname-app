@@ -30,11 +30,20 @@ def hash_password(plain: str) -> str:
     return generate_password_hash(plain, method="pbkdf2:sha256", salt_length=16)
 
 
+def is_hashed(stored: str) -> bool:
+    return bool(stored) and stored.startswith(("pbkdf2:", "scrypt:"))
+
+
 def verify_password(plain: str, stored: str) -> tuple[bool, bool]:
-    """Returns (is_valid, needs_rehash). Handles legacy plain-text passwords."""
-    if stored.startswith("pbkdf2:") or stored.startswith("scrypt:"):
-        return check_password_hash(stored, plain), False
-    return stored == plain, True
+    """
+    Returns (is_valid, needs_rehash).
+
+    Plain-text passwords are no longer accepted: migrate_phase5 hashes any that
+    remain on startup, so a non-hash value here means a corrupt or empty row.
+    """
+    if not plain or not is_hashed(stored or ""):
+        return False, False
+    return check_password_hash(stored, plain), False
 
 
 def validate_password_strength(password: str) -> list[str]:
@@ -239,15 +248,16 @@ NAV_PERMISSIONS = {
         "dashboard", "command", "leads", "agents", "bookings", "estimates", "jobs", "dispatch",
         "tracking", "customers", "staff", "media", "payments",
         "products", "inventory", "analytics", "dvi", "warranties", "settings",
+        "invoices", "assistant",
     ],
     "general_manager": [
         "dashboard", "command", "leads", "agents", "bookings", "estimates", "jobs", "dispatch",
         "tracking", "customers", "media", "payments",
-        "inventory", "analytics", "dvi", "warranties",
+        "inventory", "analytics", "dvi", "warranties", "invoices", "assistant",
     ],
     "service_advisor": [
         "dashboard", "command", "leads", "bookings", "estimates", "tracking", "customers", "payments",
-        "dispatch", "dvi",
+        "dispatch", "dvi", "invoices",
     ],
     # Technicians get the capture screen and their own queue, not the analytics
     # dashboard — inventory cost data isn't theirs to see.

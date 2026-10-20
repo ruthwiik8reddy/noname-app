@@ -11,10 +11,29 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def _twilio_client():
+def _credentials(studio_id: int | None) -> tuple[str, str, str]:
+    """
+    (account_sid, auth_token, from_number) for a studio.
+
+    A studio's own Twilio account wins; otherwise the platform account from
+    .env is used. Studios can never change the platform account.
+    """
+    if studio_id is not None:
+        try:
+            from .services.repositories import SettingsRepository
+            cfg = SettingsRepository().all(studio_id)
+            if cfg.get("twilio_account_sid") and cfg.get("twilio_auth_token"):
+                return (cfg["twilio_account_sid"].strip(), cfg["twilio_auth_token"].strip(),
+                        cfg.get("twilio_from_number", "").strip())
+        except Exception as exc:  # noqa: BLE001 - fall back to platform creds
+            logger.warning(f"Could not load studio SMS settings for {studio_id}: {exc}")
+    return (os.getenv("TWILIO_ACCOUNT_SID", "").strip(),
+            os.getenv("TWILIO_AUTH_TOKEN", "").strip(),
+            os.getenv("TWILIO_FROM_NUMBER", "").strip())
+
+
+def _twilio_client(sid: str, token: str):
     """Return a Twilio REST client, or None if credentials are not configured."""
-    sid   = os.getenv("TWILIO_ACCOUNT_SID", "").strip()
-    token = os.getenv("TWILIO_AUTH_TOKEN", "").strip()
     if not sid or not token:
         return None
     try:
@@ -32,12 +51,13 @@ def _base_url() -> str:
     return url
 
 
-def send_tracking_sms(phone: str, job_token: str, customer_name: str = "") -> bool:
+def send_tracking_sms(phone: str, job_token: str, customer_name: str = "",
+                      studio_id: int | None = None) -> bool:
     """Send the live tracking link to a customer."""
     logger.info(f"Entering send_tracking_sms(phone={phone}, token={job_token[:8]}...)")
     try:
-        from_number = os.getenv("TWILIO_FROM_NUMBER", "").strip()
-        client      = _twilio_client()
+        sid, token, from_number = _credentials(studio_id)
+        client      = _twilio_client(sid, token)
         base_url    = _base_url()
         link        = f"{base_url}/customer/tracking/{job_token}"
 
@@ -61,12 +81,12 @@ def send_tracking_sms(phone: str, job_token: str, customer_name: str = "") -> bo
 
 
 def send_status_update_sms(phone: str, job_token: str, new_status: str,
-                           customer_name: str = "") -> bool:
+                           customer_name: str = "", studio_id: int | None = None) -> bool:
     """Notify the customer when their job status changes."""
     logger.info(f"Entering send_status_update_sms(phone={phone}, status={new_status})")
     try:
-        from_number = os.getenv("TWILIO_FROM_NUMBER", "").strip()
-        client      = _twilio_client()
+        sid, token, from_number = _credentials(studio_id)
+        client      = _twilio_client(sid, token)
         base_url    = _base_url()
         link        = f"{base_url}/customer/tracking/{job_token}"
 

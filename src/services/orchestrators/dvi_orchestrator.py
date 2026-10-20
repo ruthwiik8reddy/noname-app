@@ -286,6 +286,12 @@ class DVIOrchestrator(BaseOrchestrator):
                 confidence = 0.5
 
             description = str(entry.get("description", "")).strip()[:400]
+            if DVIPrompts.echoes_instructions(description):
+                # The model repeated our own definition back instead of
+                # describing the photo: it didn't see anything. Measured on
+                # qwen2.5vl:7b, this is how most false positives look.
+                logger.info("Dropping %s finding that echoes the prompt: %r", defect, description[:80])
+                continue
             location = str(entry.get("location_note", "")).strip()[:200]
             if location and location.lower() not in description.lower():
                 description = f"{description} ({location})".strip()

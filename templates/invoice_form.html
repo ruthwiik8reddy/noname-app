@@ -1,0 +1,144 @@
+{% extends "_base.html" %}
+{% block title %}New invoice — {{ studio }}{% endblock %}
+
+{% block page_head %}
+<div class="page-head rise">
+  <div>
+    <h1 class="page-title">New invoice</h1>
+    <p class="page-sub">
+      {% if prefill.estimate_id %}From estimate #{{ prefill.estimate_id }}{% elif prefill.job_id %}From job #{{ prefill.job_id }}{% else %}Bill a customer{% endif %}
+      {% if has_template %} · uses your invoice style{% endif %}
+    </p>
+  </div>
+  <div class="page-actions"><a class="btn btn-ghost" href="{{ url_for('invoices.invoice_list') }}">← Invoices</a></div>
+</div>
+{% endblock %}
+
+{% block content %}
+{% for e in errors %}<div class="alert alert-danger" style="margin-bottom:10px">{{ e }}</div>{% endfor %}
+
+<form method="POST" class="card card-pad" id="invoiceForm">
+  <input type="hidden" name="customer_id" value="{{ prefill.customer_id or '' }}">
+  <input type="hidden" name="job_id" value="{{ prefill.job_id or '' }}">
+  <input type="hidden" name="estimate_id" value="{{ prefill.estimate_id or '' }}">
+
+  <div class="form-row">
+    <div class="field"><label class="lbl">Invoice number</label><input type="text" name="number" value="{{ prefill.number or '' }}" maxlength="40"></div>
+    <div class="field"><label class="lbl">Issue date</label><input type="date" name="issue_date" value="{{ prefill.issue_date or '' }}"></div>
+    <div class="field"><label class="lbl">Due date</label><input type="date" name="due_date" value="{{ prefill.due_date or '' }}"></div>
+  </div>
+
+  <div class="form-row">
+    <div class="field"><label class="lbl">Customer name *</label><input type="text" name="customer_name" value="{{ prefill.customer_name or '' }}" required maxlength="120"></div>
+    <div class="field"><label class="lbl">Email</label><input type="email" name="customer_email" value="{{ prefill.customer_email or '' }}"></div>
+    <div class="field"><label class="lbl">Phone</label><input type="text" name="customer_phone" value="{{ prefill.customer_phone or '' }}"></div>
+  </div>
+  <div class="form-row">
+    <div class="field"><label class="lbl">Billing address</label><textarea name="customer_address" rows="2">{{ prefill.customer_address or '' }}</textarea></div>
+    <div class="field"><label class="lbl">Vehicle</label><input type="text" name="vehicle" value="{{ prefill.vehicle or '' }}"></div>
+    <div class="field"><label class="lbl">GSTIN / Tax ID <span class="faint">(business customers)</span></label>
+      <input type="text" name="customer_tax_id" value="{{ prefill.customer_tax_id or '' }}" maxlength="20" placeholder="e.g. 36ABCDE1234F1Z5"></div>
+  </div>
+
+  <div class="field" style="margin-top:12px">
+    <label class="lbl">Line items</label>
+    {% if services %}
+    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px">
+      <span class="faint" style="font-size:11px; padding:5px 0">Quick add:</span>
+      {% for svc in services %}
+      <button type="button" class="btn btn-ghost btn-sm quick-add" data-name="{{ svc.name }}" data-price="{{ svc.price }}"
+              style="font-size:11px; padding:4px 10px">{{ svc.name }} — {{ currency }}{{ svc.price }}</button>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <div class="table-scroll">
+      <table class="data" style="font-size:13px">
+        <thead><tr><th>Item</th><th>Description</th><th style="width:80px">Qty</th><th style="width:130px">Price ({{ currency|trim }})</th><th class="num">Total</th><th></th></tr></thead>
+        <tbody id="items"></tbody>
+      </table>
+    </div>
+    <button type="button" class="btn btn-ghost btn-sm" id="addRow" style="margin-top:8px">+ Add line</button>
+  </div>
+
+  <div class="form-row" style="margin-top:16px">
+    <div class="field"><label class="lbl">Discount ({{ currency|trim }})</label><input type="number" name="discount" id="discount" step="0.01" min="0" value="{{ prefill.discount or '' }}"></div>
+    <div class="field"><label class="lbl">Tax rate (%)</label><input type="number" name="tax_percent" id="tax" step="0.01" min="0" max="50" value="{{ prefill.tax_percent or 0 }}"></div>
+    <div class="field" style="text-align:right; line-height:1.9; font-size:13px">
+      <div>Subtotal <strong id="sub">$0.00</strong></div>
+      <div>Tax <strong id="taxAmt">$0.00</strong></div>
+      <div style="font-size:16px; font-weight:700; color:var(--violet-600)">Total <span id="total">$0.00</span></div>
+    </div>
+  </div>
+
+  <div class="field"><label class="lbl">Notes for the customer</label><textarea name="notes" rows="2">{{ prefill.notes or '' }}</textarea></div>
+
+  <div style="display:flex; gap:12px; margin-top:16px">
+    <button class="btn btn-primary" type="submit">Create invoice</button>
+    <a class="btn btn-ghost" href="{{ url_for('invoices.invoice_list') }}">Cancel</a>
+  </div>
+</form>
+
+<script id="prefillItems" type="application/json">{{ prefill['items']|tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const body = document.getElementById('items');
+  const CURRENCY = {{ currency|tojson }};
+  const fmt = n => CURRENCY + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  // Built with DOM APIs, not innerHTML: item names are user text.
+  function input(name, value, attrs) {
+    const el = document.createElement('input');
+    el.name = name; el.value = value == null ? '' : value;
+    Object.assign(el, attrs || {});
+    return el;
+  }
+  function addRow(item) {
+    item = item || {};
+    const tr = document.createElement('tr');
+    const cells = [
+      input('item_name', item.name, { type: 'text', placeholder: 'e.g. Ceramic Coating', maxLength: 160 }),
+      input('item_desc', item.description, { type: 'text', placeholder: 'Optional', maxLength: 300 }),
+      input('item_qty', item.quantity || 1, { type: 'number', min: '0.01', step: 'any' }),
+      // An empty row starts empty — a pre-filled "0.00" would swallow what the user types.
+      input('item_price', item.unit_price ? (item.unit_price / 100).toFixed(2) : '',
+            { type: 'number', min: '0', step: '0.01', placeholder: '0.00' }),
+    ];
+    cells.forEach(c => { const td = document.createElement('td'); td.appendChild(c); tr.appendChild(td); });
+    const tot = document.createElement('td'); tot.className = 'num row-total'; tot.style.fontWeight = '600'; tr.appendChild(tot);
+    const del = document.createElement('td');
+    const x = document.createElement('button'); x.type = 'button'; x.textContent = '×';
+    x.style.cssText = 'background:none;border:none;color:var(--red);cursor:pointer;font-size:16px';
+    x.onclick = () => { tr.remove(); recalc(); };
+    del.appendChild(x); tr.appendChild(del);
+    body.appendChild(tr);
+    recalc();
+  }
+  function recalc() {
+    let sub = 0;
+    body.querySelectorAll('tr').forEach(tr => {
+      const q = parseFloat(tr.querySelector('[name=item_qty]').value) || 0;
+      const p = parseFloat(tr.querySelector('[name=item_price]').value) || 0;
+      sub += q * p; tr.querySelector('.row-total').textContent = fmt(q * p);
+    });
+    const disc = Math.min(parseFloat(document.getElementById('discount').value) || 0, sub);
+    const tax = (sub - disc) * (parseFloat(document.getElementById('tax').value) || 0) / 100;
+    document.getElementById('sub').textContent = fmt(sub);
+    document.getElementById('taxAmt').textContent = fmt(tax);
+    document.getElementById('total').textContent = fmt(sub - disc + tax);
+  }
+
+  JSON.parse(document.getElementById('prefillItems').textContent).forEach(addRow);
+  document.getElementById('addRow').onclick = () => addRow();
+  document.querySelectorAll('.quick-add').forEach(b => b.onclick = () => {
+    // services.price is whole dollars; rows hold cents.
+    const empty = [...body.querySelectorAll('tr')].find(tr => !tr.querySelector('[name=item_name]').value);
+    if (empty) empty.remove();
+    addRow({ name: b.dataset.name, quantity: 1, unit_price: Math.round(parseFloat(b.dataset.price) * 100) });
+  });
+  document.getElementById('invoiceForm').addEventListener('input', recalc);
+})();
+</script>
+{% endblock %}

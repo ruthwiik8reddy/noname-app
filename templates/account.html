@@ -99,9 +99,9 @@
         <p class="help">Must be a verified Twilio number.</p>
       </div>
       <div class="field">
-        <label class="lbl">App Base URL</label>
-        <input type="text" name="app_base_url" value="{{ app_base_url }}" placeholder="https://yourdomain.com">
-        <p class="help">Used in SMS tracking links. No trailing slash.</p>
+        <label class="lbl">Tracking link domain</label>
+        <input type="text" value="{{ app_base_url }}" disabled>
+        <p class="help">Set by the platform. Customer links in SMS use this address.</p>
       </div>
     </div>
 

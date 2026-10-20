@@ -1,0 +1,176 @@
+{#- The invoice itself, rendered in the studio's learned style.
+    Used for the browser view, the template preview and the PDF, so it sticks
+    to tables and plain CSS — xhtml2pdf has no flexbox or grid.
+    Context: inv (with .items), style, logo_src, money(), date(), nl2br(). -#}
+{%- set L = style.labels -%}
+{%- set font = fonts[style.font] -%}
+{%- set filled_head = style.layout == 'banner' -%}
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>{{ style.title_text }} {{ inv.number }}</title>
+<style>
+  @page { size: letter; margin: 14mm 14mm 16mm 14mm; }
+  body { font-family: {{ font }}; color: {{ style.text_color }}; font-size: 10pt; margin: 0; background: #fff; }
+  .sheet { {% if not for_pdf %}max-width: 800px; margin: 24px auto; padding: 40px 44px; background: #fff;
+           box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.06);{% endif %} }
+  table { border-collapse: collapse; width: 100%; }
+  td, th { vertical-align: top; }
+  .muted { color: {{ style.muted_color }}; }
+  {#- Long titles shrink to fit rather than overflowing the page. -#}
+  {%- set tlen = style.title_text|length -%}
+  {%- set tsize = style.title_size if tlen <= 12 else [16, (style.title_size * 12 / tlen)|int]|max -%}
+  .title { font-size: {{ tsize }}pt; font-weight: bold; letter-spacing: 1px; line-height: 1.1; }
+  .bizname { font-size: 14pt; font-weight: bold; }
+  {% if style.layout == 'centered' %}.bizname { color: {{ style.accent_color }}; font-size: 18pt; }{% endif %}
+  .label { font-size: 9pt; color: {{ style.muted_color }}; }
+  .band { background-color: {{ style.header_bg }}; color: {{ style.header_text_color }}; padding: 18px 20px; }
+  .band .muted, .band .label { color: {{ style.header_text_color }}; }
+  .rule { border-bottom: {% if style.layout == 'minimal' %}0.5px{% else %}2px{% endif %} solid {{ style.accent_color }}; }
+  .items th { font-size: 9.5pt; font-weight: bold; padding: 8px 8px; text-align: left; }
+  .items td { padding: 8px 8px; }
+  .items .num { text-align: right; white-space: nowrap; }
+  {% if style.table_style == 'filled' %}
+  .items th { background-color: {{ style.table_header_bg }}; color: {{ style.table_header_text }}; }
+  .items td { border-bottom: 0.5px solid #E5E7EB; }
+  {% elif style.table_style == 'lined' %}
+  .items th { border-bottom: 1.5px solid {{ style.accent_color }}; color: {{ style.accent_color }}; }
+  .items td { border-bottom: 0.5px solid #D1D5DB; }
+  {% elif style.table_style == 'striped' %}
+  .items th { background-color: {{ style.table_header_bg }}; color: {{ style.table_header_text }}; }
+  .items tr.alt td { background-color: #F3F4F6; }
+  {% else %}
+  .items th, .items td { border: 0.5px solid #9CA3AF; }
+  .items th { background-color: #F3F4F6; color: {{ style.text_color }}; }
+  {% endif %}
+  .totals td { padding: 4px 8px; }
+  .totals .grand td { font-size: 12pt; font-weight: bold; border-top: 1.5px solid {{ style.accent_color }}; padding-top: 8px; }
+  {% if style.layout != 'minimal' %}.totals .grand td.amt { color: {{ style.accent_color }}; }{% endif %}
+  .block-title { font-weight: bold; color: {{ style.accent_color }}; margin: 0 0 4px 0; font-size: 9.5pt; }
+  .footer { text-align: center; color: {{ style.muted_color }}; font-size: 9pt; padding-top: 14px; }
+  .logo { max-height: 64px; max-width: 200px; }
+  .stamp { font-size: 22pt; font-weight: bold; color: #16A34A; border: 2px solid #16A34A; padding: 2px 10px; }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+{#- ── Header ───────────────────────────────────────────────────────── -#}
+{%- macro business_block(align) -%}
+  {% if style.show_logo and logo_src and style.layout != 'centered' %}
+    <img class="logo" src="{{ logo_src }}" alt=""><br>
+  {% endif %}
+  <span class="bizname">{{ style.business_name }}</span><br>
+  {% for line in style.business_lines %}<span class="muted">{{ line }}</span><br>{% endfor %}
+{%- endmacro -%}
+
+{%- macro meta_rows() -%}
+  <tr><td class="label" style="padding:2px 10px 2px 0">{{ L.invoice_number }}</td><td style="padding:2px 0"><b>{{ inv.number }}</b></td></tr>
+  <tr><td class="label" style="padding:2px 10px 2px 0">{{ L.issue_date }}</td><td style="padding:2px 0">{{ date(inv.issue_date) }}</td></tr>
+  {% if inv.due_date %}<tr><td class="label" style="padding:2px 10px 2px 0">{{ L.due_date }}</td><td style="padding:2px 0">{{ date(inv.due_date) }}</td></tr>{% endif %}
+{%- endmacro -%}
+
+{% if style.layout == 'banner' %}
+  <table><tr><td class="band">
+    <table><tr>
+      <td style="width:60%">{{ business_block('left') }}</td>
+      <td style="text-align:right"><span class="title">{{ style.title_text }}</span>
+        {% if inv.status == 'Paid' %}<br><br><span class="stamp" style="color:{{ style.header_text_color }};border-color:{{ style.header_text_color }}">PAID</span>{% endif %}
+      </td>
+    </tr></table>
+  </td></tr></table>
+  <table style="margin-top:14px"><tr><td></td><td style="width:45%"><table>{{ meta_rows() }}</table></td></tr></table>
+
+{% elif style.layout == 'centered' %}
+  <div style="text-align:center">
+    {% if style.show_logo and logo_src %}<img class="logo" src="{{ logo_src }}" alt=""><br>{% endif %}
+    <span class="bizname">{{ style.business_name }}</span><br>
+    {% for line in style.business_lines %}<span class="muted">{{ line }}</span>{% if not loop.last %} &middot; {% endif %}{% endfor %}
+    <br><br><span class="title" style="color:{{ style.accent_color }}">{{ style.title_text }}</span>
+    {% if inv.status == 'Paid' %}&nbsp;&nbsp;<span class="stamp">PAID</span>{% endif %}
+  </div>
+  <div class="rule" style="margin:12px 0 14px 0"></div>
+  <table><tr><td></td><td style="width:45%"><table>{{ meta_rows() }}</table></td></tr></table>
+
+{% else %}{# classic + minimal #}
+  <table><tr>
+    <td style="width:55%">{{ business_block('left') }}</td>
+    <td style="text-align:right">
+      <span class="title" style="color:{{ style.accent_color }}">{{ style.title_text }}</span>
+      {% if inv.status == 'Paid' %}<br><br><span class="stamp">PAID</span>{% endif %}
+      <br><br>
+      <table style="width:auto; margin-left:auto">{{ meta_rows() }}</table>
+    </td>
+  </tr></table>
+  <div class="rule" style="margin:14px 0"></div>
+{% endif %}
+
+{#- ── Bill to ──────────────────────────────────────────────────────── -#}
+<table style="margin:16px 0 18px 0"><tr>
+  {% set bill %}
+    <p class="block-title">{{ L.bill_to }}</p>
+    <b>{{ inv.customer_name }}</b><br>
+    {% if inv.customer_address %}{{ nl2br(inv.customer_address) }}<br>{% endif %}
+    {% if inv.customer_tax_id %}<span class="muted">GSTIN / Tax ID: {{ inv.customer_tax_id }}</span><br>{% endif %}
+    {% if inv.customer_phone %}<span class="muted">{{ inv.customer_phone }}</span><br>{% endif %}
+    {% if inv.customer_email %}<span class="muted">{{ inv.customer_email }}</span><br>{% endif %}
+  {% endset %}
+  {% set veh %}
+    {% if style.show_vehicle and inv.vehicle %}
+      <p class="block-title">{{ L.vehicle }}</p>{{ inv.vehicle }}
+    {% endif %}
+  {% endset %}
+  {% if style.bill_to_side == 'left' %}
+    <td style="width:55%">{{ bill }}</td><td>{{ veh }}</td>
+  {% else %}
+    <td style="width:45%">{{ veh }}</td><td style="text-align:right">{{ bill }}</td>
+  {% endif %}
+</tr></table>
+
+{#- ── Items ────────────────────────────────────────────────────────── -#}
+<table class="items">
+  <thead><tr>
+    <th>{{ L.description }}</th>
+    {% if style.show_quantity %}<th class="num" style="width:12%">{{ L.quantity }}</th>
+    <th class="num" style="width:18%">{{ L.rate }}</th>{% endif %}
+    <th class="num" style="width:20%">{{ L.amount }}</th>
+  </tr></thead>
+  <tbody>
+  {% for it in inv["items"] %}
+    <tr class="{{ 'alt' if loop.index is even else '' }}">
+      <td><b>{{ it.name }}</b>{% if it.description %}<br><span class="muted">{{ it.description }}</span>{% endif %}</td>
+      {% if style.show_quantity %}<td class="num">{{ ('%g' % it.quantity) }}</td>
+      <td class="num">{{ money(it.unit_price) }}</td>{% endif %}
+      <td class="num">{{ money(it.total) }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+{#- ── Totals ───────────────────────────────────────────────────────── -#}
+<table style="margin-top:12px"><tr><td></td><td style="width:42%">
+  <table class="totals">
+    <tr><td>{{ L.subtotal }}</td><td class="num" style="text-align:right">{{ money(inv.subtotal) }}</td></tr>
+    {% if inv.discount %}<tr><td>{{ L.discount }}</td><td style="text-align:right">-{{ money(inv.discount) }}</td></tr>{% endif %}
+    {% if inv.tax_percent %}<tr><td>{{ L.tax }} ({{ '%g' % inv.tax_percent }}%)</td><td style="text-align:right">{{ money(inv.tax_amount) }}</td></tr>{% endif %}
+    <tr class="grand"><td>{{ L.total }}</td><td class="amt" style="text-align:right">{{ money(inv.total) }}</td></tr>
+  </table>
+</td></tr></table>
+
+{#- ── Notes / terms / payment ──────────────────────────────────────── -#}
+<table style="margin-top:22px"><tr>
+  <td style="width:50%; padding-right:16px">
+    {% if inv.notes %}<p class="block-title">{{ L.notes }}</p><p style="margin:0 0 12px 0">{{ nl2br(inv.notes) }}</p>{% endif %}
+    {% if style.payment_instructions %}<p class="block-title">{{ L.payment }}</p><p style="margin:0">{{ nl2br(style.payment_instructions) }}</p>{% endif %}
+  </td>
+  <td>
+    {% if style.terms_text %}<p class="block-title">{{ L.terms }}</p><p class="muted" style="margin:0; font-size:8.5pt">{{ nl2br(style.terms_text) }}</p>{% endif %}
+  </td>
+</tr></table>
+
+{% if style.footer_text %}<div class="footer">{{ nl2br(style.footer_text) }}</div>{% endif %}
+
+</div>
+</body>
+</html>

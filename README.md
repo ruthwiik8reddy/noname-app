@@ -26,7 +26,8 @@ noname-app/
 ├── run.py                      Entry point — run this, not app.py
 ├── requirements.txt
 ├── .env                        Local secrets (gitignored, never committed)
-├── studios.db                  SQLite DB (gitignored)
+├── studios.db                  SQLite DB (gitignored, as are *.db.bak backups)
+├── instance/private/           Uploaded invoice scans + logos (gitignored, never under /static)
 ├── src/
 │   ├── __init__.py             Exposes create_app()
 │   ├── app.py                  Flask app factory
@@ -62,9 +63,23 @@ git checkout feature/vk-001-refactoringtofollowsolidprinciples
 # 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Create your local .env (never committed — see .gitignore)
-touch .env
+# 3. Create your local .env from the template (never committed — see .gitignore)
+cp .env.example .env
+python -c "import secrets; print(secrets.token_hex(32))"   # paste as SECRET_KEY
 ```
+
+Exact invoice copies work best from the **PDF** a studio's invoicing software
+produced: it is edited directly (exact fonts, sizes and colours; logo, seals and
+bands stay vector), and needs nothing extra. For **scans and photos** of paper
+invoices, install the free Tesseract OCR engine (optional — without it those
+uploads use the rebuilt style):
+
+```bash
+brew install tesseract        # macOS;  apt install tesseract-ocr on Linux
+```
+
+Set `OLLAMA_VISION_MODEL` to a vision model you've actually pulled (e.g.
+`qwen2.5vl:7b`) — invoice scanning and DVI both use it.
 
 Add to `.env`:
 ```
@@ -154,14 +169,15 @@ Fine-grained permissions matrix (`PERMISSIONS` dict in `auth.py`):
 | **Customer CRM** | `/customers`, `/customers/new`, `/customers/<id>` | Multi-vehicle profiles, auto-created from bookings, full history |
 | **Notes** | `/notes/add`, `/notes/<id>/delete` | Internal (staff-only) vs client-visible, threaded, reusable partial |
 | **Follow-up reminders** | `/reminders`, `/reminders/new`, `/jobs/<id>/status` | Auto-scheduled on job completion (review + rebooking nudge), manual reminders |
-| **AI Assistant** | `/assistant`, `/assistant/query` | Ollama primary, Gemini for research/vision, OpenAI optional fallback |
+| **Studio Assistant** | `/assistant/` | Owner types a request in plain English ("add Ceramic Pro for $1,199, 8 hours", "raise prices 7%") → previewed plan from a fixed set of safe actions → applied only on confirm, all-or-nothing. Unsupported asks are logged as feature requests. Owner/GM only. See `src/services/assistant/actions.py` to add capabilities |
+| **Invoices** | `/invoices/`, `/invoices/template`, `/i/<token>` | Upload an existing invoice (PDF/photo). **Exact copy** (default when Tesseract is installed): their invoice *is* the page — only customer, number, date, items and totals are erased and redrawn in a font matched from the pixels; a leak guard refuses any template where old customer text survives. **Rebuilt style** (fallback): colours from pixels, layout + wording from the local vision model, fully editable. See `src/services/invoices/` |
 
 | **AI Estimator / Analytics** | `/analytics`, `/analytics/api/*` | Burn-rate forecasting, stockout dates, waste detection — Phase 1 |
 | **Digital Vehicle Inspection** | `/dvi`, `/dvi/job/<id>`, `/dvi/inspection/<id>` | Photo capture → local vision model → priced upcharges → estimate — Phase 2 |
 | **Dispatch Board** | `/dispatch`, `/dispatch/job/<id>` | Job/technician assignment, validated status transitions, audit trail — Phase 3 |
 
 ### Not yet built
-- **Payments & Invoices** (Stripe test mode — deposits, partial payments, balance due, downloadable invoice, receipts)
+- **Online payments** (Stripe test mode — deposits, partial payments, receipts). Invoices exist; marking paid is manual.
 
 ---
 

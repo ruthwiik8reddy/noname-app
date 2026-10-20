@@ -1,6 +1,7 @@
 import sqlite3
 from .db_manager import init_db
 from .config import Config
+from .auth import hash_password
 
 
 def seed_db():
@@ -13,6 +14,7 @@ def seed_db():
         (2, "Apex Detail Studio", "Miami, FL", "Tyler Brooks", "apex.svg", "apexdetail", "apex123"),
         (3, "Velvet Auto Spa", "New York, NY", "Nathan Gold", "velvetauto.svg", "velvetauto", "velvet123"),
     ]
+    studios = [s[:-1] + (hash_password(s[-1]),) for s in studios]
     conn.executemany("INSERT INTO studios (id,name,city,owner,logo,username,password) VALUES (?,?,?,?,?,?,?)", studios)
 
     staff = [
@@ -23,6 +25,7 @@ def seed_db():
         (5, 3, "Nathan Gold", "admin", "velvetauto", "velvet123"),
         (6, 3, "Aisha Patel", "technician", "aisha", "tech123"),
     ]
+    staff = [s[:-1] + (hash_password(s[-1]),) for s in staff]
     conn.executemany("INSERT INTO staff (id,studio_id,name,role,username,password) VALUES (?,?,?,?,?,?)", staff)
 
     bays = [

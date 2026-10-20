@@ -1,0 +1,153 @@
+{% extends "_base.html" %}
+{% block title %}Studio Assistant — {{ studio }}{% endblock %}
+
+{% block head %}
+<style>
+  .ask { display:flex; gap:10px; align-items:flex-end; }
+  .ask textarea { flex:1; min-height:56px; resize:vertical; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+  .chip { font-size:12px; padding:5px 10px; border-radius:999px; border:1px solid var(--gray-200); background:transparent; cursor:pointer; color:inherit; }
+  .chip:hover { border-color: var(--violet-600); }
+  .plan { margin-top:18px; }
+  .step { display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border:1px solid var(--gray-200); border-radius:8px; margin-top:8px; }
+  .step.bad { border-color: var(--red); }
+  .step .err { color: var(--red); font-size:12.5px; margin-top:3px; }
+  .step .warn { color: var(--amber, #B45309); font-size:12.5px; margin-top:3px; }
+  .step .res { color: var(--green, #16A34A); font-size:12.5px; margin-top:3px; }
+  .reply { padding:12px 14px; border-radius:8px; background: var(--gray-50, rgba(0,0,0,.03)); }
+  .hist-item { padding:12px 0; border-bottom:1px solid var(--gray-200); }
+  .hist-item:last-child { border-bottom:none; }
+</style>
+{% endblock %}
+
+{% block page_head %}
+<div class="page-head rise">
+  <div>
+    <h1 class="page-title">Studio Assistant</h1>
+    <p class="page-sub">Tell it what to change — services, prices, bays, products, invoice and tax settings. You approve every change before it happens.</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="card card-pad">
+  <div class="ask">
+    <textarea id="msg" placeholder="e.g. Add a service called Ceramic Pro for $1,199, 8 hours" maxlength="2000"></textarea>
+    <button class="btn btn-primary" id="send">Plan it</button>
+  </div>
+  <div class="chips">
+    {% for ex in examples %}<button type="button" class="chip" data-text="{{ ex }}">{{ ex }}</button>{% endfor %}
+  </div>
+  <div id="out" class="plan" aria-live="polite"></div>
+</div>
+
+<div class="grid grid-2" style="margin-top:22px; align-items:start">
+  <div class="card card-pad">
+    <div class="section-title" style="margin-bottom:6px">Recent requests</div>
+    {% for h in history %}
+      <div class="hist-item">
+        <div class="flex" style="justify-content:space-between; gap:10px">
+          <div class="strong" style="font-size:13.5px">{{ h.request }}</div>
+          {% set b = {'applied':'badge-green','failed':'badge-red','cancelled':'badge-gray','proposed':'badge-amber','answered':'badge-blue'}.get(h.status,'badge-gray') %}
+          <span class="badge {{ b }}">{{ h.status }}</span>
+        </div>
+        <div class="faint" style="font-size:12px; margin-top:2px">{{ h.created_at }} · {{ h.created_by }}{% if h.source == 'deterministic' %} · offline mode{% endif %}</div>
+        {% for s in h.steps %}<div class="muted" style="font-size:12.5px; margin-top:3px">{{ '✓' if s.ok else '✗' }} {{ s.preview }}</div>{% endfor %}
+      </div>
+    {% else %}
+      <div class="muted" style="font-size:13px">Nothing yet.</div>
+    {% endfor %}
+  </div>
+  <div class="card card-pad">
+    <div class="section-title" style="margin-bottom:6px">Feature requests logged</div>
+    <p class="muted" style="font-size:12.5px">Things you asked for that the assistant can't do yet. These are recorded for the product team.</p>
+    {% for f in feature_requests %}
+      <div class="hist-item"><div style="font-size:13.5px">{{ f.summary }}</div><div class="faint" style="font-size:12px">{{ f.created_at }} · {{ f.by }}</div></div>
+    {% else %}
+      <div class="muted" style="font-size:13px; margin-top:8px">None.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const msg = document.getElementById('msg');
+  const out = document.getElementById('out');
+  const send = document.getElementById('send');
+
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;   // textContent only: model output is untrusted
+    return e;
+  }
+  async function post(url, body) {
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                 credentials: 'same-origin', body: JSON.stringify(body || {}) });
+    const data = await r.json().catch(() => ({ error: 'Unexpected response.' }));
+    if (!r.ok) throw new Error(data.error || 'Request failed.');
+    return data;
+  }
+
+  function renderPlan(d) {
+    out.replaceChildren();
+    if (d._status && d._status.degraded) out.appendChild(el('div', 'alert alert-warn', 'AI model offline — using basic pattern matching.'));
+    if (d.reply) out.appendChild(el('div', 'reply', d.reply));
+    if (!d.steps || !d.steps.length) return;
+
+    const list = el('div');
+    d.steps.forEach((s, i) => {
+      const row = el('label', 'step' + (s.ok ? '' : ' bad'));
+      const cb = el('input'); cb.type = 'checkbox'; cb.checked = s.ok && !s.suspect; cb.disabled = !s.ok; cb.dataset.index = i;
+      const body = el('div');
+      body.appendChild(el('div', 'strong', s.preview || s.action));
+      if (s.error) body.appendChild(el('div', 'err', s.error));
+      if (s.warning) body.appendChild(el('div', 'warn', s.warning));
+      row.append(cb, body); list.appendChild(row);
+    });
+    out.appendChild(list);
+
+    const bar = el('div'); bar.style.cssText = 'display:flex;gap:10px;margin-top:12px;align-items:center';
+    const go = el('button', 'btn btn-primary', 'Apply selected');
+    const no = el('button', 'btn btn-ghost', 'Cancel');
+    const note = el('span', 'muted'); note.style.fontSize = '12.5px';
+    note.textContent = 'Applied all-or-nothing: if any step fails, nothing changes.';
+    bar.append(go, no, note); out.appendChild(bar);
+
+    go.onclick = async () => {
+      const steps = [...list.querySelectorAll('input[type=checkbox]')].filter(c => c.checked).map(c => +c.dataset.index);
+      go.disabled = true; go.textContent = 'Applying…';
+      try {
+        const res = await post(`/assistant/requests/${d.id}/apply`, { steps });
+        out.replaceChildren(el('div', res.status === 'applied' ? 'alert alert-success' : 'alert alert-danger', res.message));
+        res.steps.forEach(s => {
+          const row = el('div', 'step' + (s.ok ? '' : ' bad'));
+          const b = el('div'); b.appendChild(el('div', 'strong', s.preview));
+          if (s.result) b.appendChild(el('div', 'res', s.result));
+          if (s.error) b.appendChild(el('div', 'err', s.error));
+          row.appendChild(b); out.appendChild(row);
+        });
+        if (res.status === 'applied') setTimeout(() => location.reload(), 1800);
+      } catch (e) { go.disabled = false; go.textContent = 'Apply selected'; out.appendChild(el('div', 'err', e.message)); }
+    };
+    no.onclick = async () => { await post(`/assistant/requests/${d.id}/cancel`).catch(() => {}); out.replaceChildren(); };
+  }
+
+  async function ask() {
+    const text = msg.value.trim();
+    if (!text) return;
+    send.disabled = true; send.textContent = 'Thinking…';
+    out.replaceChildren(el('div', 'muted', 'Working out a plan…'));
+    try { renderPlan(await post('/assistant/plan', { message: text })); }
+    catch (e) { out.replaceChildren(el('div', 'alert alert-danger', e.message)); }
+    finally { send.disabled = false; send.textContent = 'Plan it'; }
+  }
+
+  send.onclick = ask;
+  msg.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) ask(); });
+  document.querySelectorAll('.chip').forEach(c => c.onclick = () => { msg.value = c.dataset.text; msg.focus(); });
+})();
+</script>
+{% endblock %}

@@ -560,8 +560,11 @@ def init_db():
     from .migrate_phase2 import migrate as _migrate_phase2
     from .migrate_phase4 import migrate as _migrate_phase4
 
+    from .migrate_phase5 import migrate as _migrate_phase5
+
     _migrate_phase2(Config.DB_PATH)
     _migrate_phase4(Config.DB_PATH)
+    _migrate_phase5(Config.DB_PATH)
 
 
 def get_studio_inventory(studio_id: int):

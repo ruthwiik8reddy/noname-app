@@ -5,6 +5,7 @@ from .controller import bp
 from .db_manager import close_db
 from .logging_config import configure_logging
 from .routes import BLUEPRINTS
+from .security import register_security
 from .seed import initialize_db
 
 
@@ -34,6 +35,9 @@ def create_app():
 
     app.teardown_appcontext(close_db)
 
+    # CSRF origin check, upload access control, security headers.
+    register_security(app)
+
     # Background agent scheduler. Skipped under the reloader's parent process
     # and disabled entirely with AGENT_SCHEDULER=0.
     from .services.agents import start_scheduler
@@ -44,4 +48,4 @@ def create_app():
 
 
 if __name__ == "__main__":
-    create_app().run(debug=True, port=5055)
+    create_app().run(port=5055)

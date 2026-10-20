@@ -11,6 +11,7 @@ import logging
 
 from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
 
+from ..security import safe_redirect_target
 from ..auth import admin_required, auth_context, can, current_role, staff_or_admin_required
 from ..services.orchestrators import AssignmentOrchestrator, OrchestratorError
 from ..services.orchestrators.assignment_orchestrator import COMPLETED
@@ -93,7 +94,7 @@ def assign(job_id: int):
 
     if _wants_json():
         return jsonify(result), (200 if result.ok else 400)
-    return redirect((payload or {}).get("redirect_to") or url_for("dispatch.board"))
+    return redirect(safe_redirect_target((payload or {}).get("redirect_to"), url_for("dispatch.board")))
 
 
 @bp.route("/api/job/<int:job_id>/suggest")
@@ -124,7 +125,7 @@ def transition(job_id: int):
 
     if _wants_json():
         return jsonify(result), (200 if result.ok else 409)
-    return redirect((payload or {}).get("redirect_to") or url_for("dispatch.board"))
+    return redirect(safe_redirect_target((payload or {}).get("redirect_to"), url_for("dispatch.board")))
 
 
 def _run_completion_hooks(studio_id: int, job_id: int) -> None:

@@ -135,12 +135,15 @@
       <button type="submit">Sign In</button>
     </form>
 
+    {# Demo accounts are only advertised on a developer's machine. #}
+    {% if config.DEBUG %}
     <div class="hint">
       Test logins:<br>
       <strong>shinepro</strong> / shine123 &nbsp;·&nbsp;
       <strong>apexdetail</strong> / apex123 &nbsp;·&nbsp;
       <strong>velvetauto</strong> / velvet123
     </div>
+    {% endif %}
   </div>
 </body>
 </html>
