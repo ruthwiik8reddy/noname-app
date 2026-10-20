@@ -1,0 +1,44 @@
+{% extends "_base.html" %}
+{% block title %}{{ inv.number }} — {{ studio }}{% endblock %}
+
+{% block page_head %}
+<div class="page-head rise">
+  <div>
+    <a href="{{ url_for('invoices.invoice_list') }}" class="faint" style="font-size:12.5px">&larr; Invoices</a>
+    <h1 class="page-title">{{ inv.number }}</h1>
+    <p class="page-sub">{{ inv.customer_name }}{% if inv.vehicle %} · {{ inv.vehicle }}{% endif %} · {{ money(inv.total) }}</p>
+  </div>
+  <div class="page-actions">
+    {% set badge = {'Paid':'badge-green','Sent':'badge-blue','Void':'badge-gray'}.get(inv.status, 'badge-amber') %}
+    <span class="badge {{ badge }}" style="align-self:center">{{ inv.status }}</span>
+    <a class="btn btn-secondary" href="{{ url_for('invoices.invoice_pdf', invoice_id=inv.id) }}">Download PDF</a>
+    <a class="btn btn-secondary" href="{{ url_for('invoices.invoice_document', invoice_id=inv.id) }}" target="_blank" rel="noopener">Print</a>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="card card-pad" style="margin-bottom:18px">
+  <div class="flex" style="gap:10px; flex-wrap:wrap; align-items:center">
+    {% for status, label, cls in [('Sent','Mark as sent','btn-secondary'), ('Paid','Mark as paid','btn-success'), ('Void','Void','btn-ghost')] %}
+      {% if inv.status != status and not (inv.status == 'Void') %}
+      <form method="POST" action="{{ url_for('invoices.invoice_status', invoice_id=inv.id) }}" style="display:inline">
+        <input type="hidden" name="status" value="{{ status }}">
+        <button class="btn {{ cls }} btn-sm" type="submit" {% if status == 'Void' %}onclick="return confirm('Void this invoice? The customer link will stop working.')"{% endif %}>{{ label }}</button>
+      </form>
+      {% endif %}
+    {% endfor %}
+    {% if inv.status != 'Void' %}
+    <div style="margin-left:auto; display:flex; gap:8px; align-items:center; min-width:0">
+      <span class="muted" style="font-size:12.5px">Customer link:</span>
+      <code id="publicUrl" style="font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:340px">{{ public_url }}</code>
+      <button class="btn btn-ghost btn-sm" type="button"
+              onclick="navigator.clipboard.writeText(document.getElementById('publicUrl').textContent); this.textContent='Copied'">Copy</button>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<iframe src="{{ url_for('invoices.invoice_document', invoice_id=inv.id) }}" title="Invoice"
+        style="width:100%; height:1100px; border:1px solid var(--gray-200); border-radius:8px; background:#F3F4F6"></iframe>
+{% endblock %}

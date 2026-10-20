@@ -120,3 +120,138 @@ def install_security(app):
         try:get_db().execute('SELECT 1').fetchone()
         except Exception:return {'status':'unavailable'},503
         return {'status':'ok'},200
+
+
+# ── Added with invoices / Studio Assistant ────────────────────────────────────
+# Login throttling, safe redirects for form-supplied targets, and two request
+# checks the boundary above doesn't make: a cross-site Origin/Referer check on
+# every state-changing request, and re-validating the account behind a session.
+
+import logging as _logging
+import threading as _threading
+import time as _time
+from typing import Dict as _Dict, List as _List, Optional as _Optional, Tuple as _Tuple
+
+from flask import redirect as _redirect, url_for as _url_for
+
+_log = _logging.getLogger(__name__)
+UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+def safe_redirect_target(target: _Optional[str], fallback: str) -> str:
+    """`target` only if it is a same-site relative path, else `fallback`."""
+    result = safe_next(target or "", default="")
+    return result or fallback
+
+
+class LoginThrottle:
+    """
+    In-memory failed-login tracker keyed by (client IP, username).
+
+    Per-process by design: this is a single-process app. Under several
+    workers, move it into the database or Redis.
+    """
+
+    def __init__(self, max_attempts: int, window_seconds: int, lockout_seconds: int):
+        self.max_attempts = max(1, int(max_attempts))
+        self.window = int(window_seconds)
+        self.lockout = int(lockout_seconds)
+        self._failures: _Dict[_Tuple[str, str], _List[float]] = {}
+        self._locked_until: _Dict[_Tuple[str, str], float] = {}
+        self._lock = _threading.Lock()
+
+    @staticmethod
+    def key(ip: str, username: str) -> _Tuple[str, str]:
+        return (ip or "?", (username or "").strip().lower())
+
+    def locked_for(self, key) -> int:
+        with self._lock:
+            remaining = int(self._locked_until.get(key, 0) - _time.time())
+            if remaining <= 0:
+                self._locked_until.pop(key, None)
+                return 0
+            return remaining
+
+    def record_failure(self, key) -> None:
+        now = _time.time()
+        with self._lock:
+            recent = [t for t in self._failures.get(key, []) if now - t < self.window] + [now]
+            self._failures[key] = recent
+            if len(recent) >= self.max_attempts:
+                self._locked_until[key] = now + self.lockout
+                self._failures.pop(key, None)
+                _log.warning("Login locked for %s after %d failures", key[1], len(recent))
+
+    def record_success(self, key) -> None:
+        with self._lock:
+            self._failures.pop(key, None)
+            self._locked_until.pop(key, None)
+
+
+_throttle: _Optional[LoginThrottle] = None
+
+
+def login_throttle() -> LoginThrottle:
+    global _throttle
+    if _throttle is None:
+        _throttle = LoginThrottle(Config.AUTH_MAX_LOGIN_ATTEMPTS, Config.AUTH_LOGIN_WINDOW_SECONDS,
+                                  Config.AUTH_LOCKOUT_SECONDS)
+    return _throttle
+
+
+def remember_tracked_job(job_id: int) -> None:
+    """Kept for the legacy tracking routes (now retired by the boundary above)."""
+    jobs = list(session.get("tracked_jobs", []))
+    if job_id not in jobs:
+        session["tracked_jobs"] = (jobs + [int(job_id)])[-20:]
+
+
+def _allowed_hosts() -> set:
+    hosts = {request.host}
+    if getattr(Config, "APP_BASE_URL", ""):
+        hosts.add(urlsplit(Config.APP_BASE_URL).netloc)
+    return hosts
+
+
+def register_security(app) -> None:
+
+    @app.before_request
+    def _verify_same_origin():
+        if request.method not in UNSAFE_METHODS:
+            return None
+        origin = request.headers.get("Origin")
+        if origin is not None:
+            if origin == "null" or urlsplit(origin).netloc not in _allowed_hosts():
+                _log.warning("Blocked cross-site %s %s from origin %s", request.method, request.path, origin)
+                abort(403)
+            return None
+        referer = request.headers.get("Referer")
+        if referer and urlsplit(referer).netloc not in _allowed_hosts():
+            _log.warning("Blocked cross-site %s %s from referer %s", request.method, request.path, referer)
+            abort(403)
+        return None
+
+    @app.before_request
+    def _revalidate_session():
+        """Removing a staff member (or changing their role) takes effect on their next request."""
+        if not session.get("logged_in") or request.endpoint == "static":
+            return None
+        table = {"admin": "studios", "staff": "staff", "customer": "customers"}.get(session.get("user_type"))
+        row = get_db().execute(f"SELECT * FROM {table} WHERE id=?", (session.get("user_id"),)).fetchone() if table else None
+        valid = bool(row)
+        if valid and table != "studios":
+            valid = row["studio_id"] == session.get("studio_id")
+        if valid and table == "studios":
+            valid = row["id"] == session.get("studio_id")
+        if valid and table == "staff":
+            valid = row["role"] == session.get("role")
+        if not valid:
+            _log.warning("Ending session for %s: account removed or changed", session.get("name"))
+            session.clear()
+            if request.method in UNSAFE_METHODS or request.is_json or request.path.startswith("/api"):
+                abort(401)
+            return _redirect(_url_for("main.login", next=request.path))
+        return None
+
+    if getattr(Config, "SECRET_KEY_IS_EPHEMERAL", False):
+        _log.warning("SECRET_KEY is not set — using a random per-process key. Sessions reset on restart.")

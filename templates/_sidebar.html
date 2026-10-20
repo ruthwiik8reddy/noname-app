@@ -29,6 +29,7 @@
     <a href="/portal-admin/" {% if active_page=='portal_admin' %}class="active"{% endif %}>Customer tracking</a>
     {% endif %}
     {% if 'estimates' in nav_items %}<details class="nav-dropdown" {% if active_page in ['estimates','ai-estimate'] %}open{% endif %}><summary>Estimates</summary>{{link('estimates','/estimates','All estimates')}}<a href="/ai-estimate" {% if active_page=='ai-estimate' %}class="active"{% endif %}>AI quick quote</a></details>{% endif %}
+    {{link('invoices','/invoices/','Invoices')}}
     <div class="nav-group-label">Workshop</div>
     {{link('bookings','/bookings','Bookings')}}
     {{link('dispatch','/dispatch/','Dispatch')}}
@@ -40,6 +41,7 @@
     <div class="nav-group-label">Administration</div>
     {{link('media','/media','Media')}}
     {{link('staff','/staff','Staff')}}
+    {{link('assistant','/assistant/','Studio Assistant')}}
     {{link('agents','/agents/','Agents')}}
     {{link('settings','/account','Settings')}}
   </nav>

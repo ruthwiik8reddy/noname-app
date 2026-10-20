@@ -6,3 +6,5 @@ python-dotenv>=1.0
 
 Pillow>=10.4
 pillow-heif>=0.18
+pypdfium2>=4.0
+pypdf>=4.0

@@ -1,0 +1,60 @@
+{% extends "_base.html" %}
+{% block title %}Invoices — {{ studio }}{% endblock %}
+
+{% block page_head %}
+<div class="page-head rise">
+  <div>
+    <h1 class="page-title">Invoices</h1>
+    <p class="page-sub">Bills in your studio's own invoice style</p>
+  </div>
+  <div class="page-actions">
+    {% if is_admin %}<a class="btn btn-secondary" href="{{ url_for('invoices.template_editor') }}">Invoice style</a>{% endif %}
+    <a class="btn btn-primary" href="{{ url_for('invoices.invoice_new') }}">New invoice</a>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+{% if not has_template and is_admin %}
+<div class="alert alert-violet" style="margin-bottom:20px">
+  <strong>Make invoices look like yours.</strong>
+  Upload one of your existing invoices and BayQ will copy its layout, colours and wording for every new invoice.
+  <a href="{{ url_for('invoices.template_editor') }}" style="margin-left:6px">Upload your invoice →</a>
+</div>
+{% endif %}
+
+<div class="grid grid-3 stagger" style="margin-bottom:22px">
+  <div class="card stat"><div class="label">Outstanding</div><div class="value">{{ money(totals.outstanding) }}</div></div>
+  <div class="card stat"><div class="label">Paid</div><div class="value">{{ money(totals.paid) }}</div></div>
+  <div class="card stat"><div class="label">Drafts</div><div class="value">{{ totals.drafts }}</div></div>
+</div>
+
+<div class="card">
+  {% if invoices %}
+  <div class="table-scroll">
+    <table class="data">
+      <thead><tr><th>Number</th><th>Customer</th><th>Vehicle</th><th>Issued</th><th>Status</th><th class="num">Total</th></tr></thead>
+      <tbody>
+      {% for inv in invoices %}
+        <tr onclick="location.href='{{ url_for('invoices.invoice_detail', invoice_id=inv.id) }}'" style="cursor:pointer">
+          <td class="strong">{{ inv.number }}</td>
+          <td>{{ inv.customer_name }}</td>
+          <td class="muted">{{ inv.vehicle }}</td>
+          <td class="muted">{{ inv.issue_date }}</td>
+          <td>
+            {% set badge = {'Paid':'badge-green','Sent':'badge-blue','Void':'badge-gray'}.get(inv.status, 'badge-amber') %}
+            <span class="badge {{ badge }}">{{ inv.status }}</span>
+          </td>
+          <td class="num strong">{{ money(inv.total) }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-pad muted" style="text-align:center; padding:48px 20px">
+    No invoices yet. Create one from scratch, or from a job or approved estimate.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

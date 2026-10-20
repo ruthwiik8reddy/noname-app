@@ -14,7 +14,7 @@ Staff:
   /jobs/<id>/inspection-upload/<panel>        POST photo (before/after)
   /jobs/<id>/payment                          POST toggle payment_received (admin)
 """
-import os, json, logging
+import os, json, logging, uuid
 from flask import request, redirect, url_for, session, jsonify, render_template, Response
 from werkzeug.utils import secure_filename
 
@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 from .db_manager import get_db
 from .auth import staff_or_admin_required, admin_required
 from . import controller as _c
+from .security import remember_tracked_job, safe_redirect_target
 
 bp = _c.bp
 
@@ -33,6 +34,7 @@ INSPECTION_PANELS = [
 ]
 PANEL_LABELS = dict(INSPECTION_PANELS)
 UPLOAD_BASE = _c.Config.PRIVATE_UPLOAD_ROOT
+ALLOWED_PHOTO_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "heic"}
 
 
 def _updir(sid):
@@ -73,6 +75,7 @@ def cust_inspection(token):
     job = _job_by_token(conn, token)
     if not job:
         return render_template("customer_tracking_invalid.html"), 404
+    remember_tracked_job(job["id"])
     return render_template("customer_inspection.html",
         token=token,
         car=job["car"] or "Your Vehicle",
@@ -188,7 +191,16 @@ def inspection_upload(job_id, panel):
         if not file or not file.filename:
             return jsonify({"error": "no file"}), 400
 
-        fn = secure_filename(f"{job_id}_{panel}_{tag}_{file.filename}")
+        if tag not in ("before", "after"):
+            return jsonify({"error": "tag must be 'before' or 'after'"}), 400
+        if panel not in PANEL_LABELS:
+            return jsonify({"error": "unknown panel"}), 400
+        ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+        if ext not in ALLOWED_PHOTO_EXTENSIONS:
+            return jsonify({"error": "Photos only (jpg, png, webp, heic)."}), 400
+        # Job id prefix is how upload access control maps a file back to its job;
+        # the random part stops names being guessed from the panel and tag.
+        fn = secure_filename(f"{job_id}_{panel}_{tag}_{uuid.uuid4().hex[:12]}.{ext}")
         file.save(os.path.join(_updir(sid), fn))
         url = f"/static/uploads/studio_{sid}/inspection/{fn}"
 
@@ -227,4 +239,5 @@ def toggle_payment(job_id):
         logger.info(f"Exiting toggle_payment — job {job_id} payment={'paid' if received else 'unpaid'}")
     except Exception as e:
         logger.error(f"Error in toggle_payment(job_id={job_id}): {e}", exc_info=True)
-    return redirect(request.form.get("redirect_to") or url_for("main.inspection_report", job_id=job_id))
+    return redirect(safe_redirect_target(request.form.get("redirect_to"),
+                                         url_for("main.inspection_report", job_id=job_id)))

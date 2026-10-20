@@ -15,6 +15,8 @@ load_dotenv()
 
 class Config:
     SECRET_KEY      = os.getenv("SECRET_KEY") or secrets.token_hex(32)
+    # True when no SECRET_KEY is configured: sessions then reset on every restart.
+    SECRET_KEY_IS_EPHEMERAL = not os.getenv("SECRET_KEY")
     DB_PATH         = os.getenv("DATABASE_URL", os.path.join(BASE_DIR, "studios.db"))
     DEBUG           = os.getenv("FLASK_DEBUG", "0") == "1"
     TEMPLATE_FOLDER = os.path.join(BASE_DIR, "templates")
@@ -24,9 +26,9 @@ class Config:
     OLLAMA_URL   = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434")
     OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
 
-    # Multimodal model for Digital Vehicle Inspection (Phase 2).
-    # Install with: ollama pull llava:7b   (or llava:13b / bakllava for better accuracy)
-    OLLAMA_VISION_MODEL = os.getenv("OLLAMA_VISION_MODEL", "llava:7b")
+    # Multimodal model for Digital Vehicle Inspection and invoice scanning.
+    # Install with: ollama pull qwen2.5vl:7b
+    OLLAMA_VISION_MODEL = os.getenv("OLLAMA_VISION_MODEL", "qwen2.5vl:7b")
 
     # Local inference is slow — vision especially. Generous, but bounded.
     OLLAMA_TEXT_TIMEOUT   = int(os.getenv("OLLAMA_TEXT_TIMEOUT", "90"))
@@ -75,6 +77,15 @@ class Config:
     SESSION_COOKIE_SAMESITE = 'Lax'
     SESSION_COOKIE_SECURE = PRODUCTION
     PERMANENT_SESSION_LIFETIME = timedelta(hours=8)
+
+    # Failed-login throttling (see security.LoginThrottle).
+    AUTH_MAX_LOGIN_ATTEMPTS   = int(os.getenv("AUTH_MAX_LOGIN_ATTEMPTS", "5"))
+    AUTH_LOGIN_WINDOW_SECONDS = int(os.getenv("AUTH_LOGIN_WINDOW_SECONDS", "900"))
+    AUTH_LOCKOUT_SECONDS      = int(os.getenv("AUTH_LOCKOUT_SECONDS", "900"))
+
+    # Invoice templates and other private documents — inside the private
+    # upload root, so validate() keeps them out of /static too.
+    PRIVATE_STORAGE = os.getenv("PRIVATE_STORAGE", os.path.join(PRIVATE_UPLOAD_ROOT, "documents"))
 
     @classmethod
     def validate(cls):

@@ -12,6 +12,8 @@ from .base import BaseOrchestrator, OrchestratorError, TTLCache
 from .dvi_orchestrator import DVIOrchestrator
 from .estimate_orchestrator import EstimateOrchestrator
 from .inventory_orchestrator import InventoryIntelligenceOrchestrator
+from .invoice_style_orchestrator import InvoiceStyleOrchestrator
+from .studio_assistant_orchestrator import StudioAssistantOrchestrator
 
 __all__ = [
     "ALLOWED_TRANSITIONS",
@@ -25,7 +27,9 @@ __all__ = [
     "DVIOrchestrator",
     "EstimateOrchestrator",
     "InventoryIntelligenceOrchestrator",
+    "InvoiceStyleOrchestrator",
     "OrchestratorError",
+    "StudioAssistantOrchestrator",
     "TTLCache",
     "TransitionResult",
 ]

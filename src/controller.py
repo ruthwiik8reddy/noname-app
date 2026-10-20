@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from datetime import datetime, timedelta
 import logging
 import os
+import re
 import uuid
 import secrets
 from werkzeug.utils import secure_filename
@@ -29,6 +30,10 @@ from .auth import (
     auth_context, hash_password, validate_password_strength,
     can, current_role,
 )
+from .security import (
+    login_throttle, remember_tracked_job, safe_redirect_target,
+)
+from .services.repositories import SettingsRepository
 
 bp = Blueprint("main", __name__)
 
@@ -91,19 +96,29 @@ def login():
         password = request.form.get("password", "").strip()
         logger.info(f"Login attempt for username: {username}")
 
-        if not username or not password:
+        throttle = login_throttle()
+        throttle_key = throttle.key(request.remote_addr, username)
+        locked = throttle.locked_for(throttle_key)
+
+        if locked:
+            logger.warning(f"Login blocked (locked out) for username: {username}")
+            error = f"Too many failed attempts. Try again in {max(1, locked // 60)} minute(s)."
+        elif not username or not password:
             error = "Please enter both username and password."
         else:
             try:
                 conn = get_db()
                 payload = attempt_login(username, password, conn)
                 if payload:
+                    throttle.record_success(throttle_key)
                     set_session(payload)
+                    session.permanent = True
                     logger.info(f"Login successful: {username} (role={payload.get('role')})")
                     next_url = request.args.get("next") or url_for("main.dashboard")
                     from .security import safe_next
                     destination=safe_next(next_url)
                     return redirect((destination if destination.startswith('/portal/') else '/portal/') if payload.get('role')=='customer' else destination)
+                throttle.record_failure(throttle_key)
                 logger.warning(f"Login failed: invalid credentials for {username}")
                 error = "Invalid username or password."
             except Exception as e:
@@ -300,7 +315,7 @@ def update_job_status(job_id):
     except Exception as e:
         logger.error(f"Error in update_job_status(job_id={job_id}): {e}", exc_info=True)
 
-    redirect_to = request.form.get("redirect_to") or url_for("main.jobs_list")
+    redirect_to = safe_redirect_target(request.form.get("redirect_to"), url_for("main.jobs_list"))
     return redirect(redirect_to)
 
 # ── Inventory & Analytics Dashboard ─────────────────────────────────────────
@@ -696,7 +711,7 @@ def estimate_detail(estimate_id):
     notes = get_notes_for(conn, sid, role, estimate_id=estimate_id)
 
     return render_template("estimate_detail.html",
-        **sidebar_context(), **auth_context(), active_page="estimates", est=est, items=items, notes=notes
+        **sidebar_context(), **auth_context(), active_page="estimates", est=est, items=items, notes=notes,
     )
 
 
@@ -749,7 +764,7 @@ def add_note():
     job_id      = f.get("job_id") or None
     estimate_id = f.get("estimate_id") or None
     booking_id  = f.get("booking_id") or None
-    redirect_to = f.get("redirect_to") or url_for("main.dashboard")
+    redirect_to = safe_redirect_target(f.get("redirect_to"), url_for("main.dashboard"))
 
     if note_type == "internal" and not can(role, "view_internal_notes"):
         note_type = "client"
@@ -790,12 +805,12 @@ def delete_note(note_id):
         if not can(role, "delete_anything") and note["author_name"] != session.get("name", ""):
             abort(403)
 
-        conn.execute("DELETE FROM notes WHERE id=?", (note_id,))
+        conn.execute("DELETE FROM notes WHERE id=? AND studio_id=?", (note_id, sid))
         conn.commit()
         logger.info(f"Exiting delete_note — note {note_id} deleted")
     except Exception as e:
         logger.error(f"Error in delete_note(note_id={note_id}): {e}", exc_info=True)
-    redirect_to = request.form.get("redirect_to") or url_for("main.dashboard")
+    redirect_to = safe_redirect_target(request.form.get("redirect_to"), url_for("main.dashboard"))
     return redirect(redirect_to)
 
 
@@ -954,6 +969,10 @@ def upload_media():
         try:
             job_id  = request.form.get("job_id") or None
             stage   = request.form.get("stage", "before")
+            if job_id and not conn.execute(
+                "SELECT 1 FROM jobs WHERE id=? AND studio_id=?", (job_id, sid)
+            ).fetchone():
+                errors.append("That job doesn't belong to this studio.")
             caption = request.form.get("caption", "").strip()
             files   = request.files.getlist("files")
 
@@ -1021,7 +1040,7 @@ def delete_media(media_id):
         if os.path.exists(filepath):
             os.remove(filepath)
 
-        conn.execute("DELETE FROM media WHERE id=?", (media_id,))
+        conn.execute("DELETE FROM media WHERE id=? AND studio_id=?", (media_id, sid))
         conn.commit()
         logger.info(f"Exiting delete_media — media {media_id} deleted")
     except Exception as e:
@@ -1338,10 +1357,12 @@ def account():
     role = current_role()
     conn = get_db()
 
-    # Twilio config — read from env so it reflects whatever is live
-    twilio_sid   = os.getenv("TWILIO_ACCOUNT_SID", "")
-    twilio_token = os.getenv("TWILIO_AUTH_TOKEN", "")
-    twilio_from  = os.getenv("TWILIO_FROM_NUMBER", "")
+    # This studio's own Twilio account. The platform account in .env is never
+    # shown to (or editable by) a studio.
+    sms_cfg      = SettingsRepository().all(sid)
+    twilio_sid   = sms_cfg.get("twilio_account_sid", "")
+    twilio_token = sms_cfg.get("twilio_auth_token", "")
+    twilio_from  = sms_cfg.get("twilio_from_number", "")
     app_base_url = os.getenv("APP_BASE_URL", "")
 
     # Mask the auth token — show last 4 chars only for confirmation
@@ -1368,70 +1389,42 @@ def account():
 @admin_required
 def account_sms_config():
     """
-    Save Twilio credentials to the .env file.
-    Only admins can reach this route.
+    Save this studio's own Twilio credentials.
+
+    These used to be written into the shared .env, which let one studio
+    overwrite every studio's SMS sender and link domain. They now live in
+    studio_settings, scoped to the studio. APP_BASE_URL is platform config and
+    is only set in .env by whoever runs the server.
     """
     logger.info("Entering account_sms_config()")
-    f = request.form
+    f   = request.form
+    sid = session["studio_id"]
 
     twilio_sid   = f.get("twilio_sid", "").strip()
     twilio_token = f.get("twilio_token", "").strip()
     twilio_from  = f.get("twilio_from", "").strip()
-    app_base_url = f.get("app_base_url", "").rstrip("/").strip()
 
-    env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
+    if twilio_sid and not re.fullmatch(r"AC[0-9a-fA-F]{32}", twilio_sid):
+        return redirect(url_for("main.account") + "?error=Account+SID+should+look+like+AC+followed+by+32+hex+characters")
+    if twilio_from and not re.fullmatch(r"\+[1-9]\d{6,14}", twilio_from):
+        return redirect(url_for("main.account") + "?error=From+number+must+be+in+E.164+format,+e.g.+%2B15551234567")
 
     try:
-        # Read existing .env
-        if os.path.exists(env_path):
-            with open(env_path, "r", encoding="utf-8") as fh:
-                lines = fh.readlines()
-        else:
-            lines = []
-
-        # Keys we manage — map env key → new value
         updates = {
-            "TWILIO_ACCOUNT_SID": twilio_sid,
-            "TWILIO_FROM_NUMBER": twilio_from,
-            "APP_BASE_URL":       app_base_url,
+            "twilio_account_sid": twilio_sid,
+            "twilio_from_number": twilio_from,
         }
-        # Only update auth token if a new one was supplied (not masked placeholder)
+        # Only replace the token when a new one was typed (not the masked placeholder).
         if twilio_token and not twilio_token.startswith("•"):
-            updates["TWILIO_AUTH_TOKEN"] = twilio_token
-
-        # Update lines in-place, add missing keys at the end
-        handled = set()
-        new_lines = []
-        for line in lines:
-            stripped = line.strip()
-            if stripped.startswith("#") or "=" not in stripped:
-                new_lines.append(line)
-                continue
-            key = stripped.split("=", 1)[0].strip()
-            if key in updates:
-                new_lines.append(f"{key}={updates[key]}\n")
-                handled.add(key)
-            else:
-                new_lines.append(line)
-
-        for key, val in updates.items():
-            if key not in handled:
-                new_lines.append(f"{key}={val}\n")
-
-        with open(env_path, "w", encoding="utf-8") as fh:
-            fh.writelines(new_lines)
-
-        # Also update os.environ for the current process so SMS works immediately
-        # without restarting the server
-        import os as _os
-        for key, val in updates.items():
-            _os.environ[key] = val
-
+            if not re.fullmatch(r"[0-9a-fA-F]{32}", twilio_token):
+                return redirect(url_for("main.account") + "?error=Auth+token+should+be+32+hex+characters")
+            updates["twilio_auth_token"] = twilio_token
+        SettingsRepository().set_many(sid, updates)
         return redirect(url_for("main.account") + "?saved=SMS+settings+saved+successfully")
 
     except Exception as exc:
         logger.error(f"Error in account_sms_config: {exc}", exc_info=True)
-        return redirect(url_for("main.account") + f"?error=Save+failed:+{exc}")
+        return redirect(url_for("main.account") + "?error=Save+failed.+Please+try+again.")
 
 
 # ── Tracking token helpers ─────────────────────────────────────────────────────
@@ -1491,6 +1484,7 @@ def _send_job_status_sms(conn, studio_id: int, job_id: int, new_status: str) -> 
         job_token=token,
         new_status=new_status,
         customer_name=customer.get("name", ""),
+        studio_id=studio_id,
     )
 
 
@@ -1524,19 +1518,20 @@ def send_job_tracking_sms(job_id):
         customer = _get_job_customer(conn, job)
         if not customer or not customer.get("phone"):
             logger.info(f"No phone on file for job {job_id} — skipping SMS")
-            redirect_to = request.form.get("redirect_to") or url_for("main.jobs_list")
+            redirect_to = safe_redirect_target(request.form.get("redirect_to"), url_for("main.jobs_list"))
             return redirect(redirect_to)
 
         send_tracking_sms(
             phone=customer["phone"],
             job_token=token,
             customer_name=customer.get("name", ""),
+            studio_id=sid,
         )
         logger.info(f"Exiting send_job_tracking_sms — SMS sent for job {job_id}")
     except Exception as e:
         logger.error(f"Error in send_job_tracking_sms(job_id={job_id}): {e}", exc_info=True)
 
-    redirect_to = request.form.get("redirect_to") or url_for("main.jobs_list")
+    redirect_to = safe_redirect_target(request.form.get("redirect_to"), url_for("main.jobs_list"))
     return redirect(redirect_to)
 
 
@@ -1685,6 +1680,7 @@ def customer_tracking(token):
 
     if not job:
         return render_template("customer_tracking_invalid.html"), 404
+    remember_tracked_job(job["id"])
 
     status = job["status"]
     progress_index = JOB_STATUSES.index(status) if status in JOB_STATUSES else 0
@@ -1718,6 +1714,7 @@ def customer_dvi(token):
 
     if not job:
         return render_template("customer_tracking_invalid.html"), 404
+    remember_tracked_job(job["id"])
 
     status = job["status"]
     progress_index = JOB_STATUSES.index(status) if status in JOB_STATUSES else 0
@@ -1879,6 +1876,7 @@ def customer_panels_json(token):
     ).fetchone()
     if not job:
         return jsonify({"error": "not_found"}), 404
+    remember_tracked_job(job["id"])
     return jsonify({"panels": _serialize_panels(conn, job["studio_id"], job["id"])})
 
 

@@ -21,6 +21,7 @@ UpchargeCalculator decides what that costs, from the studio's own price list.
 from __future__ import annotations
 
 import json
+import re
 from typing import Any, Dict, List
 
 # The closed vocabulary. Every entry maps to a service in pricing/upcharge_calculator.py.
@@ -51,7 +52,35 @@ PANELS = [
 ]
 
 
+def _words(text: str) -> List[str]:
+    return re.findall(r"[a-z]+", (text or "").lower())
+
+
 class DVIPrompts:
+
+    @staticmethod
+    def echoes_instructions(description: str, threshold: float = 0.5) -> bool:
+        """
+        True when a finding's description is mostly copied from this prompt.
+
+        Small vision models that see nothing sometimes return our own defect
+        definition ("Fine circular hairlines visible as a spider-web halo…")
+        as if it were an observation. Such a finding is not evidence of
+        anything and must not reach a technician as a suggested charge.
+
+        Copying shows up as shared word *pairs*: an honest description can
+        reuse single words ("jagged", "hood") but rarely whole phrases.
+        """
+        words = _words(description)
+        pairs = list(zip(words, words[1:]))
+        if len(pairs) < 4:
+            return False
+        # Only the explanatory text — not the JSON template, whose example
+        # location ("near the wheel arch") is a phrase real findings use too.
+        prompt = _words(DVIPrompts.single_photo("", "").split("Return ONLY valid JSON")[0])
+        prompt_pairs = set(zip(prompt, prompt[1:]))
+        copied = sum(1 for p in pairs if p in prompt_pairs)
+        return copied / len(pairs) >= threshold
 
     @staticmethod
     def single_photo(vehicle: str, panel_hint: str = "unspecified") -> str:
@@ -73,6 +102,18 @@ SEVERITY SCALE:
 4 = obvious from several feet away
 5 = severe, affects the vehicle's appearance immediately
 
+HOW TO TELL DEFECTS APART:
+- light_scratch / deep_scratch: a distinct line or lines, straight or jagged, in one direction.
+  deep_scratch shows a different colour (primer or metal) inside the line.
+- swirl_marks: many fine circular hairlines, visible as a "spider-web" halo around a
+  reflected light source. Never use swirl_marks for a single line or a group of lines.
+
+DISTANCE MATTERS:
+- If the photo shows most of the car or a whole side from a distance, you CANNOT see
+  swirl_marks, water_spots or light scratches. Only report defects that would be
+  obvious at that distance (severity 4 or 5).
+- Fine defects need a close-up of a single panel.
+
 CRITICAL RULES:
 - Report ONLY what is visible in THIS photograph. Do not guess at what might be elsewhere on the car.
 - If the paint looks clean, return an empty findings list. An empty list is a CORRECT and
@@ -92,8 +133,8 @@ Return ONLY valid JSON in exactly this schema:
     {{
       "defect_type": "one value from the defect list",
       "panel": "one value from the panel list",
-      "severity": 3,
-      "confidence": 0.8,
+      "severity": "<integer 1-5, from the scale above>",
+      "confidence": "<your honest certainty, 0.0-1.0>",
       "location_note": "where on the panel, e.g. 'lower left near the wheel arch'",
       "description": "one factual sentence describing what you see"
     }}
