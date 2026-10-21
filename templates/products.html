@@ -24,8 +24,8 @@
         <td><strong>{{ p.name }}</strong></td>
         <td><span class="cat">{{ p.category }}</span></td>
         <td style="color:rgba(255,255,255,0.45)">{{ p.brand or '—' }}</td>
-        <td class="money">${{ '%.2f'|format(p.cost_per_sqft) }}</td>
-        <td class="money">${{ '%.2f'|format(p.labour_per_sqft) }}</td>
+        <td class="money">{{ (p.cost_per_sqft)|money }}</td>
+        <td class="money">{{ (p.labour_per_sqft)|money }}</td>
         <td class="money">{{ '%.0f'|format(p.markup_percent) }}%</td>
         <td>{{ p.warranty_years or 0 }} yr</td>
         <td class="act">
@@ -46,7 +46,7 @@
   {% else %}
   <div class="empty">
     No products yet — <a href="/products/new" style="color:#C8A96E">add your first one</a><br>
-    <span style="font-size:12px;opacity:.7">e.g. "XPEL Ultimate Plus PPF" at $6.50/sqft material, $4.00/sqft labour, 35% markup</span>
+    <span style="font-size:12px;opacity:.7">e.g. "XPEL Ultimate Plus PPF" at {{ 6.5|money }}/sqft material, {{ 4|money }}/sqft labour, 35% markup</span>
   </div>
   {% endif %}
 {% endblock %}

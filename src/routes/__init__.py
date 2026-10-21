@@ -25,5 +25,10 @@ BLUEPRINTS = (
     assistant_routes.bp,
 )
 
+from ..services.currency import attach as _attach_currency
+
+for _bp in BLUEPRINTS:
+    _attach_currency(_bp)
+
 __all__ = ["BLUEPRINTS", "agent_routes", "analytics_routes", "assistant_routes", "dispatch_routes",
            "dvi_routes", "invoice_routes", "lead_routes"]

@@ -15,6 +15,7 @@ forecast. That is the difference between a feature and a demo.
 """
 
 from __future__ import annotations
+from ..currency import money as _money, money_cents as _money_cents
 
 import math
 from dataclasses import asdict, dataclass, field
@@ -67,7 +68,7 @@ class ItemForecast:
 
     def as_dict(self) -> Dict[str, Any]:
         data = asdict(self)
-        data["suggested_order_cost_display"] = f"${self.suggested_order_cost_cents / 100:,.2f}"
+        data["suggested_order_cost_display"] = f"{_money_cents(self.suggested_order_cost_cents)}"
         return data
 
 
@@ -85,7 +86,7 @@ class WasteSignal:
 
     def as_dict(self) -> Dict[str, Any]:
         data = asdict(self)
-        data["excess_cost_display"] = f"${self.excess_cost_cents / 100:,.2f}"
+        data["excess_cost_display"] = f"{_money_cents(self.excess_cost_cents)}"
         return data
 
 
@@ -374,7 +375,7 @@ class DepletionForecaster:
                 "critical_count": 0,
                 "warning_count": 0,
                 "reorder_cost_cents": 0,
-                "reorder_cost_display": "$0.00",
+                "reorder_cost_display": _money_cents(0),
                 "stockouts_next_7d": 0,
                 "stockouts_next_30d": 0,
             }
@@ -399,7 +400,7 @@ class DepletionForecaster:
             "warning_count": len(warning),
             "idle_count": len([f for f in items if f.urgency == "idle"]),
             "reorder_cost_cents": reorder_cost,
-            "reorder_cost_display": f"${reorder_cost / 100:,.2f}",
+            "reorder_cost_display": f"{_money_cents(reorder_cost)}",
             "stockouts_next_7d": len(
                 [f for f in items if f.days_to_empty is not None and f.days_to_empty <= 7]
             ),

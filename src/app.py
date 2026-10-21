@@ -39,6 +39,9 @@ def create_app():
     from .routes.job_record_routes import csrf_token
     app.context_processor(lambda: {"work_records_csrf": csrf_token()})
 
+    from .services.currency import install as install_currency
+    install_currency(app)
+
     app.teardown_appcontext(close_db)
 
     # CSRF origin check, upload access control, security headers.

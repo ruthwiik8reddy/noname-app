@@ -64,7 +64,7 @@
             <span class="badge" style="background:var(--red-bg); color:var(--red); margin-left:6px;">Low Stock</span>
             {% endif %}
           </td>
-          <td class="num">${{ "%.2f"|format(item.cost_per_unit / 100) }}</td>
+          <td class="num">{{ (item.cost_per_unit)|money_cents }}</td>
           <td class="dim">{{ item.supplier or 'N/A' }}</td>
           <td><button class="btn btn-ghost btn-sm" onclick="openAdjustModal('{{ item.id }}', '{{ item.name }}')">Adjust</button></td>
         </tr>
@@ -115,7 +115,7 @@ function openAddItemModal() {
       </div>
       <div class="form-row">
         <div class="field">
-          <label class="lbl">Unit Cost ($)</label>
+          <label class="lbl">Unit Cost ({{ studio_currency.symbol|trim }})</label>
           <input type="number" step="0.01" name="cost_per_unit" placeholder="45.00">
         </div>
         <div class="field">

@@ -615,6 +615,25 @@ class AssistantIntegrationTests(AppTestCase):
         # Can't apply twice.
         self.assertEqual(c.post(f"/assistant/requests/{plan['id']}/apply", json={}).status_code, 409)
 
+    def test_durations_spoken_in_days_or_minutes_become_hours(self):
+        """The model copied "2 days" as 2 hours; the planner converts it."""
+        self._provider({"reply": "Done.", "actions": [
+            {"action": "add_service", "args": {"name": "Graphene Elite", "price": "₹32,000", "duration_hours": 2}},
+            {"action": "add_service", "args": {"name": "Quick Wash", "price": 499, "duration_hours": 45}},
+            {"action": "add_service", "args": {"name": "PPF Full", "price": 150000, "duration_hours": 72}},
+        ]})
+        c = self.login()
+        plan = c.post("/assistant/plan", json={"message": "add Graphene Elite for 32000, takes 2 days; "
+                                                          "Quick Wash 499 for 45 minutes; PPF Full 150000, 3 days"}).get_json()
+        self.assertTrue(all(s["ok"] for s in plan["steps"]), plan)
+        self.assertIn("2 days (48 h)", plan["steps"][0]["preview"])
+        self.assertIn("32,000", plan["steps"][0]["preview"])      # "₹32,000" parsed to a number
+        self.assertEqual(c.post(f"/assistant/requests/{plan['id']}/apply", json={}).get_json()["status"], "applied")
+        with self.db() as conn:
+            rows = dict(conn.execute("SELECT name, duration_hr FROM services WHERE studio_id=1 AND name IN "
+                                     "('Graphene Elite','Quick Wash','PPF Full')").fetchall())
+        self.assertEqual(rows, {"Graphene Elite": 48, "Quick Wash": 0.75, "PPF Full": 72})
+
     def test_invalid_step_blocks_whole_plan(self):
         self._provider({"reply": "", "actions": [
             {"action": "add_bay", "args": {"name": "Bay 99"}},

@@ -54,7 +54,7 @@
     <div class="table-scroll">
       <table class="data" style="font-size:13px;">
         <thead><tr>
-          <th>Service / Item</th><th>Description</th><th>Qty</th><th>Unit Price ($)</th><th>Total</th><th></th>
+          <th>Service / Item</th><th>Description</th><th>Qty</th><th>Unit Price ({{ studio_currency.symbol|trim }})</th><th>Total</th><th></th>
         </tr></thead>
         <tbody id="itemsBody"></tbody>
       </table>
@@ -70,9 +70,9 @@
     </div>
     <div class="field" style="display:flex; flex-direction:column; justify-content:flex-end;">
       <div style="text-align:right; font-size:13px; color:var(--gray-500); line-height:2;">
-        <div>Subtotal: <strong id="subtotalDisplay">$0.00</strong></div>
-        <div>Tax (<span id="taxPctDisplay">8.5</span>%): <strong id="taxDisplay">$0.00</strong></div>
-        <div style="font-size:16px; font-weight:700; color:var(--violet-600);">Total: <span id="totalDisplay">$0.00</span></div>
+        <div>Subtotal: <strong id="subtotalDisplay">{{ 0|money }}</strong></div>
+        <div>Tax (<span id="taxPctDisplay">8.5</span>%): <strong id="taxDisplay">{{ 0|money }}</strong></div>
+        <div style="font-size:16px; font-weight:700; color:var(--violet-600);">Total: <span id="totalDisplay">{{ 0|money }}</span></div>
       </div>
     </div>
   </div>
@@ -112,7 +112,7 @@ function addRow(name='', desc='', qty=1, price='') {
     <td><input type="text" name="item_desc" value="${desc}" placeholder="Optional"></td>
     <td><input type="number" name="item_qty" value="${qty}" min="1" style="width:60px" oninput="recalc()"></td>
     <td><input type="number" name="item_price" value="${price}" required min="0" step="0.01" placeholder="0.00" oninput="recalc()"></td>
-    <td class="num" id="row_total_${rowCount}" style="font-weight:600; color:var(--violet-600);">$0.00</td>
+    <td class="num" id="row_total_${rowCount}" style="font-weight:600; color:var(--violet-600);">{{ 0|money }}</td>
     <td><button type="button" onclick="this.closest('tr').remove();recalc()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;">×</button></td>
   `;
   tbody.appendChild(tr);
@@ -128,13 +128,13 @@ function recalc() {
     const total = qty * price;
     subtotal   += total;
     const cell  = row.querySelector('[id^=row_total_]');
-    if (cell) cell.textContent = '$' + total.toFixed(2);
+    if (cell) cell.textContent = fmtMoney(total);
   });
   const taxPct = parseFloat(document.getElementById('taxInput').value) || 0;
   const tax    = subtotal * taxPct / 100;
-  document.getElementById('subtotalDisplay').textContent = '$' + subtotal.toFixed(2);
-  document.getElementById('taxDisplay').textContent      = '$' + tax.toFixed(2);
-  document.getElementById('totalDisplay').textContent    = '$' + (subtotal + tax).toFixed(2);
+  document.getElementById('subtotalDisplay').textContent = fmtMoney(subtotal);
+  document.getElementById('taxDisplay').textContent      = fmtMoney(tax);
+  document.getElementById('totalDisplay').textContent    = fmtMoney(subtotal + tax);
   document.getElementById('taxPctDisplay').textContent   = taxPct;
 }
 

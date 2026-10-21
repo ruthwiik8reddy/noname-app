@@ -95,7 +95,7 @@
 
     <div class="divider"></div>
     <div class="muted" style="font-size:12.5px;line-height:1.8">
-      <div><span class="faint">Price</span> · <strong>${{ '{:,.0f}'.format(job.price or 0) }}</strong></div>
+      <div><span class="faint">Price</span> · <strong>{{ (job.price or 0)|money(0) }}</strong></div>
       {% if job.started_at %}<div><span class="faint">Started</span> · {{ job.started_at }}</div>{% endif %}
       {% if job.completed_at %}<div><span class="faint">Completed</span> · {{ job.completed_at }}</div>{% endif %}
     </div>

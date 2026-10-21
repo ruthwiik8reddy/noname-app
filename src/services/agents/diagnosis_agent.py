@@ -15,6 +15,7 @@ count is how you get confident wrong answers about your own operation.
 """
 
 from __future__ import annotations
+from ..currency import money as _money, money_cents as _money_cents
 
 import json
 from typing import Any, Dict, List
@@ -101,7 +102,7 @@ Return ONLY valid JSON:
             "clarifying_questions": parsed.get("clarifying_questions", []),
             "findings": priced,
             "estimated_total_cents": total,
-            "estimated_total_display": f"${total / 100:,.2f}",
+            "estimated_total_display": f"{_money_cents(total)}",
             "condition_score": UpchargeCalculator.condition_score(priced),
         }, source="ai")
 
@@ -232,7 +233,7 @@ class DiagnosisAgent(BaseAgent):
                     severity="warning",
                     title=f"Completed revenue is down {abs(delta):.0f}% on last month",
                     detail=(
-                        f"${this_month:,.0f} so far this month against ${last_month:,.0f} last month. "
+                        f"{_money(this_month, 0)} so far this month against {_money(last_month, 0)} last month. "
                         f"Note this counts completed jobs only, so early in the month it will "
                         f"naturally look low."
                     ),

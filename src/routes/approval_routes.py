@@ -61,4 +61,6 @@ def public(token):
     try:data=repo.read(token)
     except RecordError:return 'This approval link is unavailable. Please request a new link from the studio.',410
     if session.get('role')=='customer' and (session.get('studio_id')!=data['version']['studio_id'] or session.get('user_id')!=data['est']['customer_id']):abort(404)
+    from ..services.currency import use_studio
+    use_studio(data['version']['studio_id'])
     return make_response(render_template('approval_public.html',**data,error=error,csrf=session['approval_csrf']),400 if error else 200)

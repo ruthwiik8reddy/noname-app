@@ -78,7 +78,7 @@ function upd(){
   const k=parseFloat(document.getElementById('mk').value||0);
   const area=200, base=(m+l)*area, mk=base*k/100, tot=base+mk;
   document.getElementById('ex').innerHTML =
-    `material <b>$${(m*area).toFixed(0)}</b> + labour <b>$${(l*area).toFixed(0)}</b> + margin <b>$${mk.toFixed(0)}</b> = <b style="color:var(--violet-600)">$${tot.toFixed(0)}</b>`;
+    `material <b>${fmtMoney(m*area, 0)}</b> + labour <b>${fmtMoney(l*area, 0)}</b> + margin <b>${fmtMoney(mk, 0)}</b> = <b style="color:var(--violet-600)">${fmtMoney(tot, 0)}</b>`;
 }
 ['mat','lab','mk'].forEach(id=>document.getElementById(id).addEventListener('input',upd));
 upd();

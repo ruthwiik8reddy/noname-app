@@ -32,7 +32,7 @@
 {% block content %}
 <div class="card card-pad">
   <div class="ask">
-    <textarea id="msg" placeholder="e.g. Add a service called Ceramic Pro for $1,199, 8 hours" maxlength="2000"></textarea>
+    <textarea id="msg" placeholder="e.g. Add a service called Ceramic Pro for {{ 1199|money(0) }}, 8 hours" maxlength="2000"></textarea>
     <button class="btn btn-primary" id="send">Plan it</button>
   </div>
   <div class="chips">

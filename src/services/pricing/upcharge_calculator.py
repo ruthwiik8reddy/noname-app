@@ -16,6 +16,7 @@ work is actually performed.
 """
 
 from __future__ import annotations
+from ..currency import money as _money, money_cents as _money_cents
 
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
@@ -85,7 +86,7 @@ class UpchargeLine:
             "max_severity": self.max_severity,
             "avg_confidence": round(self.avg_confidence, 2),
             "amount_cents": self.amount_cents,
-            "amount_display": f"${self.amount_cents / 100:,.2f}",
+            "amount_display": f"{_money_cents(self.amount_cents)}",
             "pricing_basis": self.pricing_basis,
             "finding_ids": self.finding_ids,
         }

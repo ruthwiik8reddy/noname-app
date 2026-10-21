@@ -17,6 +17,7 @@ numbers — the response shape is identical either way, so the UI never branches
 """
 
 from __future__ import annotations
+from ..currency import money as _money, money_cents as _money_cents
 
 import logging
 from typing import Any, Dict, List, Optional
@@ -196,7 +197,7 @@ class InventoryIntelligenceOrchestrator(BaseOrchestrator):
         base_payload = {
             "signals": signal_dicts,
             "total_excess_cents": total_excess_cents,
-            "total_excess_display": f"${total_excess_cents / 100:,.2f}",
+            "total_excess_display": f"{_money_cents(total_excess_cents)}",
             "jobs_analyzed": len({j for jobs in per_job.values() for j in jobs}),
             "job_volume": volume,
         }

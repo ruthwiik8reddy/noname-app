@@ -11,6 +11,7 @@ question, we:
 The AI answers in natural language using YOUR numbers — it never
 invents a price. Non-pricing questions fall through untouched.
 """
+from .services.currency import money as _money, money_cents as _money_cents
 import re
 from typing import Optional
 
@@ -134,8 +135,8 @@ def build_pricing_facts(studio_id: int, question: str) -> Optional[str]:
         lines.append(
             f"- {p['name']} ({p['category']}"
             + (f", {p['brand']}" if p['brand'] else "")
-            + f"): material ${p['cost_per_sqft']:.2f}/sqft, "
-              f"labour ${p['labour_per_sqft']:.2f}/sqft, "
+            + f"): material {_money(p['cost_per_sqft'])}/sqft, "
+              f"labour {_money(p['labour_per_sqft'])}/sqft, "
               f"markup {p['markup_percent']:.0f}%"
             + (f", {p['warranty_years']}yr warranty" if p['warranty_years'] else "")
         )
@@ -158,9 +159,9 @@ def build_pricing_facts(studio_id: int, question: str) -> Optional[str]:
     for p in products:
         q = _price(p, sqft, coverage)
         lines.append(
-            f"- {p['name']}: {q['area']} sqft → material ${q['material']:.2f} "
-            f"+ labour ${q['labour']:.2f} + margin ${q['markup']:.2f} "
-            f"= TOTAL ${q['total']:.2f}"
+            f"- {p['name']}: {q['area']} sqft → material {_money(q['material'])} "
+            f"+ labour {_money(q['labour'])} + margin {_money(q['markup'])} "
+            f"= TOTAL {_money(q['total'])}"
         )
     lines.append("")
     lines.append(
@@ -170,7 +171,7 @@ def build_pricing_facts(studio_id: int, question: str) -> Optional[str]:
         "• Do NOT explain how it was calculated. Do NOT add disclaimers or advice.\n"
         "• Do NOT recalculate or invent numbers — use the TOTAL exactly as given.\n"
         "• If only ONE product fits, reply like: "
-        "\"Full PPF on a 2023 BMW X7 is $3,540 (XPEL Ultimate).\"\n"
+        f"\"Full PPF on a 2023 BMW X7 is {_money(3540, 0)} (XPEL Ultimate).\"\n"
         "• If SEVERAL products fit, list just name + price, one per line, nothing more."
     )
     return "\n".join(lines)

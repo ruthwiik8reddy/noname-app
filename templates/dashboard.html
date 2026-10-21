@@ -24,7 +24,7 @@
 <div class="grid grid-4 stagger">
   <div class="card stat accent">
     <div class="label">Revenue booked</div>
-    <div class="value">${{ '{:,.0f}'.format(stats.revenue or 0) }}</div>
+    <div class="value">{{ (stats.revenue or 0)|money(0) }}</div>
     <div class="foot">From {{ stats.completed }} completed job{{ '' if stats.completed == 1 else 's' }}</div>
   </div>
 
@@ -145,7 +145,7 @@
             </span>
           </td>
           <td class="dim">{{ job.completed_at or '—' }}</td>
-          <td class="num strong">${{ '{:,.0f}'.format(job.price or 0) }}</td>
+          <td class="num strong">{{ (job.price or 0)|money(0) }}</td>
         </tr>
         {% endfor %}
       </tbody>

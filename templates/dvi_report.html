@@ -115,7 +115,7 @@
           <div class="faint" style="font-size:11.5px">{{ f.panel|replace('_',' ')|title }}</div>
         </div>
         {% if f.suggested_upcharge_cents %}
-        <span class="badge badge-violet nowrap">${{ '{:,.2f}'.format(f.suggested_upcharge_cents / 100) }}</span>
+        <span class="badge badge-violet nowrap">{{ (f.suggested_upcharge_cents)|money_cents }}</span>
         {% else %}
         <span class="badge badge-gray nowrap" title="Below the confidence threshold to quote">Not priced</span>
         {% endif %}

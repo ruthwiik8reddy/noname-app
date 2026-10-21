@@ -21,7 +21,7 @@
             <div style="font-size:11px;color:rgba(255,255,255,0.3);">{{ e.customer_email }}</div>
           </td>
           <td style="color:rgba(255,255,255,0.5);">{{ e.vehicle }}</td>
-          <td style="color:#C8A96E;font-weight:500;">${{ "%.2f"|format(e.total/100) }}</td>
+          <td style="color:#C8A96E;font-weight:500;">{{ (e.total)|money_cents }}</td>
           <td>
             {% if e.status == 'Approved' %}
               <span class="badge status-completed"><span class="dot"></span>Approved</span>

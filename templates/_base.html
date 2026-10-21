@@ -106,7 +106,10 @@
     };
 
     /* Money formatting, used wherever cents cross the wire. */
-    window.money = c => '$' + (Number(c || 0) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    /* The studio's currency (Account → Currency). fmtMoney takes whole units. */
+    window.CURRENCY = {{ studio_currency|tojson }};
+    window.fmtMoney = (n, digits = 2) => CURRENCY.symbol + Number(n || 0).toLocaleString(CURRENCY.locale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+    window.money = c => fmtMoney(Number(c || 0) / 100);
   </script>
 
   {% block scripts %}{% endblock %}

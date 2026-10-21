@@ -23,6 +23,7 @@ import re
 import sqlite3
 from typing import Any, Dict, List, Optional
 
+from .. import currency
 from ...config import Config
 from ..assistant import fallback
 from ..assistant.actions import ACTIONS, ActionError, catalog, is_missing_info, is_relevant
@@ -32,6 +33,35 @@ from ..repositories.base import BaseRepository
 from .base import BaseOrchestrator, OrchestratorError
 
 logger = logging.getLogger(__name__)
+
+
+_UNIT_HOURS = {"min": 1 / 60, "minute": 1 / 60, "day": 24, "week": 168}
+_SPOKEN_DURATION = re.compile(r"(\d+(?:\.\d+)?)\s*(mins?|minutes?|days?|weeks?)\b", re.I)
+
+
+def _fix_duration_units(message: str, proposed: List[Dict[str, Any]]) -> None:
+    """
+    The model is asked for hours but sometimes copies the owner's number
+    as-is ("takes 2 days" → 2). When a duration equals a number the owner
+    gave in days, weeks or minutes, convert it — scheduling blocks the bay
+    for exactly this many hours.
+    """
+    spoken = {}
+    for amount, unit in _SPOKEN_DURATION.findall(message or ""):
+        unit = unit.lower().rstrip("s")
+        spoken[float(amount)] = _UNIT_HOURS["min" if unit.startswith("min") else unit]
+    if not spoken:
+        return
+    for step in proposed:
+        args = step.get("args")
+        if not isinstance(args, dict):
+            continue
+        try:
+            value = float(args.get("duration_hours"))
+        except (TypeError, ValueError):
+            continue
+        if value in spoken:
+            args["duration_hours"] = round(value * spoken[value], 2)
 
 
 class StudioAssistantOrchestrator(BaseOrchestrator):
@@ -149,11 +179,12 @@ class StudioAssistantOrchestrator(BaseOrchestrator):
             reply = ("The AI model is offline, so I matched your request against common patterns."
                      if proposed else
                      "The AI model is offline and I couldn't match that request. Try phrasing like "
-                     "“add service Ceramic Pro for $899, 6 hours” or “raise all prices by 5%”, "
+                     f"“add service Ceramic Pro for {currency.money(899, 0)}, 6 hours” or “raise all prices by 5%”, "
                      "or try again once the model is running.")
 
         proposed = [{"action": str(p.get("action", "")), "args": p.get("args") or {}}
                     for p in proposed if isinstance(p, dict)][:20]
+        _fix_duration_units(message, proposed)
         steps = self._run(studio_id, proposed, commit=False, message=message) if proposed else []
 
         # Steps that only fail for want of a number the owner hasn't given yet

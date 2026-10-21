@@ -1,4 +1,5 @@
 """Recorded labor, reviewed direct contribution and a backtested naive scenario."""
+from ..currency import money as _money, money_cents as _money_cents
 from collections import defaultdict
 from datetime import datetime,timedelta,timezone
 from decimal import Decimal
@@ -26,7 +27,7 @@ def add_operations(conn,sid,start,end,today,fact):
         amount=sum(r['contribution_cents'] for r in records);revenue=sum(r['revenue_cents'] for r in records)
         ratio=round(100*amount/revenue,1) if revenue>0 else None
         fact(f'service_contribution_{index}','revenue',f'Reviewed contribution: {service}',amount,'cents',
-             f'{service}: ${amount/100:,.2f} direct contribution on {len(records)} reviewed jobs'+(f' ({ratio}% of their selling value).' if ratio is not None else '.'),
+             f'{service}: {_money_cents(amount)} direct contribution on {len(records)} reviewed jobs'+(f' ({ratio}% of their selling value).' if ratio is not None else '.'),
              'Selling price less recorded labor/materials on reviewed completed jobs, grouped by recorded service label. Excludes overhead, fees and tax. Not net profit.',records)
     for staff_id,segments in sorted(labor.items()):
         hours=round(sum(r['seconds'] for r in segments)/3600,2);count=len({r['job_id'] for r in segments})
@@ -58,7 +59,7 @@ def add_operations(conn,sid,start,end,today,fact):
         prediction=rounded(Decimal(sum(weeks[-4:]))/4)
         errors=[abs(rounded(Decimal(sum(weeks[i-4:i]))/4)-weeks[i]) for i in range(4,10)]
         mae=rounded(Decimal(sum(errors))/len(errors))
-        statement=f'If the last four complete weeks repeat, the next full week has ${prediction/100:,.2f} of completed job value. Historical one-week mean absolute error was ${mae/100:,.2f} over six checks.'
+        statement=f'If the last four complete weeks repeat, the next full week has {_money_cents(prediction)} of completed job value. Historical one-week mean absolute error was {_money_cents(mae)} over six checks.'
         value=prediction
     else:
         value=None;statement=f'Weekly projection withheld: {len(history)} jobs across {occupied} nonzero weeks. At least 20 jobs and eight nonzero weeks in the last ten complete weeks are required.'

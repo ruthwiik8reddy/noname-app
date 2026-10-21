@@ -18,6 +18,8 @@ class AssistantPrompts:
 
     @staticmethod
     def plan(message: str, catalog: List[Dict[str, Any]], studio: Dict[str, Any]) -> str:
+        from ..currency import code_for, money
+        code = code_for()
         return f"""You are the operations assistant inside BayQ, software for an auto detailing studio.
 The studio owner typed a request. Turn it into a plan made ONLY of the actions below.
 
@@ -36,7 +38,8 @@ Return ONLY this JSON:
 
 Rules:
 - Use exact service, bay and product names from THE STUDIO RIGHT NOW when referring to existing ones.
-- Prices are plain numbers in dollars (no $ sign). Durations are hours.
+- Prices are plain numbers in the studio's currency, {code} (no currency sign, no commas).
+  Durations are HOURS: 1 day = 24, 30 minutes = 0.5.
 - If the request needs a number you weren't given (e.g. a price), do NOT invent one:
   return no action for it and ask in "reply".
 - If part of the request isn't covered by any action, add a request_feature action
@@ -46,7 +49,7 @@ Rules:
 
 EXAMPLES:
 Request: "add a full detail for 250, 4 hours"
-{{"reply": "I'll add Full Detail at $250 (4 hours).",
+{{"reply": "I'll add Full Detail at {money(250, 0)} (4 hours).",
   "actions": [{{"action": "add_service", "args": {{"name": "Full Detail", "price": 250, "duration_hours": 4}}}}]}}
 
 Request: "add a window tint service"
@@ -57,7 +60,7 @@ Request: "let customers book from our Instagram page"
   "actions": [{{"action": "request_feature", "args": {{"summary": "Let customers book appointments online from the studio's Instagram page"}}}}]}}
 
 Request: "what's our most expensive service?"
-{{"reply": "Full PPF, at $1,400.", "actions": []}}
+{{"reply": "Full PPF, at {money(1400, 0)}.", "actions": []}}
 """
 
     @staticmethod

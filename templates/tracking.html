@@ -14,7 +14,7 @@
             <div class="job-title">{{ job.car }} — {{ job.service }}</div>
             <div class="job-meta">
               <span><strong>Technician:</strong> {{ job.technician }}</span>
-              <span><strong>Price:</strong> ${{ job.price }}</span>
+              <span><strong>Price:</strong> {{ job.price|money(0) }}</span>
               <span><strong>Status:</strong>
                 <span class="badge badge-{{ job.status | lower | replace(' ', '-') }}">{{ job.status }}</span>
               </span>

@@ -12,6 +12,7 @@ less certain.
 """
 
 from __future__ import annotations
+from ..currency import money as _money, money_cents as _money_cents
 
 from typing import List
 
@@ -54,7 +55,7 @@ class EstimateAgent(BaseAgent):
                 severity="warning" if dead else "opportunity",
                 title=f"{est['customer_name']}'s quote is {days} days old",
                 detail=(
-                    f"${(est['total'] or 0) / 100:,.2f} for {est['vehicle'] or 'their vehicle'}, "
+                    f"{_money_cents(est['total'] or 0)} for {est['vehicle'] or 'their vehicle'}, "
                     f"still marked '{est['status']}'. "
                     + ("Likely cold — worth closing out or one last call."
                        if dead else "A short follow-up often converts these.")
@@ -89,7 +90,7 @@ class EstimateAgent(BaseAgent):
                     kind="dvi_unquoted",
                     severity="opportunity",
                     title=f"Inspection on {insp['car'] or 'a vehicle'} found "
-                          f"${amount / 100:,.2f} of unquoted work",
+                          f"{_money_cents(amount)} of unquoted work",
                     detail=(
                         f"{accepted} finding(s) accepted but no estimate was created."
                         if accepted else

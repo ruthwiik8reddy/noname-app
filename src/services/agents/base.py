@@ -133,7 +133,9 @@ class BaseAgent(ABC):
         started = time.time()
         self._degraded = False
         try:
-            findings = self.collect() or []
+            from ..currency import for_studio
+            with for_studio(self.studio_id):
+                findings = self.collect() or []
         except Exception as exc:  # noqa: BLE001 - an agent must never break its caller
             logger.warning("Agent %s failed: %s\n%s", self.name, exc, traceback.format_exc(limit=3))
             return AgentResult(

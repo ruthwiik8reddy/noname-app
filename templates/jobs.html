@@ -72,7 +72,7 @@
             </form>
             {% endif %}
           </td>
-          <td class="num strong">${{ '{:,.0f}'.format(job.price or 0) }}</td>
+          <td class="num strong">{{ (job.price or 0)|money(0) }}</td>
           <td class="nowrap" style="text-align:right">
             <a class="btn btn-ghost btn-sm" href="/dispatch/job/{{ job.id }}">Manage</a>
             {% if session.get('role') in ['admin','general_manager'] %}

@@ -221,7 +221,7 @@
 #         if estimates:
 #             parts.append("Recent estimates:")
 #             for e in estimates:
-#                 parts.append(f"  - {e['customer_name']} | ${e['total']/100:.2f} | {e['status']}")
+#                 parts.append(f"  - {e['customer_name']} | {_money_cents(e['total'])} | {e['status']}")
 #             parts.append("")
 
 #         if visual_summary:
@@ -487,6 +487,7 @@ and zero recurring API costs. Strict JSON formatting and Few-Shot prompting
 are enforced to guarantee commercial-grade reliability from local models.
 """
 
+from .services.currency import money as _money, money_cents as _money_cents
 import json
 import os
 import sqlite3
@@ -697,7 +698,7 @@ class PromptBuilder:
         if estimates:
             parts.append("Recent estimates:")
             for e in estimates:
-                parts.append(f"  - {e['customer_name']} | ${e['total']/100:.2f} | {e['status']}")
+                parts.append(f"  - {e['customer_name']} | {_money_cents(e['total'])} | {e['status']}")
             parts.append("")
 
         if visual_summary:

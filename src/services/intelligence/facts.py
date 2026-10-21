@@ -13,12 +13,23 @@ def cents(value):
     return int((Decimal(str(value or 0)) * 100).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
 
 
+def currency_code():
+    from ..currency import code_for
+    return code_for()
+
+
 def money(value):
-    return f"${value / 100:,.2f}"
+    from ..currency import money_cents
+    return money_cents(value)
 
 
 class IntelligenceFacts(BaseRepository):
     def snapshot(self, studio_id, days=30, today=None):
+        from ..currency import for_studio
+        with for_studio(studio_id):
+            return self._snapshot(studio_id, days, today)
+
+    def _snapshot(self, studio_id, days=30, today=None):
         if type(days) is not int or not 7 <= days <= 90:
             raise ValueError('Choose a period between 7 and 90 days.')
         today = today or datetime.now(timezone.utc).date()
@@ -189,9 +200,9 @@ class IntelligenceFacts(BaseRepository):
         return dict(version=1, studio_id=studio_id, generated_at=datetime.now(timezone.utc).isoformat(),
                     period=dict(days=days, start=start.isoformat(), end_exclusive=end.isoformat(),
                                 previous_start=previous.isoformat(), timezone='UTC'),
-                    currency='USD', facts=facts, actions=actions,
+                    currency=currency_code(), facts=facts, actions=actions,
                     limitations=[
-                        'Job prices are treated as whole USD and estimate totals as cents, matching the existing application.',
+                        'Job prices are whole currency units and estimate totals are hundredths, matching the existing application.',
                         'Cash collection, profit and payment reconciliation require a transaction ledger.',
                         'Recorded hours and budget variances are not attendance, actual bay utilization, technician speed or quality.',
                         'Vehicle condition comparisons require stable vehicle links across visits and reviewed inspection evidence.',

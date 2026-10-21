@@ -32,6 +32,8 @@ DEFAULTS: Dict[str, str] = {
     "business_hours": "",
     # Dialling code added to 10-digit numbers for WhatsApp links ("91", "1"…).
     "whatsapp_country_code": "",
+    # ISO code from services/currency.py ("INR", "USD"…). Display only.
+    "currency": "USD",
 }
 
 

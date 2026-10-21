@@ -8,9 +8,11 @@ settings. Every change is previewed first and only applied on confirmation.
 from __future__ import annotations
 
 import logging
+import re
 
 from flask import Blueprint, jsonify, render_template, request, session
 
+from ..services import currency
 from ..auth import admin_required, auth_context
 from ..services.llm.base import LLMError
 from ..services.orchestrators import OrchestratorError, StudioAssistantOrchestrator
@@ -22,8 +24,8 @@ bp = Blueprint("assistant", __name__, url_prefix="/assistant")
 _assistant = StudioAssistantOrchestrator()
 
 EXAMPLES = [
-    "Add a service called Ceramic Pro 5-Year for $1,199, takes 8 hours",
-    "Raise all prices by 7%, rounded to the nearest $5",
+    "Add a service called Ceramic Pro 5-Year for {1199}, takes 8 hours",
+    "Raise all prices by 7%, rounded to the nearest {5}",
     "Set our sales tax to 9.5% and make invoices due in 7 days",
     "Add a Bay 4 and rename Bay 1 to Paint Booth",
     "We want customers to be able to book online from Instagram",
@@ -46,7 +48,7 @@ def console():
     return render_template(
         "assistant.html", **_sidebar(), **auth_context(), active_page="assistant",
         history=_assistant.history(sid), feature_requests=_assistant.feature_requests(sid),
-        examples=EXAMPLES,
+        examples=[re.sub(r"\{(\d+)\}", lambda m: currency.money(int(m.group(1)), 0), e) for e in EXAMPLES],
     )
 
 

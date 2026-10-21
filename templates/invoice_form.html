@@ -64,9 +64,9 @@
     <div class="field"><label class="lbl">Discount ({{ currency|trim }})</label><input type="number" name="discount" id="discount" step="0.01" min="0" value="{{ prefill.discount or '' }}"></div>
     <div class="field"><label class="lbl">Tax rate (%)</label><input type="number" name="tax_percent" id="tax" step="0.01" min="0" max="50" value="{{ prefill.tax_percent or 0 }}"></div>
     <div class="field" style="text-align:right; line-height:1.9; font-size:13px">
-      <div>Subtotal <strong id="sub">$0.00</strong></div>
-      <div>Tax <strong id="taxAmt">$0.00</strong></div>
-      <div style="font-size:16px; font-weight:700; color:var(--violet-600)">Total <span id="total">$0.00</span></div>
+      <div>Subtotal <strong id="sub">{{ currency }}0.00</strong></div>
+      <div>Tax <strong id="taxAmt">{{ currency }}0.00</strong></div>
+      <div style="font-size:16px; font-weight:700; color:var(--violet-600)">Total <span id="total">{{ currency }}0.00</span></div>
     </div>
   </div>
 

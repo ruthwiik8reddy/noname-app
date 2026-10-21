@@ -1,3 +1,4 @@
+from .services.currency import money as _money, money_cents as _money_cents
 from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, abort, send_from_directory
 from datetime import datetime, timedelta
 import logging
@@ -9,6 +10,7 @@ from werkzeug.utils import secure_filename
 
 logger = logging.getLogger(__name__)
 
+from .services.currency import choices as currency_choices
 from .db_manager import get_db
 # ── Orchestrator Pattern ──
 # Controllers never call an LLM directly. Every AI-backed feature is routed
@@ -36,6 +38,8 @@ from .security import (
 from .services.repositories import SettingsRepository
 
 bp = Blueprint("main", __name__)
+from .services.currency import attach as _attach_currency
+_attach_currency(bp)
 
 # Shared orchestrator instances. One per process so their TTL caches actually
 # cache — a new instance per request would defeat the point.
@@ -348,7 +352,7 @@ def inventory_dashboard():
         items=items,
         total_items=total_items,
         low_stock_count=len(low_stock_items),
-        total_valuation_display=f"${total_valuation_cents / 100:,.2f}",
+        total_valuation_display=f"{_money_cents(total_valuation_cents)}",
         categories=categories
     )
 
@@ -687,7 +691,7 @@ def estimate_lookup(estimate_id):
         "vehicle_id":       est["vehicle_id"],
         "services_summary": est["services_summary"] or "",
         "total":            est["total"],
-        "total_display":    f"${est['total']/100:.2f}",
+        "total_display":    f"{_money_cents(est['total'])}",
         "status":           est["status"],
     })
 
@@ -1383,10 +1387,25 @@ def account():
         twilio_token_masked=twilio_token_masked,
         twilio_from=twilio_from,
         whatsapp_country_code=whatsapp_country_code,
+        currency_choices=currency_choices(),
         app_base_url=app_base_url,
         flash_ok=request.args.get("saved"),
         flash_err=request.args.get("error"),
     )
+
+
+@bp.route("/account/currency", methods=["POST"])
+@admin_required
+def account_currency():
+    from .routes.job_record_routes import verify_csrf
+    from .services import currency
+    verify_csrf()
+    code = request.form.get("currency", "").strip().upper()
+    if not currency.valid(code):
+        return redirect(url_for("main.account") + "?error=Choose+a+currency+from+the+list")
+    SettingsRepository().set(session["studio_id"], currency.SETTING, code)
+    currency.forget()
+    return redirect(url_for("main.account") + "?saved=Currency+saved")
 
 
 @bp.route("/account/sms-config", methods=["POST"])
@@ -1592,9 +1611,10 @@ def customer_warranty_pdf(token):
     except ValueError:
         completed_date = datetime.now().strftime("%B %d, %Y")
 
-    # Price display
-    price_cents = row["price"] or 0
-    price_display = f"${price_cents / 100:.2f}" if price_cents >= 100 else f"${price_cents}.00"
+    # Price display. jobs.price is whole units (not cents), in the studio's currency.
+    from .services.currency import money, use_studio
+    use_studio(row["studio_id"])
+    price_display = money(row["price"] or 0)
 
     # Warranty reference = first 12 chars of token, uppercase
     warranty_id = token[:12].upper()
@@ -1689,6 +1709,8 @@ def customer_tracking(token):
     if not job:
         return render_template("customer_tracking_invalid.html"), 404
     remember_tracked_job(job["id"])
+    from .services.currency import use_studio
+    use_studio(job["studio_id"])
 
     status = job["status"]
     progress_index = JOB_STATUSES.index(status) if status in JOB_STATUSES else 0
@@ -1723,6 +1745,8 @@ def customer_dvi(token):
     if not job:
         return render_template("customer_tracking_invalid.html"), 404
     remember_tracked_job(job["id"])
+    from .services.currency import use_studio
+    use_studio(job["studio_id"])
 
     status = job["status"]
     progress_index = JOB_STATUSES.index(status) if status in JOB_STATUSES else 0

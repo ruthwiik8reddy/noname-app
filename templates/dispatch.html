@@ -78,7 +78,7 @@
             </span>
             <span class="nm">{{ job.staff_name or job.technician or 'Unassigned' }}</span>
           </span>
-          {% if job.price %}<span style="font-size:12.5px; font-weight:650; color:var(--gray-800)">${{ '{:,.0f}'.format(job.price) }}</span>{% endif %}
+          {% if job.price %}<span style="font-size:12.5px; font-weight:650; color:var(--gray-800)">{{ (job.price)|money(0) }}</span>{% endif %}
         </div>
       </div>
       {% else %}
@@ -175,7 +175,7 @@
   /* ── New job ─────────────────────────────────────────────────────────── */
   function newJob() {
     const svcOptions = SERVICES.map(s =>
-      `<option value="${s.name}" data-price="${s.price}">${s.name} — $${s.price}</option>`).join('');
+      `<option value="${s.name}" data-price="${s.price}">${s.name} — ${fmtMoney(s.price, 0)}</option>`).join('');
     const techOptions = TECHS.map(t =>
       `<option value="${t.id}">${t.name}${t.in_progress ? ' (busy)' : ''}</option>`).join('');
 
@@ -195,7 +195,7 @@
           </div>
           <div class="form-row">
             <div class="field">
-              <label>Price ($)</label>
+              <label>Price ({{ studio_currency.symbol|trim }})</label>
               <input name="price" id="priceIn" type="number" min="0" step="1" value="0">
             </div>
             <div class="field">

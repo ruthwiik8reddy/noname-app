@@ -71,6 +71,24 @@
   {% endif %}
 </div>
 
+<!-- Currency -->
+<div class="section-head"><span class="section-title">Currency</span></div>
+<div style="background:var(--white); border:1.5px solid var(--gray-200); border-radius:var(--r-lg); padding:24px; margin-bottom:28px;">
+  <form method="POST" action="/account/currency" style="display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap;">
+    <input type="hidden" name="csrf" value="{{ work_records_csrf }}">
+    <div class="field" style="margin:0; min-width:260px;">
+      <label class="lbl" for="currency_select">Prices, estimates and invoices are shown in</label>
+      <select id="currency_select" name="currency">
+        {% for code, label in currency_choices %}
+        <option value="{{ code }}" {% if code == studio_currency.code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Save currency</button>
+  </form>
+  <p class="help" style="margin-top:10px;">Only the symbol and number style change ({{ 180000|money(0) }}). Amounts you've already entered are not converted.</p>
+</div>
+
 <!-- SMS Configuration -->
 <div class="section-head"><span class="section-title">SMS Configuration (Twilio)</span></div>
 <div style="background:var(--white); border:1.5px solid var(--gray-200); border-radius:var(--r-lg); padding:24px;">

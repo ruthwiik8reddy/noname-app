@@ -24,7 +24,7 @@
 <div class="grid grid-4 stagger">
   <div class="card stat accent">
     <div class="label">Revenue this month</div>
-    <div class="value" id="mRevenue">${{ '{:,.0f}'.format(revenue_month) }}</div>
+    <div class="value" id="mRevenue">{{ (revenue_month)|money(0) }}</div>
     <div class="foot">From completed jobs</div>
   </div>
   <div class="card stat">
@@ -76,7 +76,7 @@
             {% set h = (d.jobs / maxv * 96) %}
             <rect x="{{ x }}" y="{{ 116 - h }}" width="{{ [520 / (trend|length), 34]|min }}" height="{{ h }}"
                   rx="3" fill="var(--violet-500)" opacity="0.85">
-              <title>{{ d.day }} — {{ d.jobs }} job(s), ${{ '{:,.0f}'.format(d.revenue or 0) }}</title>
+              <title>{{ d.day }} — {{ d.jobs }} job(s), {{ (d.revenue or 0)|money(0) }}</title>
             </rect>
           {% endfor %}
           <line x1="14" y1="117" x2="586" y2="117" stroke="var(--line)" stroke-width="1"/>

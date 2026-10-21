@@ -25,7 +25,7 @@
 
   <div class="field">
     <label class="lbl">Budget range (optional)</label>
-    <input type="text" id="ai_budget" placeholder="e.g. $500–$1500, or leave blank">
+    <input type="text" id="ai_budget" placeholder="e.g. {{ 500|money(0) }}–{{ 1500|money(0) }}, or leave blank">
   </div>
 
   <button class="btn btn-primary" id="btn_ask" onclick="askAI()">Generate Estimate</button>
@@ -61,8 +61,8 @@ async function askAI() {
   if (!vehicle && !description) { document.getElementById('ai_vehicle').focus(); return; }
 
   let prompt = 'You are a service advisor at a professional auto detailing studio. ';
-  prompt += 'Based on the job description below, suggest specific detailing services with estimated prices in USD. ';
-  prompt += 'Format as a list: "Service Name — $price — brief reason".\n\n';
+  prompt += 'Based on the job description below, suggest specific detailing services with estimated prices in ' + CURRENCY.code + ' (' + CURRENCY.symbol.trim() + '). ';
+  prompt += 'Format as a list: "Service Name — ' + CURRENCY.symbol.trim() + 'price — brief reason".\n\n';
   if (vehicle)     prompt += `Vehicle: ${vehicle}\n`;
   if (description) prompt += `Job description: ${description}\n`;
   if (budget)      prompt += `Customer budget: ${budget}\n`;

@@ -49,7 +49,7 @@ def _coerce(p: Param, value: Any) -> Any:
         if len(text) > p.max_len:
             raise ActionError(f"'{p.name}' is too long (max {p.max_len} characters).")
         return text
-    raw = str(value).replace("$", "").replace(",", "").replace("%", "").strip()
+    raw = re.sub(r"^\s*(rs\.?|inr|₹)\s*", "", str(value), flags=re.I).replace("$", "").replace(",", "").replace("%", "").strip()
     try:
         num = float(raw)
     except ValueError as exc:
@@ -104,7 +104,15 @@ def _words(name: Any) -> List[str]:
 
 
 def _money(v: float) -> str:
-    return f"${v:,.2f}".replace(".00", "")
+    from ..currency import money
+    return money(v).replace(".00", "")
+
+
+def _duration(hours: float) -> str:
+    if hours >= 24 and hours % 24 == 0:
+        days = int(hours // 24)
+        return f"{days} day{'s' if days != 1 else ''} ({hours:g} h)"
+    return f"{hours:g} h"
 
 
 def _find_service(conn, studio_id: int, name: str) -> sqlite3.Row:
@@ -122,8 +130,8 @@ class AddService(Action):
     name = "add_service"
     summary = "Add a new service to the menu used for bookings, estimates and invoices."
     params = (Param("name", "text", max_len=80),
-              Param("price", "money", help="whole dollars", lo=0, hi=100000),
-              Param("duration_hours", "number", help="bay time in hours", lo=0.25, hi=72))
+              Param("price", "money", help="whole amount in the studio's currency", lo=0, hi=10000000),
+              Param("duration_hours", "number", help="bay time in HOURS (1 day = 24, 30 min = 0.5)", lo=0.25, hi=168))
 
     def check(self, conn, studio_id, a):
         if conn.execute("SELECT 1 FROM services WHERE studio_id=? AND LOWER(name)=LOWER(?)",
@@ -132,7 +140,7 @@ class AddService(Action):
         return a
 
     def preview(self, a):
-        return f"Add service “{a['name']}” at {_money(a['price'])}, {a['duration_hours']:g} h"
+        return f"Add service “{a['name']}” at {_money(a['price'])}, {_duration(a['duration_hours'])}"
 
     def relevance_terms(self, a):
         return ["service", "add", "new", "offer", "package"] + _words(a.get("name"))
@@ -148,8 +156,8 @@ class UpdateService(Action):
     summary = "Change an existing service's name, price or duration."
     params = (Param("name", "text", help="current name, exactly as on the menu", max_len=80),
               Param("new_name", "text", required=False, max_len=80),
-              Param("price", "money", required=False, help="whole dollars", lo=0, hi=100000),
-              Param("duration_hours", "number", required=False, lo=0.25, hi=72))
+              Param("price", "money", required=False, help="whole amount in the studio's currency", lo=0, hi=10000000),
+              Param("duration_hours", "number", required=False, help="bay time in HOURS (1 day = 24, 30 min = 0.5)", lo=0.25, hi=168))
 
     def check(self, conn, studio_id, a):
         row = _find_service(conn, studio_id, a["name"])
@@ -170,11 +178,11 @@ class UpdateService(Action):
         if a.get("price") is not None:
             parts.append(f"price {_money(a.get('old_price', 0))} → {_money(a['price'])}")
         if a.get("duration_hours") is not None:
-            parts.append(f"duration {a.get('old_duration', 0):g} h → {a['duration_hours']:g} h")
+            parts.append(f"duration {_duration(a.get('old_duration') or 0)} → {_duration(a['duration_hours'])}")
         return f"Update “{a['name']}”: " + ", ".join(parts)
 
     def relevance_terms(self, a):
-        return ["price", "cost", "charge", "rename", "duration", "hour", "minute", "$"] + _words(a.get("name"))
+        return ["price", "cost", "charge", "rename", "duration", "hour", "minute", "day", "$", "₹"] + _words(a.get("name"))
 
     def apply(self, conn, studio_id, a):
         conn.execute(
@@ -216,8 +224,8 @@ class AdjustAllPrices(Action):
     name = "adjust_all_prices"
     summary = "Raise or lower every service price by a percentage (negative to lower)."
     params = (Param("percent", "percent", help="e.g. 10 for +10%, -5 for -5%", lo=-50, hi=100),
-              Param("round_to", "int", required=False, help="round new prices to this many dollars, e.g. 5",
-                    lo=1, hi=100))
+              Param("round_to", "int", required=False, help="round new prices to a multiple of this amount, e.g. 5 or 100",
+                    lo=1, hi=10000))
 
     def check(self, conn, studio_id, a):
         rows = conn.execute("SELECT id, name, price FROM services WHERE studio_id=?", (studio_id,)).fetchall()
@@ -365,7 +373,20 @@ def _text_rule(limit: int) -> Callable[[str], str]:
     return check
 
 
+def _currency_rule(v: str) -> str:
+    from ..currency import CURRENCIES
+    raw = str(v).strip()
+    aliases = {"rupee": "INR", "rupees": "INR", "rs": "INR", "₹": "INR", "dollar": "USD", "dollars": "USD",
+               "$": "USD", "euro": "EUR", "euros": "EUR", "€": "EUR", "pound": "GBP", "pounds": "GBP",
+               "£": "GBP", "dirham": "AED", "dirhams": "AED"}
+    code = aliases.get(raw.lower().rstrip("."), raw.upper())
+    if code not in CURRENCIES:
+        raise ActionError(f"'{raw}' isn't a currency I know. Use a code like {', '.join(list(CURRENCIES)[:6])}.")
+    return code
+
+
 _SETTING_RULES.update({
+    "currency": ("currency", _currency_rule),   # INR, USD, EUR… — also accepts "rupees", "$"
     "default_tax_percent": ("default sales tax % for estimates and invoices", _num_rule(0, 50)),
     "invoice_payment_terms_days": ("days until an invoice is due", _num_rule(0, 365)),
     "invoice_terms": ("terms & conditions printed on invoices", _text_rule(600)),
@@ -382,6 +403,7 @@ _SETTING_RULES.update({
 
 
 _SETTING_TERMS: Dict[str, List[str]] = {
+    "currency": ["currency", "rupee", "dollar", "euro", "pound", "dirham", "inr", "usd", "₹", "$", "€", "£"],
     "default_tax_percent": ["tax", "gst", "vat", "hst"],
     "invoice_payment_terms_days": ["due", "terms", "net ", "days", "pay within"],
     "invoice_terms": ["terms", "condition", "policy"],

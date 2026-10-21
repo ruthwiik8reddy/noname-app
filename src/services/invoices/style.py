@@ -214,9 +214,15 @@ def style_from_form(form) -> Dict[str, Any]:
     return raw
 
 
+_RUPEE_SYMBOLS = {"₹", "rs", "rs.", "inr", "rs/-"}
+
+
 def format_money(cents: int, style: Dict[str, Any]) -> str:
+    from ..currency import group
     sign = "-" if cents < 0 else ""
-    return f"{sign}{style.get('currency_symbol', '$')}{abs(cents) / 100:,.2f}"
+    symbol = style.get("currency_symbol", "$")
+    code = "INR" if symbol.strip().lower() in _RUPEE_SYMBOLS else "USD"   # 1,80,000 vs 180,000
+    return f"{sign}{symbol}{group(abs(cents) / 100, code)}"
 
 
 def format_date(iso: str, style: Dict[str, Any]) -> str:

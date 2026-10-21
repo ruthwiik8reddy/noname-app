@@ -66,15 +66,15 @@
             {% if item.description %}<div style="font-size:11px;color:rgba(255,255,255,0.3);">{{ item.description }}</div>{% endif %}
           </td>
           <td style="color:rgba(255,255,255,0.4);">{{ item.quantity }}</td>
-          <td style="text-align:right;color:#C8A96E;">${{ "%.2f"|format(item.total/100) }}</td>
+          <td style="text-align:right;color:#C8A96E;">{{ (item.total)|money_cents }}</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
     <div class="totals">
-      <div class="t-row"><span class="t-label">Subtotal</span><span>${{ "%.2f"|format(est.subtotal/100) }}</span></div>
-      <div class="t-row"><span class="t-label">Tax ({{ est.tax_percent }}%)</span><span>${{ "%.2f"|format(est.tax_amount/100) }}</span></div>
-      <div class="t-row total"><span class="t-label">Total</span><span>${{ "%.2f"|format(est.total/100) }}</span></div>
+      <div class="t-row"><span class="t-label">Subtotal</span><span>{{ (est.subtotal)|money_cents }}</span></div>
+      <div class="t-row"><span class="t-label">Tax ({{ est.tax_percent }}%)</span><span>{{ (est.tax_amount)|money_cents }}</span></div>
+      <div class="t-row total"><span class="t-label">Total</span><span>{{ (est.total)|money_cents }}</span></div>
     </div>
   </div>
 

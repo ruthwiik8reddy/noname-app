@@ -29,6 +29,7 @@ Three deliberate constraints:
 """
 
 from __future__ import annotations
+from ..currency import money as _money, money_cents as _money_cents
 
 import logging
 import os
@@ -339,7 +340,7 @@ class DVIOrchestrator(BaseOrchestrator):
         lines = calculator.consolidate(findings)
         total_cents = sum(line.amount_cents for line in lines)
         score = UpchargeCalculator.condition_score(findings)
-        total_display = f"${total_cents / 100:,.2f}"
+        total_display = f"{_money_cents(total_cents)}"
 
         summary: Dict[str, Any]
         degraded = False
@@ -464,10 +465,10 @@ class DVIOrchestrator(BaseOrchestrator):
             "findings": findings,
             "upcharge_lines": [line.as_dict() for line in lines],
             "total_upcharge_cents": sum(line.amount_cents for line in lines),
-            "total_upcharge_display": f"${sum(line.amount_cents for line in lines) / 100:,.2f}",
+            "total_upcharge_display": _money_cents(sum(line.amount_cents for line in lines)),
             "accepted_count": len(accepted),
             "accepted_total_cents": accepted_total,
-            "accepted_total_display": f"${accepted_total / 100:,.2f}",
+            "accepted_total_display": f"{_money_cents(accepted_total)}",
         }
 
     def decide(self, studio_id: int, finding_id: int, decision: str, actor: str) -> bool:
@@ -554,7 +555,7 @@ class DVIOrchestrator(BaseOrchestrator):
             "line_count": len(lines),
             "subtotal_cents": subtotal_cents,
             "total_cents": total_cents,
-            "total_display": f"${total_cents / 100:,.2f}",
+            "total_display": f"{_money_cents(total_cents)}",
         }
 
     # ── helpers ───────────────────────────────────────────────────────────

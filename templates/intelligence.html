@@ -10,10 +10,10 @@
 <form><label for="days">Reporting period</label> <select id="days" name="days" onchange="this.form.submit()">{% for days in [7,30,90] %}<option value="{{days}}" {% if snapshot.period.days==days %}selected{% endif %}>{{days}} days</option>{% endfor %}</select></form></div>
 {% endblock %}
 {% block content %}
-<p class="intel-meta">{{ snapshot.period.start }} through {{ snapshot.period.end_exclusive }} (end exclusive) · UTC · USD · Refreshed {{ snapshot.generated_at[:19] }}</p>
+<p class="intel-meta">{{ snapshot.period.start }} through {{ snapshot.period.end_exclusive }} (end exclusive) · UTC · {{ studio_currency.code }} · Refreshed {{ snapshot.generated_at[:19] }}</p>
 <div class="grid grid-4" style="margin-bottom:20px">
 {% for f in snapshot.facts if f.id in ['job_value','completed_jobs','estimate_pipeline','low_stock'] %}
-<div class="card stat"><div class="label">{{ f.title }}</div><div class="intel-stat">{% if f.unit=='cents' %}${{ '{:,.2f}'.format(f.value/100) }}{% else %}{{ f.value }}{% endif %}</div><div class="foot">{{ f.unit if f.unit!='cents' else ('Potential work' if f.id=='estimate_pipeline' else 'Completed work') }}</div></div>
+<div class="card stat"><div class="label">{{ f.title }}</div><div class="intel-stat">{% if f.unit=='cents' %}{{ (f.value)|money_cents }}{% else %}{{ f.value }}{% endif %}</div><div class="foot">{{ f.unit if f.unit!='cents' else ('Potential work' if f.id=='estimate_pipeline' else 'Completed work') }}</div></div>
 {% endfor %}</div>
 <div class="intel-layout"><div>
 <section class="card intel-section"><h2>Ask about your business</h2><p>Ask in your own words. Answers cite the records used and never change your shop data.</p>

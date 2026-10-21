@@ -28,6 +28,7 @@ from flask import (Blueprint, Response, abort, jsonify, redirect, render_templat
                    send_file, session, url_for)
 from markupsafe import Markup, escape
 
+from ..services import currency
 from ..auth import admin_required, auth_context, permission_required
 from ..config import Config
 from ..services.invoices import render_exact, scan
@@ -67,8 +68,14 @@ def _private_dir(studio_id: int) -> str:
 def _style_for(studio_id: int) -> Dict[str, Any]:
     tpl = InvoiceRepository().get_template(studio_id)
     if tpl and tpl.get("style"):
-        return normalize_style(tpl["style"])
-    return _style_ai.studio_defaults(studio_id)
+        style = normalize_style(tpl["style"])
+    else:
+        style = _style_ai.studio_defaults(studio_id)
+    # "$" is only the built-in default; a studio that chose another currency
+    # gets its symbol. A symbol read off their own invoice ("Rs.") is kept.
+    if style.get("currency_symbol", "$").strip() == "$":
+        style["currency_symbol"] = currency.symbol(currency.code_for(studio_id))
+    return style
 
 
 def _logo_path(studio_id: int) -> Optional[str]:
@@ -261,7 +268,7 @@ def invoice_list():
     return render_template(
         "invoices.html", **_sidebar(), **auth_context(), active_page="invoices",
         invoices=invoices, totals=totals, has_template=bool(repo.get_template(sid)),
-        money=lambda c: format_money(int(c or 0), {"currency_symbol": "$"}),
+        money=lambda c: format_money(int(c or 0), {"currency_symbol": currency.symbol(currency.code_for())}),
     )
 
 
