@@ -158,3 +158,17 @@ def booking_job(bid):
         flash(str(exc),'error')
         return redirect(url_for('job_records.record_identity',kind='bookings',record_id=bid),code=303)
     return redirect(url_for('job_records.detail',jid=jid),code=303)
+
+
+@bp.post('/jobs/<int:jid>/tracking-stage')
+@roles_required('admin','general_manager','technician')
+def set_tracking_stage(jid):
+    """Move an in-progress car to its next detailing stage (Washing → Correction → Coating → Curing)."""
+    from ..services import tracking_stages
+    verify_csrf()
+    job=authorize(jid)
+    stage=request.form.get('stage','')
+    if stage not in tracking_stages.WORK_STAGES or job['status']!='In Progress':
+        abort(400)
+    JobRecords().execute('UPDATE jobs SET tracking_stage=? WHERE studio_id=? AND id=?',(stage,session['studio_id'],jid))
+    return redirect(request.referrer if (request.referrer or '').startswith(request.host_url) else '/jobs')

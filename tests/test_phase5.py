@@ -272,6 +272,18 @@ class SecurityIntegrationTests(AppTestCase):
         self.assertEqual(other, 0)
         self.assertEqual(before, os.path.getmtime(env) if os.path.exists(env) else None)
 
+    def test_null_origin_needs_the_csrf_token(self):
+        """Pages with Referrer-Policy: no-referrer make browsers send Origin: null on their own forms."""
+        c = self.login()
+        with c.session_transaction() as s:
+            s["work_records_csrf"] = "tok"
+        blocked = c.post("/invoices/1/status", data={"status": "Paid"}, headers={"Origin": "null"})
+        self.assertEqual(blocked.status_code, 403)
+        allowed = c.post("/invoices/1/status", data={"status": "Paid", "csrf": "tok"}, headers={"Origin": "null"})
+        self.assertNotEqual(allowed.status_code, 403)
+        wrong = c.post("/invoices/1/status", data={"status": "Paid", "csrf": "nope"}, headers={"Origin": "null"})
+        self.assertEqual(wrong.status_code, 403)
+
     def test_removed_staff_lose_access_immediately(self):
         from src.auth import hash_password
         with self.db() as conn:

@@ -81,11 +81,61 @@ class PortalBoundaryTests(unittest.TestCase):
         self.conn.execute("UPDATE jobs SET status='In Progress' WHERE id=1");self.conn.commit()
         response=client.get(url+'/status')
         self.assertEqual(response.json['status'],'In Progress')
-        self.assertEqual(set(response.json),{'id','car','service','status','completed_at'})
+        # Exactly these fields, plus the detailing stage the timeline shows — nothing about the customer.
+        self.assertEqual(set(response.json),{'id','car','service','status','completed_at','stage','stage_index'})
         self.assertEqual(self.client().get(url).status_code,200)
         self.assertEqual(client.get('/portal-admin/link/1').status_code,410)
         self.conn.execute('UPDATE vehicles SET customer_id=2 WHERE id=1');self.conn.commit()
         self.assertEqual(client.get(url+'/status').status_code,410)
+
+    def test_tracking_page_shows_live_detailing_timeline(self):
+        from src.services.repositories.tracking_links import TrackingLinks
+        self.repo.link_vehicle(1,1,1,'owner')
+        token=TrackingLinks(connection=self.conn).create(1,1,'owner');url='/portal-admin/link/'+token
+        client=self.app().test_client()
+        page=client.get(url).get_data(as_text=True)
+        for stage in ('Pending','Washing','Correction','Coating','Curing','Ready'):
+            self.assertIn(stage,page)
+        self.assertIn('Live Status',page)
+        self.assertIn('Studio 1',page)                 # the studio's own name, not BayQ
+        self.assertNotIn('Customer 1',page)            # never the customer's name
+        self.assertEqual(client.get(url+'/status').json['stage'],'Washing')   # in progress, no stage set yet
+        self.conn.execute("UPDATE jobs SET tracking_stage='Coating' WHERE id=1");self.conn.commit()
+        self.assertEqual(client.get(url+'/status').json['stage'],'Coating')
+        self.conn.execute("UPDATE jobs SET status='Completed' WHERE id=1");self.conn.commit()
+        self.assertEqual(client.get(url+'/status').json['stage'],'Ready')
+        self.conn.execute("UPDATE jobs SET status='Pending' WHERE id=1");self.conn.commit()
+        self.assertEqual(client.get(url+'/status').json['stage'],'Pending')
+
+    def test_whatsapp_link_carries_tracking_message_and_dialling_code(self):
+        from urllib.parse import unquote
+        from src.routes.portal_routes import _whatsapp_url
+        self.conn.execute("UPDATE customers SET phone='98490 12345', name='Priya Rao' WHERE id=1")
+        self.conn.execute("UPDATE jobs SET customer_id=1 WHERE id=1");self.conn.commit()
+        self.conn.execute("INSERT INTO studio_settings(studio_id,key,value) VALUES(1,'whatsapp_country_code','91')");self.conn.commit()
+        with self.app().test_request_context():
+            url=_whatsapp_url(1,1,'https://bayq.example/portal-admin/link/abc')
+        self.assertTrue(url.startswith('https://wa.me/919849012345?text='),url)
+        text=unquote(url.split('text=')[1])
+        self.assertIn('Hi Priya',text)
+        self.assertIn('Track your vehicle status live here: https://bayq.example/portal-admin/link/abc',text)
+        with self.app().test_request_context():
+            self.assertTrue(_whatsapp_url(1,2,'x').startswith('https://wa.me/?text='))   # other studio's job: no phone leaks
+        self.conn.execute("DELETE FROM studio_settings WHERE key='whatsapp_country_code'");self.conn.commit()
+        with self.app().test_request_context():
+            self.assertTrue(_whatsapp_url(1,1,'x').startswith('https://wa.me/919849012345'))  # default 91, like the original app
+
+    def test_staff_can_move_an_in_progress_car_through_stages(self):
+        from src.routes.job_record_routes import bp as records
+        app=self.app();app.register_blueprint(records)
+        client=app.test_client()
+        with client.session_transaction() as s:
+            s.update(logged_in=True,studio_id=1,role='technician',staff_id=1,user_id=1,user_type='staff',work_records_csrf='t')
+        self.assertEqual(client.post('/work-records/jobs/1/tracking-stage',data={'stage':'Coating'}).status_code,403)          # no CSRF
+        self.assertEqual(client.post('/work-records/jobs/1/tracking-stage',data={'stage':'Ready','csrf':'t'}).status_code,400) # not a work stage
+        self.assertEqual(client.post('/work-records/jobs/1/tracking-stage',data={'stage':'Coating','csrf':'t'}).status_code,302)
+        self.assertEqual(self.conn.execute('SELECT tracking_stage FROM jobs WHERE id=1').fetchone()[0],'Coating')
+        self.assertEqual(client.post('/work-records/jobs/2/tracking-stage',data={'stage':'Coating','csrf':'t'}).status_code,404) # other studio
 
     def test_tracking_rotation_revocation_expiry_and_hash_storage(self):
         from src.services.repositories.tracking_links import TrackingLinks

@@ -28,7 +28,8 @@ class TrackingLinks(BaseRepository):
             return None
         now = int(time.time()) if now is None else now
         # Reassigning the job or vehicle invalidates previous recipients' links.
-        return self.fetch_one("""SELECT j.id,j.car,j.service,j.status,j.completed_at
+        return self.fetch_one("""SELECT j.id,j.car,j.service,j.status,j.completed_at,j.studio_id,
+            COALESCE(j.tracking_stage,'') AS tracking_stage
             FROM job_tracking_links t JOIN jobs j ON j.id=t.job_id AND j.studio_id=t.studio_id
             LEFT JOIN vehicles v ON v.id=j.vehicle_id AND v.studio_id=j.studio_id
             WHERE t.token_hash=? AND t.revoked_at IS NULL AND t.expires_at>?

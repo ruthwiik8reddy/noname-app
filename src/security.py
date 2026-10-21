@@ -220,8 +220,19 @@ def register_security(app) -> None:
         if request.method not in UNSAFE_METHODS:
             return None
         origin = request.headers.get("Origin")
+        if origin == "null":
+            # Browsers send "null" from pages with Referrer-Policy: no-referrer
+            # (the tracking desk) — not proof of a cross-site request. Accept
+            # it only with the session's CSRF token, which a foreign site can't read.
+            import secrets as _secrets
+            expected = session.get("work_records_csrf", "")
+            received = request.headers.get("X-CSRF-Token") or request.form.get("csrf", "")
+            if expected and received and _secrets.compare_digest(expected, received):
+                return None
+            _log.warning("Blocked %s %s: origin null and no valid CSRF token", request.method, request.path)
+            abort(403)
         if origin is not None:
-            if origin == "null" or urlsplit(origin).netloc not in _allowed_hosts():
+            if urlsplit(origin).netloc not in _allowed_hosts():
                 _log.warning("Blocked cross-site %s %s from origin %s", request.method, request.path, origin)
                 abort(403)
             return None

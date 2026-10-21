@@ -3,6 +3,7 @@ from flask import Blueprint,abort,flash,redirect,render_template,request,session
 from ..auth import roles_required
 from ..services.repositories.portal import Portal
 from ..services.repositories.tracking_links import TrackingLinks
+from ..services import tracking_stages
 from ..services.repositories.job_records import RecordError,number
 from .job_record_routes import actor,common,csrf_token,verify_csrf
 
@@ -28,13 +29,15 @@ def retired_portal(unused=None):
 @admin_bp.route('/',methods=['GET','POST'])
 @roles_required('admin','general_manager')
 def desk():
-    repo=Portal();sid=session['studio_id'];tracking_link=None
+    repo=Portal();sid=session['studio_id'];tracking_link=None;whatsapp_url=None
     if request.method=='POST':
         verify_csrf();f=request.form
         try:
             if f.get('action')=='create-link':
-                token=TrackingLinks().create(sid,number(f.get('job_id')),actor())
+                jid=number(f.get('job_id'))
+                token=TrackingLinks().create(sid,jid,actor())
                 tracking_link=url_for('portal_admin.public_tracking',token=token,_external=True)
+                whatsapp_url=_whatsapp_url(sid,jid,tracking_link)
             elif f.get('action')=='revoke-link':
                 TrackingLinks().revoke(sid,number(f.get('job_id')))
                 flash('Tracking link revoked.','success')
@@ -55,6 +58,7 @@ def desk():
         except RecordError as exc:flash(str(exc),'error')
     values=common();values['active_page']='portal_admin'
     return render_template('portal_admin.html',**values,csrf=csrf_token(),request_key=secrets.token_hex(24),tracking_link=tracking_link,
+        whatsapp_url=whatsapp_url,
         selected_customer_id=request.values.get('customer_id',type=int),
 
         tracking_jobs=repo.fetch_all("""SELECT j.id,j.car,j.status,
@@ -72,12 +76,62 @@ def desk():
 def public_tracking(token):
     job=TrackingLinks().resolve(token)
     if not job:
-        return render_template('tracking_link.html',job=None),410
-    return render_template('tracking_link.html',job=job,token=token)
+        return render_template('tracking_link.html',job=None,studio=None),410
+    return render_template('tracking_link.html',job=_public_job(job),timeline=tracking_stages.timeline(job),
+                           studio=_studio_card(job['studio_id']),token=token)
 
 
 @admin_bp.get('/link/<token>/status')
 def public_status(token):
     from flask import jsonify
     job=TrackingLinks().resolve(token)
-    return (jsonify(job),200) if job else (jsonify(error='Tracking link unavailable.'),410)
+    if not job:
+        return jsonify(error='Tracking link unavailable.'),410
+    data=_public_job(job)
+    # Only the stage the timeline needs is added; nothing else about the job leaves.
+    index=tracking_stages.stage_index(job)
+    data.update(stage=tracking_stages.NAMES[index],stage_index=index)
+    return jsonify(data),200
+
+
+def _public_job(job):
+    """The fields a tracking link may reveal — no studio id, customer or internal notes."""
+    return {k: job[k] for k in ('id','car','service','status','completed_at')}
+
+
+def _studio_card(sid):
+    """Public business details for the page header: name, logo, address."""
+    import os
+    from ..config import Config
+    from ..services.repositories.settings_repository import SettingsRepository
+    studio=Portal().fetch_one('SELECT name,city,logo FROM studios WHERE id=?',(sid,)) or {}
+    settings=SettingsRepository().all(sid)
+    logo=os.path.basename(studio.get('logo') or '')
+    logo_url=f"/static/logos/{logo}" if logo and os.path.exists(os.path.join(Config.STATIC_FOLDER,'logos',logo)) else None
+    return {'name':studio.get('name',''),'logo':logo_url,
+            'address':settings.get('business_address') or studio.get('city',''),
+            'phone':settings.get('business_phone','')}
+
+
+def _whatsapp_url(sid,jid,link):
+    """
+    wa.me link that opens WhatsApp with the tracking message ready to send.
+
+    10-digit local numbers get the studio's dialling code (setting
+    whatsapp_country_code; 91 for studios invoicing in rupees, else 1).
+    Without a customer phone the studio picks the contact in WhatsApp.
+    """
+    import re
+    from urllib.parse import quote
+    from ..services.repositories.settings_repository import SettingsRepository
+    row=Portal().fetch_one('SELECT c.name,c.phone FROM jobs j LEFT JOIN customers c ON c.id=j.customer_id AND c.studio_id=j.studio_id '
+                           'WHERE j.studio_id=? AND j.id=?',(sid,jid)) or {}
+    first=(row.get('name') or '').split(' ')[0]
+    message=(f"Hi {first}, " if first else '')+f"\U0001F697 Track your vehicle status live here: {link}"
+    digits=re.sub(r'\D','',row.get('phone') or '')
+    if len(digits)==10:
+        # The studio's own setting, else the server default — 91, as the original Autofiera app used.
+        import os
+        code=SettingsRepository().get(sid,'whatsapp_country_code') or os.getenv('DEFAULT_COUNTRY_CODE','91')
+        digits=re.sub(r'\D','',code)+digits
+    return f"https://wa.me/{digits}?text={quote(message)}" if digits else f"https://wa.me/?text={quote(message)}"

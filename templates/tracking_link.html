@@ -1,11 +1,136 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Vehicle progress</title><style>body{margin:0;background:#f3f7f7;color:#193c40;font:16px/1.6 system-ui}main{max-width:620px;margin:8vh auto;padding:24px}section{padding:32px;background:white;border:1px solid #dce7e7;border-radius:20px}h1{font-size:32px;line-height:1.2}h2{display:inline-block;padding:12px 20px;border-radius:12px;background:#e4f4ed;color:#176143}p{color:#52696d}.eyebrow{font-size:13px;letter-spacing:2px;text-transform:uppercase}</style></head><body><main><p class="eyebrow">Your vehicle · Live progress</p><section>{% if job %}<p>Job #{{job.id}}</p><h1>{{job.car}}</h1><p>{{job.service}}</p><h2 id="jobStatus">{{job.status}}</h2><p id="completed">{% if job.completed_at %}Completed: {{job.completed_at}}{% endif %}</p><p id="updated" role="status">Updates automatically every 15 seconds.</p>{% else %}<h1>This link is unavailable</h1><p>It may have expired or been replaced. Ask your studio for a new tracking link.</p>{% endif %}</section><p>No signup needed. Keep this link private.</p></main>
-{% if job %}<script>
-let polling=false;
-async function refreshStatus(){
- if(document.hidden||polling)return;polling=true;
- try{const response=await fetch({{url_for('portal_admin.public_status',token=token)|tojson}},{cache:'no-store',credentials:'omit'});
- if(response.status===410){clearInterval(timer);document.getElementById('jobStatus').textContent='Link unavailable';document.getElementById('completed').textContent='';document.getElementById('updated').textContent='Ask your studio for a new tracking link.';return;}
- if(!response.ok)throw new Error();const job=await response.json();document.getElementById('jobStatus').textContent=job.status;document.getElementById('completed').textContent=job.completed_at?'Completed: '+job.completed_at:'';document.getElementById('updated').textContent='Updated '+new Date().toLocaleTimeString();
- }catch(e){document.getElementById('updated').textContent='Could not refresh. Showing the last recorded status; retrying shortly.';}finally{polling=false;}}
-const timer=setInterval(refreshStatus,15000);document.addEventListener('visibilitychange',refreshStatus);
-</script>{% endif %}</body></html>
+<!DOCTYPE html>
+{#- Customer tracking page, opened from a private link (no login).
+    Styled after the original Autofiera tracker: dark, gold, a live timeline
+    of detailing stages. Only the job's car, service, status and stage are
+    shown — nothing about the customer. -#}
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Track your vehicle{% if studio and studio.name %} | {{ studio.name }}{% endif %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    :root { --gold: #e9bc8b; --bg: #111; --card: #222; --line: #333; --muted: #888; }
+    * { box-sizing: border-box; }
+    body { background: var(--bg); color: #fff; font-family: "Inter", system-ui, sans-serif; margin: 0; padding: 20px 16px; }
+    .container { max-width: 500px; margin: 0 auto; }
+
+    .header { text-align: center; border-bottom: 1px solid var(--line); padding-bottom: 20px; margin-bottom: 30px; }
+    .logo { height: 80px; max-width: 220px; object-fit: contain; margin-bottom: 10px; }
+    .studio { color: #fff; font-size: 15px; font-weight: 600; letter-spacing: 1px; margin-bottom: 6px; }
+    h1 { color: var(--gold); font-size: 20px; margin: 0; text-transform: uppercase; letter-spacing: 2px; }
+    .sub { color: var(--muted); font-size: 14px; margin-top: 5px; }
+
+    .car-card { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--gold); text-align: center; margin-bottom: 30px; }
+    .service-name { color: var(--gold); font-size: 14px; text-transform: uppercase; letter-spacing: 1px; display: block; }
+    .car-model { font-size: 24px; font-weight: 600; color: #fff; display: block; margin-top: 4px; overflow-wrap: anywhere; }
+
+    .timeline { list-style: none; padding: 0; margin: 0; position: relative; }
+    .timeline::before { content: ""; position: absolute; left: 20px; top: 0; bottom: 0; width: 2px; background: var(--line); }
+    .step { position: relative; padding-left: 50px; margin-bottom: 30px; opacity: .3; transition: opacity .5s; }
+    .step.active, .step.completed { opacity: 1; }
+    .step::before { content: ""; position: absolute; left: 11px; top: 0; width: 16px; height: 16px; border-radius: 50%;
+                    background: var(--line); border: 2px solid var(--bg); z-index: 1; }
+    .step.active::before { background: var(--gold); box-shadow: 0 0 10px var(--gold); border-color: var(--gold); }
+    .step.completed::before { background: var(--gold); }
+    .step.active::after { content: ""; position: absolute; left: 7px; top: -4px; width: 24px; height: 24px; border-radius: 50%;
+                          border: 2px solid var(--gold); animation: pulse 2s infinite; }
+    @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) { .step.active::after { animation: none; } }
+    .step-title { font-size: 16px; font-weight: 600; margin-bottom: 5px; display: block; }
+    .step-desc { font-size: 12px; color: var(--muted); }
+
+    .refresh-btn { display: block; width: 100%; padding: 15px; background: var(--card); color: var(--gold); border: 1px solid var(--line);
+                   border-radius: 8px; margin-top: 20px; font: 600 15px "Inter", system-ui, sans-serif; text-align: center; cursor: pointer; }
+    .updated { text-align: center; color: #666; font-size: 12px; margin-top: 10px; min-height: 16px; }
+    .footer { text-align: center; font-size: 12px; color: #555; margin-top: 50px; line-height: 1.6; }
+    .footer a { color: #777; }
+    .private { color: #555; font-size: 11px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    {% if studio and studio.logo %}<img class="logo" src="{{ studio.logo }}" alt="{{ studio.name }}">
+    {% elif studio and studio.name %}<div class="studio">{{ studio.name }}</div>{% endif %}
+    <h1>Live Status</h1>
+    {% if job %}<div class="sub">Order #{{ job.id }}</div>{% endif %}
+  </div>
+
+  {% if job %}
+  <div class="car-card">
+    <span class="service-name">{{ job.service }}</span>
+    <span class="car-model">{{ job.car }}</span>
+  </div>
+
+  <ul class="timeline" id="timeline">
+    {% for step in timeline %}
+    <li class="step {{ step.state if step.state != 'upcoming' else '' }}" data-index="{{ loop.index0 }}">
+      <span class="step-title">{{ step.name }}</span>
+      <span class="step-desc">{{ step.desc }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+
+  <button class="refresh-btn" id="refresh" type="button">🔄 Refresh Status</button>
+  <div class="updated" id="updated" role="status">Updates automatically.</div>
+  {% else %}
+  <div class="car-card">
+    <span class="car-model">This link is unavailable</span>
+    <p class="sub">It may have expired or been replaced. Ask your studio for a new tracking link.</p>
+  </div>
+  {% endif %}
+
+  <div class="footer">
+    {% if studio %}{{ studio.name }}{% if studio.address %}<br>{{ studio.address }}{% endif %}
+    {% if studio.phone %}<br><a href="tel:{{ studio.phone }}">{{ studio.phone }}</a>{% endif %}{% endif %}
+    <div class="private">No signup needed. Keep this link private.</div>
+  </div>
+</div>
+
+{% if job %}
+<script>
+(function () {
+  const url = {{ url_for('portal_admin.public_status', token=token)|tojson }};
+  const steps = Array.from(document.querySelectorAll('#timeline .step'));
+  const updated = document.getElementById('updated');
+  let busy = false, timer = null;
+
+  function show(index) {
+    steps.forEach((li, i) => {
+      li.classList.toggle('completed', i < index);
+      li.classList.toggle('active', i === index);
+    });
+  }
+
+  async function refresh() {
+    if (busy) return;
+    busy = true;
+    try {
+      const r = await fetch(url, { cache: 'no-store', credentials: 'omit' });
+      if (r.status === 410) {
+        clearInterval(timer);
+        updated.textContent = 'This link is no longer active. Ask your studio for a new one.';
+        return;
+      }
+      if (!r.ok) throw new Error();
+      const job = await r.json();
+      show(job.stage_index);
+      updated.textContent = 'Updated ' + new Date().toLocaleTimeString();
+    } catch (e) {
+      updated.textContent = 'Could not refresh — showing the last known status.';
+    } finally {
+      busy = false;
+    }
+  }
+
+  document.getElementById('refresh').addEventListener('click', refresh);
+  timer = setInterval(() => { if (!document.hidden) refresh(); }, 15000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+})();
+</script>
+{% endif %}
+</body>
+</html>

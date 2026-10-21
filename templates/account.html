@@ -99,6 +99,11 @@
         <p class="help">Must be a verified Twilio number.</p>
       </div>
       <div class="field">
+        <label class="lbl">WhatsApp country code</label>
+        <input type="text" name="whatsapp_country_code" value="{{ whatsapp_country_code }}" placeholder="91" maxlength="5" inputmode="numeric">
+        <p class="help">Added to 10-digit customer numbers when you send tracking links on WhatsApp (91 for India, 1 for the US).</p>
+      </div>
+      <div class="field">
         <label class="lbl">Tracking link domain</label>
         <input type="text" value="{{ app_base_url }}" disabled>
         <p class="help">Set by the platform. Customer links in SMS use this address.</p>

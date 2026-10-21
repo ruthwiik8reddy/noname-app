@@ -66,6 +66,10 @@ def seed_db():
 
 def initialize_db():
     init_db()
+    # Older databases can miss columns added by one-off scripts that never ran
+    # at startup (e.g. bookings.estimate_id). Add anything still missing.
+    from .schema_repair import repair
+    repair(Config.DB_PATH)
     conn = sqlite3.connect(Config.DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT(*) FROM studios")

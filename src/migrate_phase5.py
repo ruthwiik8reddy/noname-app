@@ -174,6 +174,11 @@ def migrate(db_path: str = Config.DB_PATH) -> None:
         if not _has_column(conn, "invoices", "customer_tax_id"):
             conn.execute("ALTER TABLE invoices ADD COLUMN customer_tax_id TEXT DEFAULT ''")
 
+        # Where an in-progress car is (Washing / Correction / Coating / Curing),
+        # shown on the customer's tracking timeline.
+        if not _has_column(conn, "jobs", "tracking_stage"):
+            conn.execute("ALTER TABLE jobs ADD COLUMN tracking_stage TEXT DEFAULT ''")
+
         hashed = _hash_plaintext_passwords(conn)
         conn.commit()
         if hashed:

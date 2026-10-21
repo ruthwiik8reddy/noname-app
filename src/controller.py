@@ -275,15 +275,17 @@ def jobs_list():
     params = [sid]
 
     if not can(role, "view_all_jobs") and role in ("technician", "photographer"):
-        query += " AND technician = ?"
-        params.append(session.get("name", ""))
+        # Match the dispatch board: assigned by staff id, or by name on older jobs.
+        query += " AND (assigned_staff_id = ? OR technician = ?)"
+        params += [session.get("staff_id"), session.get("name", "")]
 
     query += " ORDER BY id DESC"
     jobs = conn.execute(query, params).fetchall()
 
+    from .services.tracking_stages import WORK_STAGES
     return render_template("jobs.html",
         **sidebar_context(), **auth_context(), active_page="jobs",
-        jobs=jobs, job_statuses=JOB_STATUSES
+        jobs=jobs, job_statuses=JOB_STATUSES, tracking_work_stages=WORK_STAGES
     )
 
 
@@ -1363,6 +1365,7 @@ def account():
     twilio_sid   = sms_cfg.get("twilio_account_sid", "")
     twilio_token = sms_cfg.get("twilio_auth_token", "")
     twilio_from  = sms_cfg.get("twilio_from_number", "")
+    whatsapp_country_code = sms_cfg.get("whatsapp_country_code", "") or os.getenv("DEFAULT_COUNTRY_CODE", "91")
     app_base_url = os.getenv("APP_BASE_URL", "")
 
     # Mask the auth token — show last 4 chars only for confirmation
@@ -1379,6 +1382,7 @@ def account():
         twilio_sid=twilio_sid,
         twilio_token_masked=twilio_token_masked,
         twilio_from=twilio_from,
+        whatsapp_country_code=whatsapp_country_code,
         app_base_url=app_base_url,
         flash_ok=request.args.get("saved"),
         flash_err=request.args.get("error"),
@@ -1403,6 +1407,7 @@ def account_sms_config():
     twilio_sid   = f.get("twilio_sid", "").strip()
     twilio_token = f.get("twilio_token", "").strip()
     twilio_from  = f.get("twilio_from", "").strip()
+    wa_code      = f.get("whatsapp_country_code", "").strip().lstrip("+")
 
     if twilio_sid and not re.fullmatch(r"AC[0-9a-fA-F]{32}", twilio_sid):
         return redirect(url_for("main.account") + "?error=Account+SID+should+look+like+AC+followed+by+32+hex+characters")
@@ -1410,7 +1415,10 @@ def account_sms_config():
         return redirect(url_for("main.account") + "?error=From+number+must+be+in+E.164+format,+e.g.+%2B15551234567")
 
     try:
+        if wa_code and not re.fullmatch(r"[1-9]\d{0,3}", wa_code):
+            return redirect(url_for("main.account") + "?error=Country+code+should+be+digits+only,+e.g.+91")
         updates = {
+            "whatsapp_country_code": wa_code,
             "twilio_account_sid": twilio_sid,
             "twilio_from_number": twilio_from,
         }

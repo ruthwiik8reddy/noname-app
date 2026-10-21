@@ -30,6 +30,8 @@ DEFAULTS: Dict[str, str] = {
     "business_website": "",
     "business_tax_id": "",
     "business_hours": "",
+    # Dialling code added to 10-digit numbers for WhatsApp links ("91", "1"…).
+    "whatsapp_country_code": "",
 }
 
 
