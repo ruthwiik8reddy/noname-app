@@ -11,6 +11,7 @@ import logging
 
 from flask import Blueprint, jsonify, render_template, request, session
 
+from ..forms import integer
 from ..auth import auth_context, roles_required
 from ..services.agents import AgentRunner, VehicleDiagnosisOrchestrator, available_agents
 from ..services.llm.base import LLMError
@@ -120,13 +121,20 @@ def toggle(agent_name: str):
 
 # ── findings ──────────────────────────────────────────────────────────────────
 
+def _limit(raw) -> int:
+    try:
+        return integer(raw, default=40, minimum=1, maximum=200)
+    except ValueError:
+        return 40
+
+
 @bp.route("/api/feed")
 @roles_required("admin", "general_manager")
 def feed():
     repo = AgentRepository()
     studio_id = session["studio_id"]
     return jsonify({
-        "findings": repo.feed(studio_id, int(request.args.get("limit", 40))),
+        "findings": repo.feed(studio_id, _limit(request.args.get("limit"))),
         "counts": repo.counts_by_severity(studio_id),
     }), 200
 

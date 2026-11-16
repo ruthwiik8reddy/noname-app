@@ -28,6 +28,7 @@ from flask import (Blueprint, Response, abort, jsonify, redirect, render_templat
                    send_file, session, url_for)
 from markupsafe import Markup, escape
 
+from ..forms import number as parse_number
 from ..services import currency
 from ..auth import admin_required, auth_context, permission_required
 from ..config import Config
@@ -223,13 +224,9 @@ def _next_number(studio_id: int, style: Dict[str, Any]) -> str:
 
 def _parse_money(value: str) -> int:
     """'1,234.50' or '$99' → cents. Raises ValueError on nonsense."""
-    cleaned = (value or "").replace(",", "").replace("$", "").strip()
-    if not cleaned:
-        return 0
-    cents = int(round(float(cleaned) * 100))
-    if cents < 0 or cents > 100_000_000:
-        raise ValueError("amount out of range")
-    return cents
+    from ..forms import cents
+    cleaned = re.sub(r"^\s*(rs\.?|inr|₹|\$)\s*", "", value or "", flags=re.I)
+    return cents(cleaned, maximum_units=1_000_000)
 
 
 def _parse_items(form) -> List[Dict[str, Any]]:
@@ -468,7 +465,7 @@ def invoice_new():
         try:
             items = _parse_items(f)
             discount = _parse_money(f.get("discount", ""))
-            tax_percent = float(f.get("tax_percent") or 0)
+            tax_percent = parse_number(f.get("tax_percent"), minimum=0, maximum=50, label="Tax rate")
             if not 0 <= tax_percent <= 50:
                 raise ValueError("Tax rate must be between 0 and 50%.")
         except ValueError as exc:

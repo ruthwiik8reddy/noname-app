@@ -1,3 +1,4 @@
+import os
 import sqlite3
 from .db_manager import init_db
 from .config import Config
@@ -65,6 +66,19 @@ def seed_db():
 
 
 def initialize_db():
+    # Every gunicorn worker runs this on boot. Hold a file lock so only one
+    # migrates at a time; the others then find nothing left to do.
+    import fcntl
+    os.makedirs(os.path.dirname(os.path.abspath(Config.DB_PATH)), exist_ok=True)
+    with open(os.path.abspath(Config.DB_PATH) + ".startup.lock", "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            _initialize_db()
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
+
+
+def _initialize_db():
     init_db()
     # Older databases can miss columns added by one-off scripts that never ran
     # at startup (e.g. bookings.estimate_id). Add anything still missing.

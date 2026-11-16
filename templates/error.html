@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+{#- Shown for 4xx/5xx errors. Standalone: it must render even when the session,
+    the database or the page layout is what failed. -#}
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>{{ title }}</title>
+  <style>
+    :root { --bg: #f6f7f9; --card: #fff; --ink: #111827; --muted: #6b7280; --accent: #7c3aed; --line: #e5e7eb; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #0f1115; --card: #171a21; --ink: #f3f4f6; --muted: #9ca3af; --line: #262a33; } }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px 16px;
+           background: var(--bg); color: var(--ink); font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    main { width: 100%; max-width: 440px; background: var(--card); border: 1px solid var(--line);
+           border-radius: 14px; padding: 32px 28px; text-align: center; }
+    .code { color: var(--accent); font-weight: 700; letter-spacing: .08em; font-size: 13px; }
+    h1 { font-size: 21px; margin: 6px 0 8px; }
+    p { color: var(--muted); margin: 0 0 22px; }
+    a { display: inline-block; background: var(--accent); color: #fff; text-decoration: none;
+        padding: 10px 18px; border-radius: 8px; font-weight: 600; }
+    .ref { margin: 18px 0 0; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="code">ERROR {{ code }}</div>
+    <h1>{{ title }}</h1>
+    <p>{{ message }}</p>
+    <a href="/">Go to the start page</a>
+    {% if request_id %}<p class="ref">Reference: {{ request_id }}</p>{% endif %}
+  </main>
+</body>
+</html>

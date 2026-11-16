@@ -6,11 +6,16 @@
 # Databases and backups (contain customer data and password hashes)
 *.db
 *.db.bak
+*.db-wal
+*.db-shm
+*.db.*.lock
 *.sqlite3
+backups/
 
 # Customer uploads (vehicle photos, invoice scans) and private storage
 static/uploads/
 instance/
+private_uploads/
 
 .venv/
 __pycache__/

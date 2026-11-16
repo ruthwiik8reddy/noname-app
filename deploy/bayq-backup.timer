@@ -1,0 +1,13 @@
+# Install:
+#   sudo cp deploy/bayq-backup.service deploy/bayq-backup.timer /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now bayq-backup.timer
+[Unit]
+Description=Nightly BayQ database backup
+
+[Timer]
+OnCalendar=*-*-* 02:30:00
+RandomizedDelaySec=15m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

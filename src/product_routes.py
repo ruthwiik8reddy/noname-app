@@ -15,7 +15,7 @@ Estimator (staff):
 import json
 import logging
 import re
-from flask import request, redirect, url_for, session, jsonify, render_template
+from flask import abort, request, redirect, url_for, session, jsonify, render_template
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +29,8 @@ from .services.orchestrators import AssistantOrchestrator, EstimateOrchestrator
 _estimate_ai = EstimateOrchestrator()
 _assistant_ai = AssistantOrchestrator()
 from .config import Config
+from .services.currency import money as _money
+from .forms import integer, number
 from . import controller as _c
 
 bp = _c.bp
@@ -75,10 +77,10 @@ def product_new():
                   f.get("name", "").strip(),
                   f.get("category", "PPF"),
                   f.get("brand", "").strip(),
-                  float(f.get("cost_per_sqft") or 0),
-                  float(f.get("labour_per_sqft") or 0),
-                  float(f.get("markup_percent") or 0),
-                  int(f.get("warranty_years") or 0),
+                  number(f.get("cost_per_sqft"), minimum=0, label="Material cost"),
+                  number(f.get("labour_per_sqft"), minimum=0, label="Labour cost"),
+                  number(f.get("markup_percent"), minimum=0, maximum=1000, label="Markup"),
+                  integer(f.get("warranty_years"), minimum=0, maximum=100, label="Warranty"),
                   f.get("notes", "").strip()))
             conn.commit()
             logger.info("Exiting product_new — product created")
@@ -107,8 +109,10 @@ def product_edit(pid):
                     labour_per_sqft=?, markup_percent=?, warranty_years=?, notes=?
                 WHERE id=? AND studio_id=?
             """, (f.get("name","").strip(), f.get("category","PPF"), f.get("brand","").strip(),
-                  float(f.get("cost_per_sqft") or 0), float(f.get("labour_per_sqft") or 0),
-                  float(f.get("markup_percent") or 0), int(f.get("warranty_years") or 0),
+                  number(f.get("cost_per_sqft"), minimum=0, label="Material cost"),
+                  number(f.get("labour_per_sqft"), minimum=0, label="Labour cost"),
+                  number(f.get("markup_percent"), minimum=0, maximum=1000, label="Markup"),
+                  integer(f.get("warranty_years"), minimum=0, maximum=100, label="Warranty"),
                   f.get("notes","").strip(), pid, sid))
             conn.commit()
             logger.info(f"Exiting product_edit — product {pid} updated")
@@ -247,7 +251,10 @@ def ai_estimate_sqft():
     products = conn.execute(
         "SELECT * FROM products WHERE studio_id=? AND active=1 ORDER BY category, name", (sid,)
     ).fetchall()
-    coverage = float(data.get("coverage") or 1.0)
+    try:
+        coverage = number(data.get("coverage"), default=1.0, minimum=0.05, maximum=1.0, label="Coverage")
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
     quotes = []
     for p in products:
         q = _price(p, sqft, coverage)
@@ -271,16 +278,16 @@ def ai_estimate_save():
         f = request.form
         vehicle   = f.get("vehicle", "").strip()
         cust_name = f.get("customer_name", "").strip() or "Walk-in"
-        pid       = int(f.get("product_id"))
-        sqft      = float(f.get("sqft") or 0)
-        coverage  = float(f.get("coverage") or 1.0)
+        pid       = integer(f.get("product_id"), default=None, minimum=1, label="Product")
+        sqft      = number(f.get("sqft"), minimum=0, maximum=10_000, label="Area")
+        coverage  = number(f.get("coverage"), default=1.0, minimum=0.05, maximum=1.0, label="Coverage")
 
         p = conn.execute("SELECT * FROM products WHERE id=? AND studio_id=?", (pid, sid)).fetchone()
         if not p:
             return "Product not found", 404
         q = _price(p, sqft, coverage)
 
-        tax_pct = float(f.get("tax_percent") or 0)
+        tax_pct = number(f.get("tax_percent"), minimum=0, maximum=100, label="Tax")
         subtotal = q["total"]
         tax_amt  = round(subtotal * tax_pct / 100.0, 2)
         total    = round(subtotal + tax_amt, 2)
@@ -297,7 +304,7 @@ def ai_estimate_save():
             INSERT INTO estimate_items (estimate_id, name, description, quantity, unit_price, total)
             VALUES (?,?,?,?,?,?)
         """, (est_id, p["name"],
-              f"{q['area']} sqft · material ${q['material']} + labour ${q['labour']} + margin ${q['markup']}",
+              f"{q['area']} sqft · material {_money(q['material'])} + labour {_money(q['labour'])} + margin {_money(q['markup'])}",
               q["area"],
               round(q["total"] / q["area"], 2) if q["area"] else 0,
               q["total"]))
@@ -312,11 +319,12 @@ def ai_estimate_save():
 @bp.route("/ai-estimate/debug")
 @staff_or_admin_required
 def ai_estimate_debug():
-    """Diagnostics — tells you exactly why the estimator is/isn't using Gemini."""
+    """Diagnostics — tells you exactly why the estimator is/isn't using Gemini. Development only."""
+    if Config.PRODUCTION:
+        abort(404)
     logger.info("Entering ai_estimate_debug()")
     info = {
         "gemini_key_set": bool(Config.GEMINI_API_KEY),
-        "gemini_key_preview": (Config.GEMINI_API_KEY[:6] + "…") if Config.GEMINI_API_KEY else None,
         "gemini_model": Config.GEMINI_MODEL,
         "ollama_model": getattr(Config, "OLLAMA_MODEL", None),
     }

@@ -14,6 +14,15 @@ SOURCES = ("manual", "booking_form", "whatsapp", "phone", "walk_in",
            "instagram", "referral", "website", "other")
 
 
+def _budget(raw) -> int:
+    """Budget is only a hint: '₹50k', 'abc' or 'NaN' become 0 rather than an error."""
+    from ...forms import integer
+    try:
+        return integer(raw, minimum=0)
+    except ValueError:
+        return 0
+
+
 class LeadRepository(BaseRepository):
 
     # ── reads ─────────────────────────────────────────────────────────────
@@ -121,7 +130,7 @@ class LeadRepository(BaseRepository):
                 (data.get("email") or "").strip(),
                 (data.get("vehicle") or "").strip(),
                 (data.get("service_interest") or "").strip(),
-                int(data.get("budget_hint") or 0),
+                _budget(data.get("budget_hint")),
                 data.get("source") if data.get("source") in SOURCES else "manual",
                 data.get("status") if data.get("status") in PIPELINE else "new",
                 (data.get("notes") or "").strip(),

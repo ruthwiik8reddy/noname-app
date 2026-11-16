@@ -677,14 +677,14 @@ class PromptBuilder:
         if jobs:
             parts.append("Recent jobs:")
             for j in jobs:
-                parts.append(f"  - {j['car']} | {j['service']} | {j['status']} | ${j['price']}")
+                parts.append(f"  - {j['car']} | {j['service']} | {j['status']} | {_money(j['price'], 0)}")
             parts.append("")
 
         services = context.get("services", [])
         if services:
             parts.append("Services offered:")
             for s in services:
-                parts.append(f"  - {s['name']}: ${s['price']} ({s['duration_hr']}hrs)")
+                parts.append(f"  - {s['name']}: {_money(s['price'], 0)} ({s['duration_hr']}hrs)")
             parts.append("")
 
         bookings = context.get("recent_bookings", [])

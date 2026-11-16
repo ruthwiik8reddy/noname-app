@@ -139,6 +139,14 @@ class StudioAssistantOrchestrator(BaseOrchestrator):
 
     # ── context for the model ─────────────────────────────────────────────
 
+    def _names_another_studio(self, studio_id: int, message: str) -> bool:
+        text = f" {re.sub(r'[^a-z0-9]+', ' ', message.lower())} "
+        for row in self.repo.fetch_all("SELECT name FROM studios WHERE id<>?", (studio_id,)):
+            name = re.sub(r"[^a-z0-9]+", " ", (row["name"] or "").lower()).strip()
+            if len(name) >= 5 and f" {name} " in text:
+                return True
+        return False
+
     def studio_snapshot(self, studio_id: int) -> Dict[str, Any]:
         r = self.repo
         settings = {row["key"]: row["value"] for row in r.fetch_all(
@@ -185,6 +193,10 @@ class StudioAssistantOrchestrator(BaseOrchestrator):
         proposed = [{"action": str(p.get("action", "")), "args": p.get("args") or {}}
                     for p in proposed if isinstance(p, dict)][:20]
         _fix_duration_units(message, proposed)
+        if proposed and self._names_another_studio(studio_id, message):
+            # Small models happily apply "change Apex Studio's prices" to *this* studio.
+            proposed = []
+            reply = "I can only make changes to your own studio, not another business."
         steps = self._run(studio_id, proposed, commit=False, message=message) if proposed else []
 
         # Steps that only fail for want of a number the owner hasn't given yet
@@ -198,6 +210,9 @@ class StudioAssistantOrchestrator(BaseOrchestrator):
                                  for m in missing for f in re.findall(r"'(\w+)'", m["error"])})
                 reply = (reply + " " if reply else "") + \
                     f"Before I can do that I need the {', '.join(fields) or 'missing details'}."
+        if steps and not any(s["ok"] for s in steps):
+            # Don't let the model's "I'll do X" stand when nothing it proposed can be done.
+            reply = "I can't do that as asked: " + steps[0]["error"].rstrip(".") + "."
         for p, s in zip(proposed, steps):
             p["suspect"] = s["suspect"]
         status = "proposed" if steps else "answered"

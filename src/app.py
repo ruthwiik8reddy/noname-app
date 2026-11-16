@@ -23,6 +23,18 @@ def create_app():
         static_folder=Config.STATIC_FOLDER,
     )
     app.config.from_object(Config)
+
+    # Behind nginx (or any reverse proxy): trust its X-Forwarded-For/-Proto/-Host
+    # so client IPs (login lockout), https and the public hostname (links in
+    # SMS/WhatsApp) are the real ones. Set TRUSTED_PROXIES=1 for one proxy.
+    if Config.TRUSTED_PROXIES:
+        from werkzeug.middleware.proxy_fix import ProxyFix
+        n = Config.TRUSTED_PROXIES
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=n, x_proto=n, x_host=n)
+
+    from .errors import install as install_errors
+    install_errors(app)
+
     from .security import install_security
     install_security(app)
 

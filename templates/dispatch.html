@@ -175,9 +175,9 @@
   /* ── New job ─────────────────────────────────────────────────────────── */
   function newJob() {
     const svcOptions = SERVICES.map(s =>
-      `<option value="${s.name}" data-price="${s.price}">${s.name} — ${fmtMoney(s.price, 0)}</option>`).join('');
+      `<option value="${esc(s.name)}" data-price="${esc(s.price)}">${esc(s.name)} — ${fmtMoney(s.price, 0)}</option>`).join('');
     const techOptions = TECHS.map(t =>
-      `<option value="${t.id}">${t.name}${t.in_progress ? ' (busy)' : ''}</option>`).join('');
+      `<option value="${esc(t.id)}">${esc(t.name)}${t.in_progress ? ' (busy)' : ''}</option>`).join('');
 
     modal.open(`
       <form method="POST" action="/dispatch/job/new">

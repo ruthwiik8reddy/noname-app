@@ -71,6 +71,8 @@ class Config:
     APP_BASE_URL        = os.getenv("APP_BASE_URL", "http://localhost:5000")
 
     PRODUCTION = os.getenv('APP_ENV','development') == 'production'
+    # How many reverse proxies (nginx, a load balancer) sit in front of the app.
+    TRUSTED_PROXIES = int(os.getenv('TRUSTED_PROXIES', '0') or 0)
     SEED_DEMO = os.getenv('SEED_DEMO','0') == '1'
     PRIVATE_UPLOAD_ROOT = os.getenv('PRIVATE_UPLOAD_ROOT',os.path.join(os.path.dirname(DB_PATH),'private_uploads'))
     SESSION_COOKIE_HTTPONLY = True
@@ -101,4 +103,5 @@ class Config:
                 raise RuntimeError('Private uploads must be outside the static directory.')
             legacy=Path(cls.STATIC_FOLDER)/'uploads'
             if legacy.exists() and any(p.is_file() and p.name!='.gitkeep' for p in legacy.rglob('*')):
-                raise RuntimeError('Move legacy customer uploads out of static storage before production startup.')
+                raise RuntimeError('Customer photos are still in static/uploads (public). Move them with: '
+                                   'python -m src.manage move-legacy-uploads')

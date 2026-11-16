@@ -61,6 +61,16 @@ def validate_password_strength(password: str) -> list[str]:
     return errors
 
 
+def username_taken(conn, username: str, ignore_staff_id=None) -> bool:
+    """Logins are looked up across owners, staff and customers, so names must be unique across all three."""
+    u = (username or "").strip().lower()
+    if conn.execute("SELECT 1 FROM studios WHERE LOWER(username)=?", (u,)).fetchone():
+        return True
+    if conn.execute("SELECT 1 FROM staff WHERE LOWER(username)=? AND id IS NOT ?", (u, ignore_staff_id)).fetchone():
+        return True
+    return bool(conn.execute("SELECT 1 FROM customers WHERE LOWER(username)=?", (u,)).fetchone())
+
+
 # ── Login logic ───────────────────────────────────────────────────────────────
 
 def attempt_login(username: str, password: str, conn) -> dict | None:
@@ -148,7 +158,14 @@ def attempt_login(username: str, password: str, conn) -> dict | None:
                 "name":      customer["name"],
             }
 
+    if not (studio or staff or customer):
+        # Same cost as a real password check, so response time doesn't reveal
+        # whether a username exists.
+        verify_password(password, _DUMMY_HASH)
     return None
+
+
+_DUMMY_HASH = hash_password("timing-equaliser-not-a-real-password")
 
 
 # ── Session helpers ───────────────────────────────────────────────────────────

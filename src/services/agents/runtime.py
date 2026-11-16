@@ -47,6 +47,7 @@ REGISTRY: Dict[str, Type[BaseAgent]] = {
 
 SCHEDULER_TICK_SECONDS = 60
 _scheduler_started = False
+_scheduler_lock = None  # lock file held while this process runs the scheduler
 _run_lock = threading.Lock()
 
 
@@ -220,6 +221,20 @@ def start_scheduler(app: Any) -> bool:
         return False
     # Under `flask run --reload`, only the child process has this set.
     if app.debug and os.environ.get("WERKZEUG_RUN_MAIN") != "true":
+        return False
+
+    # One scheduler per server, not one per gunicorn worker: the first worker
+    # to take this lock runs it and keeps the lock for its lifetime. If that
+    # worker restarts, the lock frees and the next one to boot takes over.
+    global _scheduler_lock
+    import fcntl
+    from ...config import Config
+    path = os.path.abspath(Config.DB_PATH) + ".scheduler.lock"
+    try:
+        _scheduler_lock = open(path, "w")
+        fcntl.flock(_scheduler_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        logger.info("Agent scheduler already running in another worker")
         return False
 
     _scheduler_started = True

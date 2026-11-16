@@ -11,6 +11,7 @@ import logging
 
 from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
 
+from ..forms import integer
 from ..security import safe_redirect_target
 from ..auth import admin_required, auth_context, can, current_role, staff_or_admin_required
 from ..services.orchestrators import AssignmentOrchestrator, OrchestratorError
@@ -181,7 +182,7 @@ def create_job():
             studio_id=session["studio_id"],
             car=form.get("car", ""),
             service=form.get("service", ""),
-            price=int(float(form.get("price", 0) or 0)),
+            price=integer(form.get("price"), minimum=0, maximum=100_000_000, label="Price"),
             staff_id=int(raw_staff) if str(raw_staff).strip().isdigit() else None,
             actor=_actor(),
         )

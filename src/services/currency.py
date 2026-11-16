@@ -128,6 +128,8 @@ def group(amount: Any, code: str, decimals: int = 2) -> str:
         value = Decimal(str(amount if amount not in (None, "") else 0))
     except Exception:  # noqa: BLE001 — anything unparseable shows as zero
         value = Decimal(0)
+    if not value.is_finite():
+        value = Decimal(0)
     value = value.quantize(Decimal(1).scaleb(-decimals), rounding=ROUND_HALF_UP)
     sign = "-" if value < 0 else ""
     whole, _, frac = f"{abs(value):.{decimals}f}".partition(".")

@@ -111,6 +111,9 @@ python run.py
 
 Visit **http://localhost:5055**
 
+For a real server (HTTPS, gunicorn, backups, creating studios), follow
+**[DEPLOYMENT.md](DEPLOYMENT.md)**.
+
 ---
 
 ## Demo logins (from seed.py)

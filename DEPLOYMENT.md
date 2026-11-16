@@ -1,272 +1,177 @@
-# BayQ — Oracle Cloud Deployment Log
+# Deploying BayQ to production
 
-A record of deploying BayQ (multi-tenant SaaS for auto detailing studios) to an
-Oracle Cloud Free Tier VM for a YC application demo link.
+This sets BayQ up on one Linux server (Ubuntu 22.04/24.04) behind nginx with
+HTTPS. It takes about 30 minutes. The files it uses live in `deploy/`.
 
-**Live demo:** `http://150.136.219.119`
+What you end up with:
+
+```
+customers ──https──▶ nginx :443 ──▶ gunicorn 127.0.0.1:8000 (3 workers) ──▶ SQLite (WAL)
+                                                                        └─▶ Ollama 127.0.0.1:11434
+```
+
+The history of the earlier demo deployment is in
+[docs/DEMO_DEPLOYMENT_LOG.md](docs/DEMO_DEPLOYMENT_LOG.md).
 
 ---
 
-## 1. Application Overview
+## 1. Server and domain
 
-- **App:** BayQ — Flask app, SQLite database, Jinja2 templates.
-- **AI:** Local Ollama integration (no cloud APIs).
-  - Text model: `llama3.1:8b` (assistant, estimates, inventory analysis)
-  - Vision model: `llava` (Digital Vehicle Inspection photo analysis)
-- **Entry point:** `run.py` → `create_app()` → Flask on port `5055`.
-- **Dependencies (`requirements.txt`):** Flask, requests, twilio, xhtml2pdf, python-dotenv.
+- A VM with **4+ CPU and 16+ GB RAM** if you run the AI models on it
+  (llama3.1:8b + qwen2.5vl:7b). Without AI, 1 CPU / 2 GB is enough.
+- A domain name pointing at the server (an `A` record), e.g. `bayq.example.com`.
+- Firewall: open **22, 80 and 443** only. Never open 8000 (gunicorn) or 11434 (Ollama).
 
-The Ollama integration is fully implemented in code. When `AI_ENABLED=0`, AI
-features degrade gracefully to deterministic fallbacks, so the app runs even
-without a model.
+## 2. Install system packages
+
+```bash
+sudo apt update && sudo apt install -y python3.12 python3.12-venv nginx certbot python3-certbot-nginx git sqlite3
+curl -fsSL https://ollama.com/install.sh | sh        # skip if AI_ENABLED=0
+ollama pull llama3.1:8b && ollama pull qwen2.5vl:7b
+```
+
+## 3. Get the code
+
+```bash
+sudo useradd --system --create-home --home-dir /opt/bayq --shell /usr/sbin/nologin bayq
+# Use the branch you are releasing (main once this work is merged).
+sudo -u bayq git clone --branch feature/autofiera-stabilization https://github.com/ruthwiik8reddy/noname-app.git /opt/bayq/app-src
+sudo -u bayq bash -c 'shopt -s dotglob && mv /opt/bayq/app-src/* /opt/bayq/ && rmdir /opt/bayq/app-src'
+sudo -u bayq mkdir -p /opt/bayq/data /opt/bayq/logs
+cd /opt/bayq
+sudo -u bayq python3.12 -m venv .venv
+sudo -u bayq .venv/bin/pip install -r requirements.txt
+```
+
+## 4. Configure
+
+```bash
+sudo -u bayq cp .env.example .env
+sudo -u bayq chmod 600 .env
+sudo -u bayq python3 -c "import secrets; print(secrets.token_hex(32))"   # paste as SECRET_KEY
+sudo -u bayq nano .env
+```
+
+Set at least:
+
+| Setting | Value |
+|---|---|
+| `APP_ENV` | `production` |
+| `SECRET_KEY` | the 64-character value you just generated |
+| `APP_BASE_URL` | `https://bayq.example.com` |
+| `TRUSTED_PROXIES` | `1` |
+| `DATABASE_URL` | `/opt/bayq/data/bayq.db` |
+| `PRIVATE_UPLOAD_ROOT` | `/opt/bayq/data/private` |
+| `SEED_DEMO` | `0` |
+| `LLM_MAX_CONCURRENT` | `1` (× 3 workers = 3 AI calls at once) |
+
+In production the app **refuses to start** if the secret key is weak, debug
+or demo data is on, the public URL isn't https, or customer photos are still
+in `static/uploads`.
+
+**Moving an existing database?** Copy it to `/opt/bayq/data/bayq.db` (and old
+photos with `python -m src.manage move-legacy-uploads`). The app upgrades the
+schema on first start and keeps a `*-pre-repair-*.db.bak` copy if it had to
+rebuild a table.
+
+## 5. Create the first studio
+
+```bash
+cd /opt/bayq
+sudo -u bayq bash -c 'set -a; . ./.env; set +a; .venv/bin/python -m src.manage create-studio \
+    --name "Autofiera Detailing Studio" --city "Hyderabad" --owner "Owner Name" \
+    --username autofiera --currency INR --country-code 91'
+```
+
+It asks for the owner's password (8+ characters with upper, lower, a number
+and a symbol). Run it again for each studio.
+
+## 6. Start the app
+
+```bash
+sudo cp deploy/bayq.service deploy/bayq-backup.service deploy/bayq-backup.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now bayq bayq-backup.timer
+curl -s http://127.0.0.1:8000/healthz          # → {"status":"ok"}
+```
+
+## 7. nginx and HTTPS
+
+```bash
+sudo sed 's/bayq.example.com/YOUR.DOMAIN/g' deploy/nginx-bayq.conf | sudo tee /etc/nginx/sites-available/bayq
+sudo ln -s /etc/nginx/sites-available/bayq /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo certbot --nginx -d YOUR.DOMAIN            # free certificate, auto-renews
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+## 8. Check
+
+```bash
+cd /opt/bayq && sudo -u bayq bash -c 'set -a; . ./.env; set +a; .venv/bin/python -m src.manage check'
+```
+
+Every line should show ✓ and end with **Ready.** Then open
+`https://YOUR.DOMAIN`, sign in as the owner, and under **Settings** confirm
+the currency and WhatsApp country code.
 
 ---
 
-## 2. Target Environment
+## Day-to-day operations
 
-- **Cloud:** Oracle Cloud Free Tier (Always Free eligible)
-- **Region:** US East (Ashburn)
-- **Shape:** `VM.Standard.A1.Flex` (ARM Ampere), 4 OCPU / 24 GB RAM
-- **OS:** Ubuntu 22.04
-- **Public IP:** `150.136.219.119`
+| Task | Command |
+|---|---|
+| Status / recent errors | `sudo systemctl status bayq` · `sudo journalctl -u bayq -n 100` |
+| Restart | `sudo systemctl restart bayq` |
+| Reload code with no downtime | `sudo systemctl reload bayq` |
+| App log | `/opt/bayq/logs/app.log` (rotates at 10 MB × 5) |
+| Find an error a user reported | search the log for the **Reference** shown on their error page |
+| Backup now | `sudo systemctl start bayq-backup` (nightly at 02:30 anyway, last 14 kept in `data/backups`) |
+| Reset a password | `… .venv/bin/python -m src.manage reset-password --username NAME` (signs them out everywhere) |
+| Add a studio | `… .venv/bin/python -m src.manage create-studio --help` |
 
-The 24 GB RAM was chosen so both `llama3.1:8b` and `llava` fit comfortably.
+**Update to a new version**
+
+```bash
+cd /opt/bayq
+sudo systemctl start bayq-backup                     # backup first
+sudo -u bayq git pull
+sudo -u bayq .venv/bin/pip install -r requirements.txt
+sudo systemctl restart bayq                          # migrations run on start
+```
+
+**Restore a backup**
+
+```bash
+sudo systemctl stop bayq
+sudo -u bayq cp /opt/bayq/data/backups/bayq-YYYYMMDD-HHMMSS.db /opt/bayq/data/bayq.db
+sudo -u bayq rm -f /opt/bayq/data/bayq.db-wal /opt/bayq/data/bayq.db-shm
+sudo systemctl start bayq
+```
+
+Backups stay on the same disk. Copy `data/backups/` off the server too (for
+example a nightly `rclone` or `rsync` to another machine or bucket) so a lost
+disk doesn't lose every studio's data.
 
 ---
 
-## 3. Deployment Flow (Step by Step)
+## What protects the app
 
-### Step 1 — Create the Compute Instance
-- Compute → Instances → Create Instance
-- Name: `bayq-demo`
-- Image: Ubuntu 22.04
-- Shape: `VM.Standard.A1.Flex` — 4 OCPU / 24 GB RAM (Always Free eligible)
-- Capacity type: On-demand (default)
-- Skipped Shielded Instance / Confidential Computing (hardware-level features,
-  not needed for a demo).
+- **HTTPS only**: secure, HttpOnly, SameSite cookies; HSTS; http redirects to https.
+- **Logins**: hashed passwords; lockout after 5 failures per IP and username,
+  shared by all workers; nginx rate-limits `/login`; a password reset signs the
+  account out everywhere; sessions expire after 8 hours.
+- **Requests**: cross-site form posts are blocked; CSRF tokens on sensitive
+  forms; Content-Security-Policy, X-Frame-Options and nosniff headers.
+- **Data**: every query is scoped to the signed-in studio; customer photos and
+  invoices are stored outside the web root and served only after a permission check.
+- **Errors**: users see a friendly page with a reference number, never a traceback.
 
-### Step 2 — Networking (VCN)
-- Created a new VCN `bayq-vcn` using the **VCN Wizard**
-  ("Create VCN with Internet Connectivity") — auto-creates subnets, internet
-  gateway, and route tables.
-- Selected the VCN + its **public subnet** for the instance.
-- Enabled **Automatically assign public IPv4 address**.
+## Limits to know
 
-### Step 3 — SSH Key
-- Generated a key pair during instance creation and downloaded the **private key**.
-- Saved to: `C:\Users\Abhishek\Bayq-mukyam\ssh-key-2026-08-26.key`
-
-### Step 4 — Connect via SSH
-```powershell
-ssh -i "C:\Users\Abhishek\Bayq-mukyam\ssh-key-2026-08-26.key" ubuntu@150.136.219.119
-```
-- Accepted the host fingerprint (`yes`) — added to `known_hosts`.
-
-### Step 5 — Install System Dependencies
-```bash
-sudo apt update && sudo apt install -y python3 python3-pip python3-venv git curl unzip
-```
-- Prompted "Daemons using outdated libraries" → selected `<Ok>` to restart services.
-
-### Step 6 — Open Port 80 in the OS Firewall
-```bash
-sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
-sudo netfilter-persistent save
-```
-
-### Step 7 — Install Ollama + Pull Models
-```bash
-curl -fsSL https://ollama.com/install.sh | sh
-ollama pull llama3.1:8b
-ollama pull llava
-```
-- "No NVIDIA/AMD GPU detected" warning is expected — runs on CPU.
-- Ollama runs as a systemd service on `127.0.0.1:11434`.
-
-### Step 8 — Upload the Code (from laptop)
-Run in a **local** PowerShell window (not the SSH session):
-```powershell
-Compress-Archive -Path "C:\Users\Abhishek\New folder\noname-app\*" -DestinationPath "$env:TEMP\bayq.zip" -Force
-scp -i "C:\Users\Abhishek\Bayq-mukyam\ssh-key-2026-08-26.key" "$env:TEMP\bayq.zip" ubuntu@150.136.219.119:~/
-```
-Back on the VM:
-```bash
-mkdir ~/bayq && unzip ~/bayq.zip -d ~/bayq
-```
-
-### Step 9 — Python Environment
-```bash
-cd ~/bayq
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-pip install gunicorn
-```
-
-### Step 10 — Create `.env`
-```bash
-cat > .env << 'EOF'
-SECRET_KEY=bayq-yc-demo-2026-temp
-FLASK_DEBUG=0
-OLLAMA_URL=http://127.0.0.1:11434
-OLLAMA_MODEL=llama3.1:8b
-OLLAMA_VISION_MODEL=llava
-AI_ENABLED=1
-APP_BASE_URL=http://150.136.219.119
-EOF
-```
-
-### Step 11 — Test Locally
-```bash
-python run.py    # confirmed "Running on http://127.0.0.1:5055", then Ctrl+C
-```
-
-### Step 12 — Run Publicly with Gunicorn
-```bash
-sudo ~/bayq/venv/bin/gunicorn --bind 0.0.0.0:80 --workers 2 --timeout 300 --chdir ~/bayq run:app --daemon
-```
-
-### Step 13 — Access
-- Browser → `http://150.136.219.119`
-- Demo logins (from seed data):
-
-  | Username     | Password   |
-  |--------------|------------|
-  | `shinepro`   | `shine123` |
-  | `apexdetail` | `apex123`  |
-  | `velvetauto` | `velvet123`|
-
----
-
-## 4. Problems Faced & How We Resolved Them
-
-### Problem 1 — Public IP toggle disabled during instance creation
-- **Symptom:** "Automatically assign public IPv4 address" toggle was greyed out,
-  with a warning to select a public subnet.
-- **Cause:** The inline "Create new public subnet" option in the instance wizard
-  didn't reliably enable the public IP toggle.
-- **Fix:** Created the VCN separately using the **VCN Wizard**
-  ("Create VCN with Internet Connectivity"), then selected that existing VCN +
-  public subnet in the instance wizard. Toggle became enabled.
-
-### Problem 2 — "Out of capacity" on Create
-- **Symptom:** Instance creation failed for the chosen Availability Domain.
-- **Cause:** Free-tier ARM capacity is often exhausted in popular ADs.
-- **Fix:** Retried with a different Availability Domain until it provisioned.
-
-### Problem 3 — apt prompted to restart daemons
-- **Symptom:** Purple "Daemons using outdated libraries" dialog.
-- **Fix:** Tab to `<Ok>`, Enter. Normal post-update prompt.
-
-### Problem 4 — Browser connection timed out on port 80
-- **Symptom:** `http://150.136.219.119` timed out even though gunicorn was running.
-- **Root cause (two layers):**
-  1. **OS firewall (iptables):** Our ACCEPT rule for port 80 was placed at
-     line 6, *after* a blanket `REJECT all` rule at line 5 — so traffic was
-     rejected before reaching our rule.
-  2. **Oracle VCN Security List:** The ingress rule was misconfigured with
-     **Source Port = 80** and **Destination Port = All**, instead of
-     Destination Port = 80.
-- **Fix for iptables (move ACCEPT above REJECT):**
-  ```bash
-  sudo iptables -D INPUT 6
-  sudo iptables -I INPUT 5 -m state --state NEW -p tcp --dport 80 -j ACCEPT
-  sudo netfilter-persistent save
-  ```
-- **Fix for Security List:** Deleted the bad rule and added a correct one:
-  - Source CIDR: `0.0.0.0/0`
-  - IP Protocol: TCP
-  - Source Port Range: (empty = All)
-  - Destination Port Range: `80`
-- **Verification used along the way:**
-  ```bash
-  sudo iptables -L INPUT -n --line-numbers   # confirm ACCEPT before REJECT
-  sudo ss -tlnp | grep 80                     # confirm gunicorn listening on :80
-  ps aux | grep gunicorn                       # confirm process running
-  curl -I http://127.0.0.1:80                  # confirm app responds locally (302 → /login)
-  ```
-- **Outcome:** After fixing both layers, the site loaded.
-
-### Problem 5 — Quick Quote: "Request failed (404)"
-- **Symptom:** The Quick Quote / Generate Estimate feature returned a 404.
-- **Diagnosis so far:**
-  - Ollama itself is healthy — direct test succeeded:
-    ```bash
-    curl -s http://127.0.0.1:11434/api/generate -d '{"model":"llama3.1:8b","prompt":"hi","stream":false}'
-    ```
-  - `ollama list` shows `llama3.1:8b` and `llava:latest` installed.
-  - `.env` values are correct.
-  - Likely a missing/misnamed Flask route for the Quick Quote endpoint (not an
-    Ollama problem). Route audit was the next step:
-    ```bash
-    python -c "from run import app; [print(r) for r in app.url_map.iter_rules()]" | grep -i quot
-    ```
-- **Status:** Open — rest of the app (dashboard, bookings, jobs, dispatch,
-  customers, estimates, inventory, DVI) works.
-
----
-
-## 5. Security Notes
-
-For this **temporary YC demo**, deep hardening was intentionally deferred.
-Known gaps to address if this becomes long-lived:
-
-- No CSRF protection (no Flask-WTF)
-- No rate limiting (no Flask-Limiter)
-- No security headers / HTTPS enforcement (no Flask-Talisman, no TLS)
-- Seed passwords are plaintext in `seed.py`
-- Default `SECRET_KEY` in source (overridden via `.env` on the server)
-- SQLite (fine for demo scale; not for production concurrency)
-- Ollama port `11434` kept on localhost only — **must not** be exposed in the
-  Oracle Security List.
-
-Minimum steps taken for the demo: set a non-default `SECRET_KEY` in `.env`, and
-only opened ports 22 (SSH) and 80 (HTTP) in the Security List.
-
----
-
-## 6. Operations Cheat Sheet
-
-**End the SSH session (VM keeps running):**
-```bash
-exit
-```
-
-**Reconnect:**
-```powershell
-ssh -i "C:\Users\Abhishek\Bayq-mukyam\ssh-key-2026-08-26.key" ubuntu@150.136.219.119
-```
-
-**Check if the app is running:**
-```bash
-ps aux | grep gunicorn
-sudo ss -tlnp | grep 80
-```
-
-**Restart the app:**
-```bash
-cd ~/bayq
-source venv/bin/activate
-sudo ~/bayq/venv/bin/gunicorn --bind 0.0.0.0:80 --workers 2 --timeout 300 --chdir ~/bayq run:app --daemon
-```
-
-**Run in foreground to see errors live (debugging):**
-```bash
-sudo ~/bayq/venv/bin/gunicorn --bind 0.0.0.0:80 --workers 2 --timeout 300 --chdir ~/bayq run:app
-```
-
-**Check Ollama:**
-```bash
-ollama list
-curl http://127.0.0.1:11434/api/tags
-```
-
-**App logs:**
-```bash
-cat ~/bayq/logs/app.log
-```
-
-**Clean up known_hosts on laptop after the demo (optional):**
-```powershell
-ssh-keygen -R 150.136.219.119
-```
+- **One server.** SQLite in WAL mode with 3 workers handled 450 simultaneous
+  writes in testing, which is plenty for dozens of studios. To run several
+  servers behind a load balancer, move to PostgreSQL first.
+- **AI is slow on CPU.** Vision checks take 30–180 s. Requests wait for a free
+  slot rather than overloading Ollama; raise `LLM_MAX_CONCURRENT` only if the
+  server has the RAM and cores.

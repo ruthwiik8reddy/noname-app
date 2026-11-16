@@ -69,6 +69,24 @@ def private_media(studio_id,filename):
     abort(404)
 
 
+# Pages use inline scripts and styles; external code may come only from these
+# CDNs (the 3D paint viewer and the inventory QR scanner) and Google Fonts.
+_CDNS = "https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com"
+CONTENT_SECURITY_POLICY = "; ".join([
+    "default-src 'self'",
+    f"script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' {_CDNS}",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data: blob:",
+    "media-src 'self' blob:",
+    f"connect-src 'self' {_CDNS}",
+    "worker-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+])
+
+
 def install_security(app):
     @app.before_request
     def boundary():
@@ -111,9 +129,17 @@ def install_security(app):
         response.headers['X-Content-Type-Options']='nosniff'
         response.headers.setdefault('Referrer-Policy','same-origin')
         response.headers.setdefault('X-Frame-Options','DENY')
+        # Framing is governed by X-Frame-Options above (invoice previews relax it
+        # to SAMEORIGIN), so the policy deliberately has no frame-ancestors.
+        response.headers.setdefault('Content-Security-Policy',CONTENT_SECURITY_POLICY)
         if session.get('logged_in'):response.headers['Cache-Control']='no-store'
         if Config.PRODUCTION:response.headers['Strict-Transport-Security']='max-age=31536000'
         return response
+
+    @app.get('/favicon.ico')
+    def favicon():
+        # Browsers ask for this on every page that doesn't name an icon.
+        return send_file(Path(Config.STATIC_FOLDER)/'logos'/'bayq_logo.png', mimetype='image/png', max_age=86400)
 
     @app.get('/healthz')
     def health():
@@ -127,6 +153,8 @@ def install_security(app):
 # checks the boundary above doesn't make: a cross-site Origin/Referer check on
 # every state-changing request, and re-validating the account behind a session.
 
+import json as _json
+import secrets as _secrets_mod
 import logging as _logging
 import threading as _threading
 import time as _time
@@ -138,6 +166,21 @@ _log = _logging.getLogger(__name__)
 UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
 
+def password_fingerprint(stored_hash: str) -> str:
+    """Short digest of the stored password hash, kept in the session cookie (never the hash itself)."""
+    import hashlib
+    return hashlib.sha256(("pw-fp:" + (stored_hash or "")).encode()).hexdigest()[:20]
+
+
+def remember_password(conn) -> None:
+    """After login: tie the session to the account's current password."""
+    table = {"admin": "studios", "staff": "staff", "customer": "customers"}.get(session.get("user_type"))
+    if table:
+        row = conn.execute(f"SELECT password FROM {table} WHERE id=?", (session.get("user_id"),)).fetchone()
+        if row:
+            session["pw_fp"] = password_fingerprint(row[0])
+
+
 def safe_redirect_target(target: _Optional[str], fallback: str) -> str:
     """`target` only if it is a same-site relative path, else `fallback`."""
     result = safe_next(target or "", default="")
@@ -146,34 +189,65 @@ def safe_redirect_target(target: _Optional[str], fallback: str) -> str:
 
 class LoginThrottle:
     """
-    In-memory failed-login tracker keyed by (client IP, username).
+    Failed-login tracker keyed by (client IP, username).
 
-    Per-process by design: this is a single-process app. Under several
-    workers, move it into the database or Redis.
+    With `db_path` the counts live in SQLite, so every gunicorn worker sees
+    the same failures — otherwise each worker would grant its own five
+    attempts. Without it (unit tests) they live in this process's memory.
     """
 
-    def __init__(self, max_attempts: int, window_seconds: int, lockout_seconds: int):
+    def __init__(self, max_attempts: int, window_seconds: int, lockout_seconds: int,
+                 db_path: _Optional[str] = None):
         self.max_attempts = max(1, int(max_attempts))
         self.window = int(window_seconds)
         self.lockout = int(lockout_seconds)
+        self.db_path = db_path
         self._failures: _Dict[_Tuple[str, str], _List[float]] = {}
         self._locked_until: _Dict[_Tuple[str, str], float] = {}
         self._lock = _threading.Lock()
+        if db_path:
+            with self._db() as conn:
+                conn.execute("CREATE TABLE IF NOT EXISTS login_throttle (ip TEXT NOT NULL, username TEXT NOT NULL, "
+                             "failures TEXT NOT NULL DEFAULT '[]', locked_until REAL NOT NULL DEFAULT 0, "
+                             "PRIMARY KEY (ip, username))")
 
     @staticmethod
     def key(ip: str, username: str) -> _Tuple[str, str]:
-        return (ip or "?", (username or "").strip().lower())
+        return (ip or "?", (username or "").strip().lower()[:150])
+
+    def _db(self):
+        import sqlite3 as _sqlite3
+        return _sqlite3.connect(self.db_path, timeout=30)
+
+    def _load(self, conn, key):
+        row = conn.execute("SELECT failures, locked_until FROM login_throttle WHERE ip=? AND username=?", key).fetchone()
+        return (_json.loads(row[0]), row[1]) if row else ([], 0.0)
 
     def locked_for(self, key) -> int:
-        with self._lock:
-            remaining = int(self._locked_until.get(key, 0) - _time.time())
-            if remaining <= 0:
-                self._locked_until.pop(key, None)
-                return 0
-            return remaining
+        if self.db_path:
+            with self._db() as conn:
+                until = self._load(conn, key)[1]
+        else:
+            with self._lock:
+                until = self._locked_until.get(key, 0)
+        return max(0, int(until - _time.time()))
 
     def record_failure(self, key) -> None:
         now = _time.time()
+        if self.db_path:
+            with self._db() as conn:
+                conn.execute("BEGIN IMMEDIATE")
+                failures, until = self._load(conn, key)
+                recent = [t for t in failures if now - t < self.window] + [now]
+                if len(recent) >= self.max_attempts:
+                    until, recent = now + self.lockout, []
+                    _log.warning("Login locked for %s after %d failures", key[1], self.max_attempts)
+                conn.execute("INSERT INTO login_throttle (ip, username, failures, locked_until) VALUES (?,?,?,?) "
+                             "ON CONFLICT(ip, username) DO UPDATE SET failures=excluded.failures, "
+                             "locked_until=excluded.locked_until", (*key, _json.dumps(recent), until))
+                # Keep the table small: forget entries that are neither locked nor recent.
+                conn.execute("DELETE FROM login_throttle WHERE locked_until < ? AND failures = '[]'", (now,))
+            return
         with self._lock:
             recent = [t for t in self._failures.get(key, []) if now - t < self.window] + [now]
             self._failures[key] = recent
@@ -183,6 +257,10 @@ class LoginThrottle:
                 _log.warning("Login locked for %s after %d failures", key[1], len(recent))
 
     def record_success(self, key) -> None:
+        if self.db_path:
+            with self._db() as conn:
+                conn.execute("DELETE FROM login_throttle WHERE ip=? AND username=?", key)
+            return
         with self._lock:
             self._failures.pop(key, None)
             self._locked_until.pop(key, None)
@@ -193,9 +271,9 @@ _throttle: _Optional[LoginThrottle] = None
 
 def login_throttle() -> LoginThrottle:
     global _throttle
-    if _throttle is None:
+    if _throttle is None or _throttle.db_path != Config.DB_PATH:
         _throttle = LoginThrottle(Config.AUTH_MAX_LOGIN_ATTEMPTS, Config.AUTH_LOGIN_WINDOW_SECONDS,
-                                  Config.AUTH_LOCKOUT_SECONDS)
+                                  Config.AUTH_LOCKOUT_SECONDS, db_path=Config.DB_PATH)
     return _throttle
 
 
@@ -256,6 +334,9 @@ def register_security(app) -> None:
             valid = row["id"] == session.get("studio_id")
         if valid and table == "staff":
             valid = row["role"] == session.get("role")
+        if valid and session.get("pw_fp"):
+            # A password change (or reset) signs the account out everywhere else.
+            valid = _secrets_mod.compare_digest(password_fingerprint(row["password"]), session["pw_fp"])
         if not valid:
             _log.warning("Ending session for %s: account removed or changed", session.get("name"))
             session.clear()

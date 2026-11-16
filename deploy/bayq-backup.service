@@ -1,0 +1,11 @@
+# Nightly database backup (see bayq-backup.timer). Keeps the last 14.
+[Unit]
+Description=BayQ database backup
+
+[Service]
+Type=oneshot
+User=bayq
+Group=bayq
+WorkingDirectory=/opt/bayq
+EnvironmentFile=/opt/bayq/.env
+ExecStart=/opt/bayq/.venv/bin/python -m src.manage backup --dest /opt/bayq/data/backups --keep 14

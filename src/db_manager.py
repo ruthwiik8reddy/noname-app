@@ -211,7 +211,9 @@ from .config import Config
 
 def get_db():
     if "db" not in request_context:
-        request_context.db = sqlite3.connect(Config.DB_PATH, detect_types=sqlite3.PARSE_DECLTYPES)
+        # Under several gunicorn workers a writer may briefly hold the lock;
+        # wait for it rather than failing with "database is locked".
+        request_context.db = sqlite3.connect(Config.DB_PATH, detect_types=sqlite3.PARSE_DECLTYPES, timeout=30)
         request_context.db.row_factory = sqlite3.Row
     return request_context.db
 
@@ -234,7 +236,11 @@ def get_catalog_for_ai_context(studio_id: int):
     return [dict(s) for s in services]
 
 def init_db():
-    conn = sqlite3.connect(Config.DB_PATH)
+    conn = sqlite3.connect(Config.DB_PATH, timeout=30)
+    # Write-ahead logging: readers never block the writer and vice versa, which
+    # is what lets several worker processes share one SQLite file. The setting
+    # is stored in the database file, so this only needs to run once.
+    conn.execute("PRAGMA journal_mode=WAL")
     
     # Studios
     conn.execute("""

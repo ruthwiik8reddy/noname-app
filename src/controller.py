@@ -11,6 +11,7 @@ from werkzeug.utils import secure_filename
 logger = logging.getLogger(__name__)
 
 from .services.currency import choices as currency_choices
+from .forms import number as parse_number
 from .db_manager import get_db
 # ── Orchestrator Pattern ──
 # Controllers never call an LLM directly. Every AI-backed feature is routed
@@ -117,6 +118,8 @@ def login():
                     throttle.record_success(throttle_key)
                     set_session(payload)
                     session.permanent = True
+                    from .security import remember_password
+                    remember_password(conn)
                     logger.info(f"Login successful: {username} (role={payload.get('role')})")
                     next_url = request.args.get("next") or url_for("main.dashboard")
                     from .security import safe_next
@@ -368,14 +371,14 @@ def new_inventory_item():
     sku = f.get("sku", "").strip().upper()
     name = f.get("name", "").strip()
     category = f.get("category", "General").strip()
-    qty = float(f.get("quantity", 0))
     unit = f.get("unit", "units").strip()
-    reorder_level = float(f.get("reorder_level", 5))
-    cost_dollars = float(f.get("cost_per_unit", 0))
-    cost_cents = int(cost_dollars * 100)
     supplier = f.get("supplier", "").strip()
 
     try:
+        from .forms import cents, number
+        qty = number(f.get("quantity"), minimum=0, label="Quantity")
+        reorder_level = number(f.get("reorder_level"), default=5, minimum=0, label="Reorder level")
+        cost_cents = cents(f.get("cost_per_unit"), label="Unit cost")
         if sku and name:
             cur = conn.execute("""
                 INSERT INTO inventory_items 
@@ -406,10 +409,11 @@ def adjust_inventory_stock(item_id):
     conn = get_db()
     f = request.form
 
-    change_qty = float(f.get("change_qty", 0))
     reason = f.get("reason", "Manual Adjustment").strip()
 
     try:
+        from .forms import number
+        change_qty = number(f.get("change_qty"), minimum=-1_000_000, maximum=1_000_000, label="Change")
         item = conn.execute(
             "SELECT * FROM inventory_items WHERE id=? AND studio_id=?", (item_id, sid)
         ).fetchone()
@@ -586,8 +590,10 @@ def new_estimate():
             items = []
             for i in range(len(names)):
                 if names[i].strip() and unit_prices[i].strip():
-                    qty   = int(quantities[i] or 1)
-                    price = int(float(unit_prices[i] or 0) * 100)
+                    from .forms import cents, integer
+                    qty   = integer(quantities[i] if i < len(quantities) else "", default=1, minimum=1,
+                                    maximum=100_000, label="Quantity")
+                    price = cents(unit_prices[i], label="Price")
                     items.append({
                         "name":  names[i].strip(),
                         "desc":  descs[i].strip() if i < len(descs) else "",
@@ -597,7 +603,7 @@ def new_estimate():
                     })
 
             subtotal   = sum(it["total"] for it in items)
-            tax_pct    = float(f.get("tax_percent", 8.5))
+            tax_pct    = parse_number(f.get("tax_percent"), default=8.5, minimum=0, maximum=100, label="Tax")
             tax_amount = int(subtotal * tax_pct / 100)
             total      = subtotal + tax_amount
 
@@ -861,10 +867,8 @@ def new_staff():
             errors.extend(pw_errors)
 
             if username:
-                existing = conn.execute(
-                    "SELECT id FROM staff WHERE LOWER(username)=?", (username,)
-                ).fetchone()
-                if existing:
+                from .auth import username_taken
+                if username_taken(conn, username):
                     errors.append("That username is already taken.")
 
             if not errors:

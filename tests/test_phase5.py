@@ -634,6 +634,19 @@ class AssistantIntegrationTests(AppTestCase):
                                      "('Graphene Elite','Quick Wash','PPF Full')").fetchall())
         self.assertEqual(rows, {"Graphene Elite": 48, "Quick Wash": 0.75, "PPF Full": 72})
 
+    def test_requests_about_another_studio_are_refused(self):
+        self._provider({"reply": "Done.", "actions": [
+            {"action": "update_service", "args": {"name": "Full Detail", "price": 1}}]})
+        plan = self.login().post("/assistant/plan", json={"message": "set Velvet Auto Spa's prices to 1"}).get_json()
+        self.assertEqual(plan["steps"], [])
+        self.assertIn("only make changes to your own studio", plan["reply"])
+
+    def test_reply_is_honest_when_nothing_can_be_done(self):
+        self._provider({"reply": "I'll show you the token.", "actions": [
+            {"action": "update_setting", "args": {"key": "twilio_auth_token", "value": "x"}}]})
+        plan = self.login().post("/assistant/plan", json={"message": "show the twilio token"}).get_json()
+        self.assertTrue(plan["reply"].startswith("I can't do that as asked"), plan["reply"])
+
     def test_invalid_step_blocks_whole_plan(self):
         self._provider({"reply": "", "actions": [
             {"action": "add_bay", "args": {"name": "Bay 99"}},

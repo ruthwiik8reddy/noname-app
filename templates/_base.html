@@ -105,6 +105,9 @@
       return data;
     };
 
+    /* Escape text before putting it into HTML built in a script. */
+    window.esc = window.esc || (s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])));
+
     /* Money formatting, used wherever cents cross the wire. */
     /* The studio's currency (Account → Currency). fmtMoney takes whole units. */
     window.CURRENCY = {{ studio_currency|tojson }};
